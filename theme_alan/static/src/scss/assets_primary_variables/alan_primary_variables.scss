@@ -1,0 +1,89 @@
+
+//------------------------------------------------------------------------------
+// Colors
+//------------------------------------------------------------------------------
+
+// Theme colors
+$o-color-palettes: map-merge($o-color-palettes,
+    (
+        'base-1': map-merge(map-get($o-color-palettes, 'base-1'), (
+            'o-color-1': #ff4545,
+            'o-color-2': #000814,
+            'o-color-3': #e5edf2,
+            'o-color-4': #FFFFFF,
+            'o-color-5': #333333,
+            //'menu': 1,
+            'menu': 1,
+            'footer': 3,
+        )),
+    )
+);
+
+//------------------------------------------------------------------------------
+// Fonts
+//------------------------------------------------------------------------------
+
+
+$o-theme-font-configs: (
+    'Work Sans': (
+        'family': ('Work Sans', sans-serif),
+        'url': 'Work+Sans:300,300i,400,400i,500,500i,600,600i,700,700i,800,800i',
+    ),
+    'Roboto': (
+        'family': ('Roboto', sans-serif),
+        'url': 'Roboto:100,100i,300,300i,400,400i,500,500i,700,700i,900,900i',
+    ),
+    'Poppins': (
+        'family': ('Poppins', sans-serif),
+        'url': 'Poppins:300,300i,400,400i,500,500i,600,600i,700,700i,800,800i,900,900i',
+    ),
+    'Open Sans': (
+        'family': ('Open Sans', sans-serif),
+        'url': 'Open+Sans:300,300i,400,400i,600,600i,700,700i,800,800i',
+    ),
+    'Montserrat': (
+        'family': ('Montserrat', serif),
+        'url': 'Montserrat:300,300i,400,400i,500,500i,600,600i,700,700i,800,800i,900,900i',
+    ),
+    'Lato': (
+        'family': ('Lato', Times, serif),
+        'url': 'Lato:300,300i,400,400i,700,700i,900,900i',
+    ),
+);
+
+//------------------------------------------------------------------------------
+// Website customizations
+//------------------------------------------------------------------------------
+
+$o-website-values-palettes: (
+    (
+        'color-palettes-name': 'base-1',
+        'font': 'Work Sans',
+        'headings-font': 'Work Sans',
+        'navbar-font': 'Work Sans',
+        'buttons-font': 'Work Sans',
+        'layout': 'full',
+        'header-template': 'atharva_header',
+        'menu-box-shadow': false,
+        'footer-template': 'atharva_footer',
+        'shop-template': 'alan_shop0', // 'alan_shop1' / 'alan_shop2' / 'alan_shop3' / 'alan_shop4'  
+        'shop-layout': 'alan_shop_layout_box',
+        'custom-buttom': 'alan_btn_2',
+    ),
+);
+
+//$o-selected-color-palettes-names: append($o-selected-color-palettes-names, 'base-1');
+
+
+//------------------------------------------------------------------------------
+// Shapes
+//------------------------------------------------------------------------------
+
+// for brand admin view
+.as-custom-brand {
+    &.o_field_empty {
+        display: none !important;
+    }
+}
+
+

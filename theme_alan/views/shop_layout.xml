@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Shop Page Replace Search and Pricelist -->
+    <template id="products_extend" name="Product Extend" inherit_id="website_sale.products">
+        <xpath expr="//div[hasclass('products_header')]/t[@t-call='website_sale.search']" position="replace" />
+        <xpath expr="//div[hasclass('products_header')]/t[@t-call='website_sale.pricelist_list']" position="replace" />
+    </template>
+
+    <!-- Shop Page Layout -->
+    <template id="as_shop_layout" name="Shop Style" inherit_id="website.snippet_options">
+        <xpath expr="//div[@data-js='OptionsTab']/we-collapse" position="after">
+            <we-title>Alan Shop Layout</we-title>
+            <we-select string="Shop Style" data-variable="shop-template">
+                <we-button title="Default"
+                    data-name="button_shop0_opt"
+                    data-customize-website-variable="'alan_shop0'">Default</we-button>
+                <we-button title="Shadow"
+                    data-name="button_shop1_opt"
+                    data-customize-website-variable="'alan_shop1'">Shadow</we-button>
+                <we-button title="Glass Blur"
+                    data-name="button_shop2_opt"
+                    data-customize-website-variable="'alan_shop2'">Glass Blur</we-button>
+                <we-button title="Simple"
+                    data-name="button_shop3_opt"
+                    data-customize-website-variable="'alan_shop3'">Simple</we-button>
+                <we-button title="Modern"
+                    data-name="button_shop4_opt"
+                    data-customize-website-variable="'alan_shop4'">Modern</we-button>
+            </we-select>
+            <we-select string="Shop Layout" data-variable="shop-layout">
+                <we-button title="Alan Shop Full Layout"
+                    data-name="shop_layout_opt1"
+                    data-customize-website-variable="'alan_shop_layout_full'">Full</we-button>
+                <we-button title="Alan Shop Box Layout"
+                    data-name="shop_layout_opt2"
+                    data-customize-website-variable="'alan_shop_layout_box'">Box</we-button>
+            </we-select>
+        </xpath>
+    </template>
+</odoo>

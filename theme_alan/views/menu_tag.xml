@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Menu Tags  -->
+    <template id="menu_tags_sw" name="Menu Tags" inherit_id="website.submenu">
+        <xpath expr="//span[@t-field='submenu.name']" position="before">
+            <span t-if="submenu.is_tag_active"
+            class="as-menu-tags" t-field="submenu.tag_text"
+            t-attf-style="background-color:#{submenu.tag_bg_color};color:#{submenu.tag_text_color}"/>
+        </xpath>
+        <xpath expr="//li[@t-elif='show_dropdown']//span[@t-field='submenu.name']" position="before">
+            <span t-if="submenu.is_tag_active"
+            class="as-menu-tags" t-field="submenu.tag_text"
+            t-attf-style="background-color:#{submenu.tag_bg_color};color:#{submenu.tag_text_color}"/>
+        </xpath>
+    </template>
+</odoo>

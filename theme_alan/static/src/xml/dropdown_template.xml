@@ -1,0 +1,48 @@
+<?xml version="1.0" ?>
+<templates>
+    <!-- select2 to product dropdown template-->
+    <div t-name="theme_alan.as_select2_products_dropdown">
+        <div class="as-s2-media">
+            <div class="as-s2-img">
+                <img class="card-img o_image_64_contain" t-att-src="data.image"/>
+            </div>
+            <div class="as-s2-media-body">
+                <h6 class="mb-1" t-esc="data.text"/>
+                <small class="d-block mb-1" t-out="data.description"/>
+            </div>
+        </div>
+    </div>
+
+    <!-- select2 to category dropdown template-->
+    <div t-name="theme_alan.as_select2_category_dropdown">
+        <div class="as-s2-media">
+            <div class="as-s2-img">
+                <img class="card-img o_image_64_contain" t-att-src="data.image"/>
+            </div>
+            <div class="as-s2-media-body">
+                <h6 class="mb-1" t-esc="data.text"/>
+            </div>
+        </div>
+    </div>
+
+    <!-- select2 to brand dropdown template-->
+    <div t-name="theme_alan.as_select2_brand_dropdown">
+        <div class="as-s2-media">
+            <div class="as-s2-img">
+                <img class="card-img o_image_64_contain" t-att-src="data.logo"/>
+            </div>
+            <div class="as-s2-media-body">
+                <h6 class="mb-1" t-esc="data.name"/>
+            </div>
+        </div>
+    </div>
+
+    <!-- select2 to blog dropdown template-->
+    <div t-name="theme_alan.as_select2_blog_dropdown">
+        <div class="as-s2-media">
+            <div class="as-s2-media-body">
+                <h6 class="mb-1" t-esc="data.name"/>
+            </div>
+        </div>
+    </div>
+</templates>

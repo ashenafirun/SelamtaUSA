@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Quick Add To Cart Icon -->
+    <template id="quick_add_to_cart" name="Quick Add To Cart" inherit_id="website_sale.products_add_to_cart" customize_show="True">
+        <xpath expr="//a[hasclass('a-submit')]" position="replace">
+            <t t-set="combination" t-value="product._get_first_possible_combination()"/>
+            <a href="#" role="button" class="btn btn-primary as-quick-submit" aria-label="Quick Cart" title="Quick Cart"
+            t-attf-data-has-variant="#{'True' if product.product_variant_count > 1 else 'False' }"
+            t-attf-data-product-id="#{product.id if product.product_variant_count > 1 else product_variant_id}">
+                <span class="fa fa-shopping-cart"/>
+            </a>
+        </xpath>
+    </template>
+
+    <!-- Quick Add To Cart -->
+    <template id="quick_cart" name="Quick Add To Cart">
+        <t t-call="atharva_theme_base.as_quick_cart"/>
+    </template>
+
+    <!-- Added cart-->
+    <template id="addedCart" name="Quick Cart Detail">
+        <t t-call="atharva_theme_base.as_quick_added_cart"/>
+    </template>
+</odoo>
