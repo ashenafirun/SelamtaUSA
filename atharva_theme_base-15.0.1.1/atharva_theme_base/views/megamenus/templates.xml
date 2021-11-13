@@ -1,0 +1,483 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+<!--
+===================
+Product Grid
+===================
+-->
+<template id="as_mm_product_grid" name="Alan: Megamenu Product Grid" groups="base.group_user">
+    <section data-name="Dynamic Mega-Menu" class="as-dynamic-megamenu"
+    data-mega-popup="theme_alan.product_mega_modal" data-mega-title="Product Gird Configuration"
+    t-att-data-record-ids="prod_ids" t-att-data-mega-ui="mega_ui" t-att-data-col-ui="col_ui"
+    data-prod-mega-view="grid">
+        <div t-if="is_dynamic" t-attf-class="as-product-grid-mega-menu {{mega_ui}}">
+            <div class="container">
+                <!-- Row -->
+                <div t-attf-class="as-mm-row {{col_ui}}">
+                    <!-- Col Loop -->
+                    <div t-foreach="mega_data" t-as="data" class="as-mm-col">
+                        <div class="as-mm-product-grid">
+                            <div class="mm-img">
+                                <img t-att-src="data['image']" />
+                                <a t-att-href="data['access_link']"/>
+                            </div>
+                            <div class="mm-title">
+                                <a t-att-href="data['access_link']"><t t-esc="data['name']"/></a>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- End Col Loop -->
+                </div>
+            </div>
+        </div>
+        <div t-else="" class="as-product-grid-mega-menu as-product-grid-simple">
+            <div class="container">
+                <div class="as-mm-row as-mm-row-05">
+                    <!-- Col Loop -->
+                    <div class="as-mm-col">
+                        <div class="as-mm-product-grid">
+                            <div class="mm-img">
+                                <img src="/atharva_theme_base/static/src/img/megamenu/1000x1000.jpg" />
+                            </div>
+                            <div class="mm-title">
+                                <a href="#">Menu Title</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="as-mm-col">
+                        <div class="as-mm-product-grid">
+                            <div class="mm-img">
+                                <img src="/atharva_theme_base/static/src/img/megamenu/1000x1000.jpg" />
+                            </div>
+                            <div class="mm-title">
+                                <a href="#">Menu Title</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="as-mm-col">
+                        <div class="as-mm-product-grid">
+                            <div class="mm-img">
+                                <img src="/atharva_theme_base/static/src/img/megamenu/1000x1000.jpg" />
+                            </div>
+                            <div class="mm-title">
+                                <a href="#">Menu Title</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="as-mm-col">
+                        <div class="as-mm-product-grid">
+                            <div class="mm-img">
+                                <img src="/atharva_theme_base/static/src/img/megamenu/1000x1000.jpg" />
+                            </div>
+                            <div class="mm-title">
+                                <a href="#">Menu Title</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="as-mm-col">
+                        <div class="as-mm-product-grid">
+                            <div class="mm-img">
+                                <img src="/atharva_theme_base/static/src/img/megamenu/1000x1000.jpg" />
+                            </div>
+                            <div class="mm-title">
+                                <a href="#">Menu Title</a>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- End Col Loop -->
+                </div>
+            </div>
+        </div>
+    </section>
+</template>
+
+<!--
+===================
+Product List
+===================
+-->
+<template id="as_mm_product_list" name="Alan: Megamenu Product List" groups="base.group_user">
+    <section data-name="Dynamic Mega-Menu" class="as-dynamic-megamenu as-product-list-mega-menu"
+    data-mega-popup="theme_alan.product_mega_modal" data-mega-title="Product List Configuration"
+    t-att-data-record-ids="prod_ids" t-att-data-mega-ui="mega_ui" t-att-data-col-ui="col_ui"
+    data-prod-mega-view="list">
+        <div t-if="is_dynamic" t-attf-class="as-product-list-mega-menu {{mega_ui}}">
+            <div class="container">
+                <!-- Row -->
+                <div t-attf-class="as-mm-row {{col_ui}}">
+                    <!-- Col Loop -->
+                    <div t-foreach="mega_data" t-as="data" class="as-mm-col">
+                        <div class="as-mm-product-list">
+                            <a t-att-href="data['access_link']"><t t-esc="data['name']"/></a>
+                        </div>
+                    </div>
+                    <!-- End Col Loop -->
+                </div>
+            </div>
+        </div>
+        <div t-else="" class="as-product-list-mega-menu as-product-list-simple">
+            <div class="container">
+                <div class="as-mm-row as-mm-row-06">
+                    <!-- Col Loop -->
+                    <div class="as-mm-col">
+                        <div class="as-mm-product-list">
+                            <a href="#">Acoustic Bloc Screens</a>
+                        </div>
+                    </div>
+                    <div class="as-mm-col">
+                        <div class="as-mm-product-list">
+                            <a href="#">Acoustic Bloc Screens</a>
+                        </div>
+                    </div>
+                    <div class="as-mm-col">
+                        <div class="as-mm-product-list">
+                            <a href="#">Acoustic Bloc Screens</a>
+                        </div>
+                    </div>
+                    <div class="as-mm-col">
+                        <div class="as-mm-product-list">
+                            <a href="#">Acoustic Bloc Screens</a>
+                        </div>
+                    </div>
+                    <div class="as-mm-col">
+                        <div class="as-mm-product-list">
+                            <a href="#">Acoustic Bloc Screens</a>
+                        </div>
+                    </div>
+                    <div class="as-mm-col">
+                        <div class="as-mm-product-list">
+                            <a href="#">Acoustic Bloc Screens</a>
+                        </div>
+                    </div>
+                    <div class="as-mm-col">
+                        <div class="as-mm-product-list">
+                            <a href="#">Acoustic Bloc Screens</a>
+                        </div>
+                    </div>
+                    <div class="as-mm-col">
+                        <div class="as-mm-product-list">
+                            <a href="#">Acoustic Bloc Screens</a>
+                        </div>
+                    </div>
+                    <div class="as-mm-col">
+                        <div class="as-mm-product-list">
+                            <a href="#">Acoustic Bloc Screens</a>
+                        </div>
+                    </div>
+                    <div class="as-mm-col">
+                        <div class="as-mm-product-list">
+                            <a href="#">Acoustic Bloc Screens</a>
+                        </div>
+                    </div>
+                    <div class="as-mm-col">
+                        <div class="as-mm-product-list">
+                            <a href="#">Acoustic Bloc Screens</a>
+                        </div>
+                    </div>
+                    <!-- End Col Loop -->
+                </div>
+
+            </div>
+        </div>
+    </section>
+</template>
+<!--
+===================
+Category Grid
+===================
+-->
+<template id="as_mm_category_grid" name="Alan: Megamenu Category Grid" groups="base.group_user">
+    <section data-name="Dynamic Mega-Menu" class="as-dynamic-megamenu as-category-grid-mega-menu"
+    data-mega-popup="theme_alan.category_mega_modal" data-mega-title="Category Gird Configuration"
+    t-att-data-record-ids="cat_ids" t-att-data-mega-ui="mega_ui" t-att-data-col-ui="col_ui"
+    data-cat-mega-view="grid" t-att-data-cat-seq="cat_seq">
+        <div t-if="is_dynamic" t-attf-class="as-category-grid-mega-menu {{mega_ui}}">
+            <div class="container">
+                <!-- Row -->
+                <div t-attf-class="as-mm-row {{col_ui}}">
+                    <!-- Col Loop -->
+                    <t t-foreach="cat_data.keys()" t-as="d">
+                        <div t-if="len(d)" class="as-mm-col">
+                            <div class="as-mm-category-grid">
+                                <div class="mm-img">
+                                    <a t-attf-href="/shop/?category={{d.id}}">
+                                        <img t-att-title="d.name" t-att-src="request.website.image_url(d,'image_256') " />
+                                    </a>
+                                </div>
+                                <div class="mm-title">
+                                    <a t-attf-href="/shop/?category={{d.id}}"><t t-esc="d.name"/></a>
+                                </div>
+                                <ul class="mm-sub-cat">
+                                    <t t-foreach="cat_data[d]" t-as="sd">
+                                        <li>
+                                            <a t-attf-href="/shop/?category={{sd.id}}"><t t-esc="sd.name"/></a>
+                                        </li>
+                                    </t>
+                                </ul>
+                            </div>
+                        </div>
+                    </t>
+                    <!-- End Col Loop -->
+                </div>
+                <!-- End Row -->
+            </div>
+        </div>
+        <div t-else="" class="as-category-grid-mega-menu as-category-grid-simple">
+            <div class="container">
+                <div class="as-mm-row as-mm-row-05">
+                    <!-- Col Loop -->
+                    <div class="as-mm-col">
+                        <div class="as-mm-category-grid">
+                            <div class="mm-img">
+                                <img src="/atharva_theme_base/static/src/img/megamenu/1000x1000.jpg" />
+                            </div>
+                            <div class="mm-title">
+                                <a href="#">Main Category Title</a>
+                            </div>
+                            <ul class="mm-sub-cat">
+                                <li>
+                                    <a href="#">Sub Category Title</a>
+                                </li>
+                                <li>
+                                    <a href="#">Sub Category Title</a>
+                                </li>
+                                <li>
+                                    <a href="#">Sub Category Title</a>
+                                </li>
+                                <li>
+                                    <a href="#">Sub Category Title</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <!-- End Col Loop -->
+                    <!-- Col Loop -->
+                    <div class="as-mm-col">
+                        <div class="as-mm-category-grid">
+                            <div class="mm-img">
+                                <img src="/atharva_theme_base/static/src/img/megamenu/1000x1000.jpg" />
+                            </div>
+                            <div class="mm-title">
+                                <a href="#">Main Category Title</a>
+                            </div>
+                            <ul class="mm-sub-cat">
+                                <li>
+                                    <a href="#">Sub Category Title</a>
+                                </li>
+                                <li>
+                                    <a href="#">Sub Category Title</a>
+                                </li>
+                                <li>
+                                    <a href="#">Sub Category Title</a>
+                                </li>
+                                <li>
+                                    <a href="#">Sub Category Title</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <!-- End Col Loop -->
+                    <!-- Col Loop -->
+                    <div class="as-mm-col">
+                        <div class="as-mm-category-grid">
+                            <div class="mm-img">
+                                <img src="/atharva_theme_base/static/src/img/megamenu/1000x1000.jpg" />
+                            </div>
+                            <div class="mm-title">
+                                <a href="#">Main Category Title</a>
+                            </div>
+                            <ul class="mm-sub-cat">
+                                <li>
+                                    <a href="#">Sub Category Title</a>
+                                </li>
+                                <li>
+                                    <a href="#">Sub Category Title</a>
+                                </li>
+                                <li>
+                                    <a href="#">Sub Category Title</a>
+                                </li>
+                                <li>
+                                    <a href="#">Sub Category Title</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <!-- End Col Loop -->
+                    <!-- Col Loop -->
+                    <div class="as-mm-col">
+                        <div class="as-mm-category-grid">
+                            <div class="mm-img">
+                                <img src="/atharva_theme_base/static/src/img/megamenu/1000x1000.jpg" />
+                            </div>
+                            <div class="mm-title">
+                                <a href="#">Main Category Title</a>
+                            </div>
+                            <ul class="mm-sub-cat">
+                                <li>
+                                    <a href="#">Sub Category Title</a>
+                                </li>
+                                <li>
+                                    <a href="#">Sub Category Title</a>
+                                </li>
+                                <li>
+                                    <a href="#">Sub Category Title</a>
+                                </li>
+                                <li>
+                                    <a href="#">Sub Category Title</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <!-- End Col Loop -->
+                    <!-- Col Loop -->
+                    <div class="as-mm-col">
+                        <div class="as-mm-category-grid">
+                            <div class="mm-img">
+                                <img src="/atharva_theme_base/static/src/img/megamenu/1000x1000.jpg" />
+                            </div>
+                            <div class="mm-title">
+                                <a href="#">Main Category Title</a>
+                            </div>
+                            <ul class="mm-sub-cat">
+                                <li>
+                                    <a href="#">Sub Category Title</a>
+                                </li>
+                                <li>
+                                    <a href="#">Sub Category Title</a>
+                                </li>
+                                <li>
+                                    <a href="#">Sub Category Title</a>
+                                </li>
+                                <li>
+                                    <a href="#">Sub Category Title</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <!-- End Col Loop -->
+                </div>
+            </div>
+        </div>
+    </section>
+</template>
+
+<!--
+===================
+Category List
+===================
+-->
+<template id="as_mm_category_list" name="Alan: Megamenu Category List" groups="base.group_user">
+    <section data-name="Dynamic Mega-Menu" class="as-dynamic-megamenu as-category-list-mega-menu"
+    data-mega-popup="theme_alan.category_mega_modal" data-mega-title="Category List Configuration"
+    t-att-data-record-ids="cat_ids" t-att-data-mega-ui="mega_ui" t-att-data-col-ui="col_ui"
+    data-cat-mega-view="list" t-att-data-cat-seq="cat_seq">
+        <div t-if="is_dynamic" t-attf-class="as-category-grid-mega-menu {{mega_ui}}">
+            <div class="container">
+                <!-- Row -->
+                <div t-attf-class="as-mm-row {{col_ui}}">
+                    <!-- Col Loop -->
+                    <t t-foreach="cat_data.keys()" t-as="d">
+                        <div t-if="len(d)" class="as-mm-col">
+                            <div class="as-mm-category-list">
+                                <div class="mm-title">
+                                    <a t-attf-href="/shop/?category={{d.id}}"><t t-esc="d.name"/></a>
+                                </div>
+                                <ul class="mm-sub-cat">
+                                    <t t-foreach="cat_data[d]" t-as="sd">
+                                        <li>
+                                            <a t-attf-href="/shop/?category={{sd.id}}"><t t-esc="sd.name"/></a>
+                                        </li>
+                                    </t>
+                                </ul>
+                            </div>
+                        </div>
+                    </t>
+                    <!-- End Col Loop -->
+                </div>
+            </div>
+        </div>
+        <div t-else="" class="as-category-grid-mega-menu as-category-list-simple">
+            <div class="container">
+                <div class="as-mm-row as-mm-row-05">
+                    <div class="as-mm-col">
+                        <div class="as-mm-category-list">
+                            <div class="mm-title">
+                                <a href="/shop/?category=2">Main Category</a>
+                            </div>
+                            <ul class="mm-sub-cat">
+                                <li>
+                                    <a href="#">Sub Category</a>
+                                </li>
+                                <li>
+                                    <a href="#">Sub Category</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="as-mm-col">
+                        <div class="as-mm-category-list">
+                            <div class="mm-title">
+                                <a href="/shop/?category=2">Main Category</a>
+                            </div>
+                            <ul class="mm-sub-cat">
+                                <li>
+                                    <a href="#">Sub Category</a>
+                                </li>
+                                <li>
+                                    <a href="#">Sub Category</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="as-mm-col">
+                        <div class="as-mm-category-list">
+                            <div class="mm-title">
+                                <a href="/shop/?category=2">Main Category</a>
+                            </div>
+                            <ul class="mm-sub-cat">
+                                <li>
+                                    <a href="#">Sub Category</a>
+                                </li>
+                                <li>
+                                    <a href="#">Sub Category</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="as-mm-col">
+                        <div class="as-mm-category-list">
+                            <div class="mm-title">
+                                <a href="/shop/?category=2">Main Category</a>
+                            </div>
+                            <ul class="mm-sub-cat">
+                                <li>
+                                    <a href="#">Sub Category</a>
+                                </li>
+                                <li>
+                                    <a href="#">Sub Category</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="as-mm-col">
+                        <div class="as-mm-category-list">
+                            <div class="mm-title">
+                                <a href="/shop/?category=2">Main Category</a>
+                            </div>
+                            <ul class="mm-sub-cat">
+                                <li>
+                                    <a href="#">Sub Category</a>
+                                </li>
+                                <li>
+                                    <a href="#">Sub Category</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</template>
+
+</odoo>

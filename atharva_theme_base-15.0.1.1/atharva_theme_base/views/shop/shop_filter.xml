@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Attribute Filter -->
+    <template id="as_product_attribute_layout" name="Product Attribute">
+        <div class="collapse d-lg-block" id="wsale_products_attributes_collapse">
+            <form class="js_attributes mb-2" method="get">
+                <input t-if="category" type="hidden" name="category" t-att-value="category.id" />
+                <input type="hidden" name="search" t-att-value="search" />
+                <ul class="nav flex-column">
+                    <t t-foreach="attributes" t-as="a">
+                        <li t-if="a.value_ids and len(a.value_ids) &gt; 1" class="nav-item mb-2">
+                            <div>
+                                <strong class="o_products_attributes_title text-uppercase d-block my-2"><i class="fa fa-cog"></i> <span t-field="a.name"/> </strong>
+                            </div>
+                            <t t-if="a.display_type == 'select'">
+                                <select class="custom-select css_attribute_select" name="attrib">
+                                    <option value="" />
+                                    <t t-foreach="a.value_ids" t-as="v">
+                                        <t t-if="is_view_active('atharva_theme_base.no_product_attribute_hide') and variant_count.get(v.id,0) == 0">
+                                            <t t-set="hide_attr_sel" t-value="1"/>
+                                        </t>
+                                        <t t-else="">
+                                            <t t-set="hide_attr_sel" t-value="0"/>
+                                        </t>
+                                        <option t-if="hide_attr_sel != 1" t-att-value="'%s-%s' % (a.id,v.id)" t-att-selected="v.id in attrib_set" >
+                                            <span><t t-esc="v.name"/>
+                                                <span t-if="is_view_active('atharva_theme_base.product_counter')" class="as-count" t-esc="'(%s)' %(str(variant_count.get(v.id,0)))" />
+                                            </span>
+                                        </option>
+                                    </t>
+                                </select>
+                            </t>
+                            <t t-if="a.display_type == 'radio' or a.display_type == 'pills'">
+                                <div class="flex-column">
+                                    <t t-foreach="a.value_ids" t-as="v">
+                                        <t t-if="is_view_active('atharva_theme_base.no_product_attribute_hide') and variant_count.get(v.id,0) == 0">
+                                            <t t-set="hide_attr_rad" t-value="1"/>
+                                        </t>
+                                        <t t-else="">
+                                            <t t-set="hide_attr_rad" t-value="0"/>
+                                        </t>
+                                        <div t-if="hide_attr_rad != 1" class="custom-control custom-checkbox mb-1">
+                                            <input type="checkbox" name="attrib" class="custom-control-input" t-att-id="'%s-%s' % (a.id,v.id)" t-att-value="'%s-%s' % (a.id,v.id)" t-att-checked="'checked' if v.id in attrib_set else None"/>
+                                            <label class="custom-control-label font-weight-normal" t-att-for="'%s-%s' % (a.id,v.id)" t-field="v.name"/>
+                                            <span t-if="is_view_active('atharva_theme_base.product_counter')" class="as-count" t-esc="'(%s)' %(str(variant_count.get(v.id,0)))" />
+                                        </div>
+                                    </t>
+                                </div>
+                            </t>
+                            <t t-if="a.display_type == 'color'">
+                                <div class="flex-column pro_color">
+                                    <t t-foreach="a.value_ids" t-as="v">
+                                        <t t-if="is_view_active('atharva_theme_base.no_product_attribute_hide') and variant_count.get(v.id,0) == 0">
+                                            <t t-set="hide_attr_col" t-value="1"/>
+                                        </t>
+                                        <t t-else="">
+                                            <t t-set="hide_attr_col" t-value="0"/>
+                                        </t>
+                                        <label t-if="hide_attr_col != 1" t-attf-style="background-color:#{v.html_color or v.name}" t-attf-class="css_attribute_color font-weight-normal #{'active' if v.id in attrib_set else ''}">
+                                            <input type="checkbox" name="attrib" t-att-value="'%s-%s' % (a.id,v.id)" t-att-checked="'checked' if v.id in attrib_set else None" t-att-title="v.name" />
+                                            <span t-if="is_view_active('atharva_theme_base.product_counter')" class="as-count ml-auto" t-esc="'(%s)' %(str(variant_count.get(v.id,0)))" />
+                                        </label>
+                                    </t>
+                                </div>
+                            </t>
+                        </li>
+                    </t>
+                </ul>
+            </form>
+        </div>
+    </template>
+
+    <!-- Rating Filter -->
+    <template id="rating_filter" name="Rating Filter">
+        <t t-if="is_view_active('atharva_theme_base.no_product_attribute_hide')">
+            <t t-set="show_rating" t-value="0"/>
+            <t t-as="rat" t-foreach="[4,3,2,1]">
+                <t t-if="rating_count.get(rat,0) != 0">
+                    <t t-set="show_rating" t-value="1"/>
+                </t>
+            </t>
+        </t>
+        <t t-else="">
+            <t t-set="show_rating" t-value="1"/>
+        </t>
+        <li t-if="show_rating == 1" class="nav-item rating-attr-box">
+            <div id="rating-title">
+                <strong class="o_products_attributes_title text-uppercase d-block"><i class="fa fa-star"></i> Rating</strong>
+            </div>
+            <ul class="rating-attr-ul">
+                <t t-as="rat" t-foreach="[4,3,2,1]">
+                    <t t-if="is_view_active('atharva_theme_base.no_product_attribute_hide') and rating_count.get(rat,0) == 0">
+                        <t t-set="hide_attr_rat" t-value="1"/>
+                    </t>
+                    <t t-else="">
+                        <t t-set="hide_attr_rat" t-value="0"/>
+                    </t>
+                    <li t-if="hide_attr_rat == 0">
+                        <label t-att-title="" t-attf-class="#{' active' if str(rat) in rating else ''}">
+                            <input class="custom-control-input" type="checkbox" name="rating" t-att-value="rat" t-att-checked="'checked' if str(rat) in rating else None"/>
+                            <span t-attf-class="star-{{rat}}"><i class="fa fa-star-o"></i><i class="fa fa-star-o"></i><i class="fa fa-star-o"></i><i class="fa fa-star-o"></i>  &amp; Up </span>
+                            <span t-if="is_view_active('atharva_theme_base.product_counter')" class="as-count" t-esc="'(%s)' %(str(rating_count[rat]))" />
+                        </label>
+                    </li>
+                </t>
+            </ul>
+        </li>
+    </template>
+
+    <!-- Brand Filter -->
+    <template id="brand_filter" name="Brand Filter">
+        <t t-if="is_view_active('atharva_theme_base.no_product_attribute_hide')">
+            <t t-set="show_brand" t-value="0"/>
+            <t t-as="brand" t-foreach="all_brand_list">
+                <t t-if="brand_count.get(brand.id,0) != 0">
+                    <t t-set="show_brand" t-value="1"/>
+                </t>
+            </t>
+        </t>
+        <t t-else="">
+            <t t-set="show_brand" t-value="1"/>
+        </t>
+        <li class="nav-item" t-if="len(all_brand_list) and show_brand == 1">
+            <div id="brand-title">
+                <div class="as_attribute_name as-collapse-widget">
+                    <strong class="o_products_attributes_title"><i class="fa fa-barcode"></i> Brand</strong>
+                </div>
+            </div>
+            <div class="flex-column pro_brand">
+                <t t-as="brand" t-foreach="all_brand_list">
+                    <t t-if="is_view_active('atharva_theme_base.no_product_attribute_hide') and brand_count.get(brand.id,0) == 0">
+                        <t t-set="hide_attr_brand" t-value="1"/>
+                    </t>
+                    <t t-else="">
+                        <t t-set="hide_attr_brand" t-value="0"/>
+                    </t>
+                    <label t-if="hide_attr_brand == 0" t-attf-class="custom-control custom-checkbox font-weight-normal mb-1#{' active' if str(brand.id) in sel_brand_list else ''}">
+                        <input class="custom-control-input" type="checkbox" name="brand" t-att-value="brand.id" t-att-checked="'checked' if str(brand.id) in sel_brand_list else None"/>
+                        <span class="custom-control-label font-weight-normal"><t t-esc="brand.name"/></span> <span t-if="is_view_active('atharva_theme_base.product_counter')" class="as-count" t-esc="'(%s)' %(str(brand_count[brand.id]))" />
+                    </label>
+                </t>
+            </div>
+        </li>
+    </template>
+
+    <!-- Tag Filter -->
+    <template id="tag_filter" name="Tag Filter">
+       <t t-if="is_view_active('atharva_theme_base.no_product_attribute_hide')">
+            <t t-set="show_tag" t-value="0"/>
+            <t t-as="tag" t-foreach="all_tag_list">
+                <t t-if="tag_count.get(tag.id,0) != 0">
+                    <t t-set="show_tag" t-value="1"/>
+                </t>
+            </t>
+        </t>
+        <t t-else="">
+            <t t-set="show_tag" t-value="1"/>
+        </t>
+        <li class="nav-item" t-if="len(all_tag_list) and show_tag == 1">
+            <div id="brand-title">
+                <div class="as_attribute_name as-collapse-widget">
+                    <strong class="o_products_attributes_title text-uppercase d-block"><i class="fa fa-tag"></i> Tags</strong>
+                </div>
+            </div>
+            <ul class="as-shop-tags pro_tag">
+                <t t-as="tag" t-foreach="all_tag_list">
+                   <t t-if="is_view_active('atharva_theme_base.no_product_attribute_hide') and tag_count.get(tag.id,0) == 0">
+                        <t t-set="hide_attr_tag" t-value="1"/>
+                    </t>
+                    <t t-else="">
+                        <t t-set="hide_attr_tag" t-value="0"/>
+                    </t>
+                    <li t-if="hide_attr_tag == 0" class="">
+                        <label t-attf-class="#{' active' if str(tag.id) in sel_tag_list else ''}">
+                            <input type="checkbox" name="tag" t-att-value="tag.id" t-att-checked="'checked' if str(tag.id) in sel_tag_list else None"/>
+                            <span><t t-esc="tag.name"/><span t-if="is_view_active('atharva_theme_base.product_counter')" class="as-count" t-esc="'(%s)' %(str(tag_count[tag.id]))" /></span>
+                        </label>
+                    </li>
+                </t>
+            </ul>
+        </li>
+    </template>
+
+    <!-- Product Count -->
+    <template id="product_counter" name="Product Count" inherit_id="atharva_theme_base.as_product_attribute_layout" customize_show="True">
+        <xpath expr="." position="inside"/>
+    </template>
+
+    <!-- Hide No Product Attribute -->
+    <template id="no_product_attribute_hide" name="Hide No Product" inherit_id="atharva_theme_base.as_product_attribute_layout" customize_show="True">
+        <xpath expr="." position="inside"/>
+    </template>
+</odoo>

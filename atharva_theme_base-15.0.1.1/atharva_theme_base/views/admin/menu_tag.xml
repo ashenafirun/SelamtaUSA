@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Menu Tags  -->
+    <record id="website_menus_form_view_inherit_website" model="ir.ui.view">
+        <field name="name">website.menu.view.form.inherit</field>
+        <field name="model">website.menu</field>
+        <field name="inherit_id" ref="website.website_menus_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='website_id']" position="after">
+                <field name="is_tag_active" />
+                <field name="tag_text" attrs="{'invisible':[('is_tag_active','=',False)],'required':[('is_tag_active','=',True)]}" />
+                <field name="tag_text_color" widget="color" attrs="{'invisible':[('is_tag_active','=',False)],'required':[('is_tag_active','=',True)]}" />
+                <field name="tag_bg_color" widget="color" attrs="{'invisible':[('is_tag_active','=',False)],'required':[('is_tag_active','=',True)]}" />
+            </xpath>
+        </field>
+    </record>
+</odoo>
