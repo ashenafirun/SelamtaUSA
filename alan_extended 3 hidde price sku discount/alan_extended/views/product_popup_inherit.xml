@@ -1,0 +1,48 @@
+<odoo>
+
+    <template id="product_pop_up_page_price_hide_website_sale" inherit_id="atharva_theme_base.cart_lines_popup_content">
+        <xpath expr="//div[hasclass('m_c_prod_price')]" position="attributes">
+            <attribute name="t-if">
+                not request.website.is_public_user()
+            </attribute>
+        </xpath>
+    </template>
+
+    <template id="product_as_quick_cart_price_hide_website_sale" inherit_id="atharva_theme_base.as_quick_cart">
+        <xpath expr="//t[@t-call='website_sale.product_price']" position="attributes">
+            <attribute name="t-if">
+                not request.website.is_public_user()
+            </attribute>
+        </xpath>
+    </template>
+
+    <template id="as_stick_product_detail_price_hide_website_sale" inherit_id="atharva_theme_base.as_stick_product_detail">
+        <xpath expr="//t[@t-call='website_sale.product_price']" position="attributes">
+            <attribute name="t-if">
+                not request.website.is_public_user()
+            </attribute>
+        </xpath>
+    </template>
+
+    <template id="as_quick_view_detail_price_hide_website_sale" inherit_id="atharva_theme_base.as_quick_view">
+        <xpath expr="//t[@t-call='website_sale.product_price']" position="attributes">
+            <attribute name="t-if">
+                not request.website.is_public_user()
+            </attribute>
+        </xpath>
+    </template>
+
+    <template id="price_dynamic_filter_template_product_product_hide_website_sale" inherit_id="website_sale.price_dynamic_filter_template_product_product">
+        <xpath expr="//span" position="attributes">
+            <attribute name="t-if">
+                not request.website.is_public_user()
+            </attribute>
+        </xpath>
+        <xpath expr="//del" position="attributes">
+            <attribute name="t-if" separator="and">
+                not request.website.is_public_user()
+            </attribute>
+        </xpath>
+    </template>
+
+</odoo>
