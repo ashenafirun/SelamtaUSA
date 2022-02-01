@@ -24,10 +24,7 @@
     "website":  "https://store.webkul.com/Odoo-Website-Cart-Settings.html",
     "description":  """http://webkul.com/blog/website-cart-settings/""",
     "live_test_url":  "http://odoodemo.webkul.com/?module=advance_website_settings&version=13.0",
-    "depends":  [
-        'website_sale',
-        'website_webkul_addons',
-    ],
+    "depends"
     "data":  [
         'security/ir.model.access.csv',
         'views/advance_website_settings_view.xml',
