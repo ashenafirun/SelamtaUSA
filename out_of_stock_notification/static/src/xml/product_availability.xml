@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<templates>
+    <t t-name="out_of_stock_notification.product_availability" inherit_id="website_sale_stock.product_availability">
+        <div t-if="product_type == 'product' and !free_qty and !allow_out_of_stock_order">
+            <input id="back_to_stock" type="checkbox" t-att-data-product-id="product_id" t-att-checked="back_to_stock ? back_to_stock : undefined" />
+            <label for="back_to_stock">Get Notification When Product Is Back In Stock</label>
+        </div>
+    </t>
+</templates>

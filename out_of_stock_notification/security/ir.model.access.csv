@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+out_of_stock_notification.access_product_back_to_stock,access_product_back_to_stock,out_of_stock_notification.model_product_back_to_stock,base.group_user,1,1,1,1
