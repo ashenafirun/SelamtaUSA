@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record model="ir.ui.view" id="sale_order_view_inherit">
+        <field name="name">sale.order.view.inherit</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="/form/sheet/notebook/page/field[@name='order_line']/tree/field[@name='price_unit']"
+                   position="after">
+                <field name="p_weight"/>
+                <field name="weight"/>
+                <field name="p_volume"/>
+                <field name="volume"/>
+            </xpath>
+            <xpath expr="//field[@name='note']" position="after">
+                <group name="Total" string="Total">
+                    <label for="total_weight"/>
+                    <div class="o_row">
+                        <field name="total_weight"/>kg
+                        <span>
+                            <field name="weight_unit"/>
+                        </span>
+                    </div>
+                    <label for="total_volume"/>
+                    <div class="o_row">
+                        <field name="total_volume"/>m³
+                        <span>
+                            <field name="volume_unit"/>
+                        </span>
+                    </div>
+
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_sale_quotation_inherit_tree" model="ir.ui.view">
+        <field name="name">sale.quotation.view.tree.inherit</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_quotation_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='company_id']" position="after">
+                <field name="total_weight" sum="Total"/>
+                <field name="total_volume" sum="Total"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_sale_order_inherit_tree" model="ir.ui.view">
+        <field name="name">sale.order.view.tree.inherit</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='company_id']" position="after">
+                <field name="total_weight" sum="Total"/>
+                <field name="total_volume" sum="Total"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
+
+
+ 
