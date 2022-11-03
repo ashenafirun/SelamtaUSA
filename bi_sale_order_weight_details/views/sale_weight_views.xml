@@ -23,7 +23,7 @@
                     </div>
                     <label for="total_volume"/>
                     <div class="o_row">
-                        <field name="total_volume"/>m³
+                        <field name="total_volume"/>ft³
                         <span>
                             <field name="volume_unit"/>
                         </span>
