@@ -1,0 +1,64 @@
+image: python:3.8-buster
+variables:
+  # Stable, protected branch names, like 13.0, 14.0-prod, 8.12-stable, 15.0-staging, 15.0-dev.
+  # Due to a bug in Gitlab CI, we can't use this as variable.
+  STABLE_RGX: /^\d{1,2}\.\d{1,2}(-prod|-stable|-staging|-dev)?$/
+
+.stable_checks:
+  rules:
+    - if: $CI_COMMIT_BRANCH
+      variables:
+        TARGET_BRANCH: $CI_COMMIT_BRANCH"
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+      variables:
+        TARGET_BRANCH: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+    - if: $NML_SKIP_CI == "true"
+      when: never
+    - if: '$TARGET_BRANCH =~ /^\d{1,2}\.\d{1,2}(-prod|-stable|-staging|-dev)?$/'
+      when: always
+    - if: $NML_ALWAYS_CI == "true"
+      when: always
+    - when: never
+
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE == "push"
+      when: never
+    - when: always
+
+cache:
+  paths:
+    - .cache/venv/
+
+stages:
+  - quality_check
+
+# Used to print debug info and give the pipeline something to run for "no-op" cases, like commits on non-stable branches.
+debug:
+  stage: quality_check
+  image: bash
+  cache: []
+  before_script: []
+  script:
+    - echo $CI_PROJECT_DIR
+    - echo $CI_COMMIT_BRANCH
+    - echo $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+    - echo $CI_PIPELINE_SOURCE
+    - echo $CI_OPEN_MERGE_REQUESTS
+
+before_script:
+  - python3 --version  # For debugging
+  - pip3 install virtualenv
+  - virtualenv .cache/venv
+  - source .cache/venv/bin/activate
+
+pre-commit:
+  stage: quality_check
+  extends: .stable_checks
+  interruptible: true
+  script:
+    - pip3 install pre-commit
+    - PRE_COMMIT_HOME=$CI_PROJECT_DIR/.cache/pre-commit pre-commit run --all-files --verbose
+  cache:
+      paths:
+        - $CI_PROJECT_DIR/.cache/pre-commit

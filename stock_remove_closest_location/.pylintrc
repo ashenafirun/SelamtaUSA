@@ -1,0 +1,91 @@
+[MASTER]
+score = no
+ignore = .cache,
+         .ci,
+         .github,
+         .gitlab,
+         .idea,
+         .pytest_cache,
+         .gitlab-ci.yml
+load-plugins = pylint_odoo,
+               pylint.extensions.check_elif,
+               pylint.extensions.bad_builtin,
+               pylint.extensions.overlapping_exceptions,
+               pylint.extensions.redefined_variable_type,
+
+[ODOOLINT]
+manifest_required_authors = Numla Ltd.
+manifest_required_keys = license
+valid_odoo_versions = 15.0
+manifest_version_format = ({valid_odoo_versions})\.\d+\.\d+$
+
+[FORMAT]
+max-line-length = 120
+
+[REPORTS]
+msg-template = {path}:{line}: [{msg_id}({symbol}), {obj}] {msg}
+output-format = colorized
+
+[MESSAGES_CONTROL]
+disable = all
+enable = anomalous-backslash-in-string,
+         api-one-deprecated,
+         api-one-multi-together,
+         assignment-from-none,
+         broad-except,
+         class-camelcase,
+         consider-merging-classes-inherited,
+         create-user-wo-reset-password,
+         dangerous-default-value,
+         dangerous-filter-wo-user,
+         dangerous-view-replace-wo-priority,
+         deprecated-module,
+         development-status-allowed,
+         duplicate-id-csv,
+         duplicate-key,
+         duplicate-xml-fields,
+         duplicate-xml-record-id,
+         eval-referenced,
+         eval-used,
+         file-not-used,
+         incoherent-interpreter-exec-perm,
+         invalid-commit,
+         license-allowed,
+         logging-not-lazy,
+         manifest-author-string,
+         manifest-required-author,
+         manifest-required-key,
+         manifest-version-format,
+         method-compute,
+         method-inverse,
+         method-required-super,
+         method-search,
+         missing-manifest-dependency,
+         missing-newline-extrafiles,
+         no-self-use,
+         no-utf8-coding-comment,
+         odoo-addons-relative-import,
+         old-api7-method-defined,
+         openerp-exception-warning,
+         pointless-statement,
+         pointless-string-statement,
+         print-used,
+         redefined-builtin,
+         redundant-keyword-arg,
+         redundant-modulename-xml,
+         reimported,
+         relative-import,
+         return-in-init,
+         rst-syntax-error,
+         sql-injection,
+         too-complex,
+         too-few-format-args,
+         translation-field,
+         translation-positional-used,
+         translation-required,
+         unidiomatic-typecheck,
+         unnecessary-utf8-coding-comment,
+         unreachable,
+         use-vim-comment,
+         wrong-tabs-instead-of-spaces,
+         xml-syntax-error,

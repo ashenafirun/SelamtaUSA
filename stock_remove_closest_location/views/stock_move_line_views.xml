@@ -1,0 +1,26 @@
+<!--
+    This software and associated files (the “Software”) can only be used (executed)
+    with a valid Numla Enterprise Subscription for the correct number of users.
+    It is forbidden to modify, publish, distribute, sublicense,
+    or sell copies of the Software or modified copies of the Software.
+
+    See LICENSE for full licensing information.
+    Copyright (c) 2022 Numla Limited <az@numla.com>
+    All rights reserved.
+ -->
+<odoo>
+    <!-- Adds "Removal Sequence" to Stock Move Line tree-view for records order/shorting   -->
+    <record id="view_stock_move_line_detailed_operation_tree_inherit_stock_extended" model="ir.ui.view">
+        <field name="name">stock.move.line.operations.tree</field>
+        <field name="model">stock.move.line</field>
+        <field name="inherit_id" ref="stock.view_stock_move_line_detailed_operation_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='location_id']" position="after">
+                <field name="removal_sequence" optional="hide"/>
+            </xpath>
+            <xpath expr="//tree" position="attributes">
+                <attribute name="default_order">removal_sequence asc</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

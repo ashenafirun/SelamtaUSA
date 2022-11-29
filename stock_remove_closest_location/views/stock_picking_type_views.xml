@@ -1,0 +1,23 @@
+<!--
+    This software and associated files (the “Software”) can only be used (executed)
+    with a valid Numla Enterprise Subscription for the correct number of users.
+    It is forbidden to modify, publish, distribute, sublicense,
+    or sell copies of the Software or modified copies of the Software.
+
+    See LICENSE for full licensing information.
+    Copyright (c) 2022 Numla Limited <az@numla.com>
+    All rights reserved.
+ -->
+<odoo>
+    <!-- Adds "Remove From Closet Location?" field to Operation Types form-view -->
+    <record id="view_picking_type_form_inherit_stock_extended" model="ir.ui.view">
+        <field name="name">Operation Types</field>
+        <field name="model">stock.picking.type</field>
+        <field name="inherit_id" ref="stock.view_picking_type_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='show_operations']" position="after">
+                <field name="is_remove_closet_location"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

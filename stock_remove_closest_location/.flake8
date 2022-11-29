@@ -1,0 +1,16 @@
+[flake8]
+max-complexity = 17
+max-line-length = 120
+
+# D100,D101,D104: We don't usually add docstring for our modules, classes and packages.
+# Q000: We allow double-quotes for now, because of some developers keyboard layouts. This may change in the future.
+# H301: We allow multi imports per line
+ignore = D100,D101,D104,H301,Q000
+
+# F401: We need to import our resources for Odoo and test mechanisms.
+# We document checks made in docstrings as lists, this violates the following:
+#   D205: "1 blank line required between summary line and description"
+#   D208: "Docstring is over-indented"
+per-file-ignores = __init__.py:F401 tests/__init__.py:F401 tests/*:D205,D208
+
+exclude = .cache,.ci,.git,.github,.gitlab,.gitlab-ci.yml,.idea,.pytest_cache,__pycache__
