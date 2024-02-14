@@ -131,8 +131,8 @@ class StockMoveExtended(models.Model):
                     # Move lines with serial tracked product_id cannot be to-update candidates. Delay the creation to speed up candidates search + create.
                     serial_move_line_vals.extend([self._prepare_move_line_vals(quantity=1, reserved_quant=reserved_quant) for i in range(int(quantity))])
                 #TODO: CHANGES
-                elif self.product_id.tracking == 'lot' and self.picking_id.id and self.product_packaging_id.id and self.product_packaging_id.qty > 0 and self.picking_id.picking_type_id.id and self.picking_id.picking_type_id.packaging_wise_split:
-
+                elif  self.picking_id.id and self.product_packaging_id.id and self.product_packaging_id.qty > 0 and self.picking_id.picking_type_id.id and self.picking_id.picking_type_id.packaging_wise_split:
+                    # self.product_id.tracking == 'lot' and
                     packaging_uom = self.product_packaging_id.product_uom_id
                     packaging_uom_qty = self.product_uom._compute_quantity(need,
                                                                            packaging_uom)
