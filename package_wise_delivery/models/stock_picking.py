@@ -134,18 +134,17 @@ class StockMoveExtended(models.Model):
                 elif self.product_id.tracking == 'lot' and self.picking_id.id and self.product_packaging_id.id and self.product_packaging_id.qty > 0 and self.picking_id.picking_type_id.id and self.picking_id.picking_type_id.packaging_wise_split:
 
                     packaging_uom = self.product_packaging_id.product_uom_id
-                    packaging_uom_qty = self.product_uom._compute_quantity(self.product_uom_qty,
+                    packaging_uom_qty = self.product_uom._compute_quantity(need,
                                                                            packaging_uom)
                     if available_quantity < packaging_uom_qty:
                         packaging_uom_qty = available_quantity
-
 
                     product_packaging_qty = float_round(packaging_uom_qty / self.product_packaging_id.qty,
                                                         precision_rounding=packaging_uom.rounding)
                     print("product_packaging_qty", product_packaging_qty)
 
                     list_values = []
-                    quantity = self.product_uom_qty
+                    quantity = packaging_uom_qty
 
                     # TODO: In v15 we don't need to add 1 because  float_round does this function.
                     if int(product_packaging_qty) < product_packaging_qty and int(
