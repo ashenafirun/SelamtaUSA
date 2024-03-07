@@ -144,7 +144,7 @@ class StockMoveExtended(models.Model):
                     print("product_packaging_qty", product_packaging_qty)
 
                     list_values = []
-                    quantity = packaging_uom_qty
+                    # quantity = packaging_uom_qty
 
                     # TODO: In v15 we don't need to add 1 because  float_round does this function.
                     if int(product_packaging_qty) < product_packaging_qty and int(
@@ -154,13 +154,15 @@ class StockMoveExtended(models.Model):
                         new_value = int(product_packaging_qty)
                     print("new_value", new_value)
 
+                    new_quantity = quantity
                     for count in range(0, new_value):
-                        if quantity > self.product_packaging_id.qty:
-                            list_values.append(self.product_packaging_id.qty)
-                            quantity -= self.product_packaging_id.qty
-                        else:
-                            list_values.append(quantity)
-                            quantity -= quantity
+                        if new_quantity > 0:
+                            if new_quantity > self.product_packaging_id.qty:
+                                list_values.append(self.product_packaging_id.qty)
+                                new_quantity -= self.product_packaging_id.qty
+                            else:
+                                list_values.append(new_quantity)
+                                new_quantity -= new_quantity
 
                     print(list_values)
                     if len(list_values) > 0:
