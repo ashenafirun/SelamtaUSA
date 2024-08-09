@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data>
+        <record id="res_partner_view_ext" model="ir.ui.view">
+            <field name="name">res.partner.view</field>
+            <field name="model">res.partner</field>
+            <field name="inherit_id" ref="base.view_partner_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='property_account_payable_id']" position="after">
+                    <field name="cs_credit_limit" widget="monetary"/>
+                    <field name="test_boolean" invisible="1"/>
+                </xpath>
+            </field>
+        </record>
+        <!-- Add Alan Class -->
+        <template id="cs_btn_footer_n" name="Payment CS buttonn" inherit_id="website_sale.payment_footer">
+            <xpath expr="//button[@name='o_payment_submit_button']" position="attributes">
+                <attribute name="id">chk-btn</attribute>
+            </xpath>
+        </template>
+        <!--        <template id="cs_btn_footer" name="Payment CS button" inherit_id="payment.footer">-->
+        <!--            <xpath expr="//button[@name='o_payment_submit_button']" position="attributes">-->
+        <!--                <attribute name="id">as-btn</attribute>-->
+        <!--            </xpath>-->
+        <!--        </template>-->
+        <template id="payment_ext" name="Payment Extension" inherit_id="website_sale.payment">
+            <xpath expr="//div[@id='payment_method']/h3" position="after">
+                <!--                <h3 class="mb24">Pay with Hellow</h3>-->
+                <div class="card bg-info d-none" t-if="order.partner_id">
+                    <div class="card-body">
+                        <strong>Credit Limit:</strong>
+                        <span t-esc="order.partner_id.cs_credit_limit"/>
+                    </div>
+                    <div class="card-body test-new">
+                        <br/>
+                        <strong>Over Due:</strong>
+                        <span t-esc="order.partner_id.total_overdue"/>
+                    </div>
+                </div>
+                <div class="card bg-info warn-msg d-none" t-if="order.partner_id.sale_warn_msg">
+                    <div class="card-body warn-msg d-none">
+                        <strong>Warning Msg:</strong>
+                        <span t-esc="order.partner_id.sale_warn_msg"/>
+                    </div>
+                </div>
+            </xpath>
+        </template>
+    </data>
+</odoo>
