@@ -28,6 +28,7 @@
         'views/admin/product_label.xml',
         'views/admin/brand_views.xml',
         'views/admin/product_faqs.xml',
+        'views/admin/product_tags.xml',
         'views/admin/attribute_views.xml',
         'views/admin/pricelist.xml',
         'views/admin/product_queries.xml',
