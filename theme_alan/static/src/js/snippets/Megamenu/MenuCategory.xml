@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <t t-name="theme_alan.m_sub_category" owl="1">
+        <Dialog title="this.title" header="this.header" footer="this.footer" technical="true" >
+            <div class="container">
+                <div class="as-mm-search-bar mb-4">
+                    <input t-ref="as_sub_category_search" type="hidden" name="as_sub_category_search" id="as_sub_category_search" class="form-control" />
+                </div>
+                <button class="btn btn as-e-btn-success btn-primary" t-on-click="_selectionDone"> <i class="fa fa-floppy-o"></i> Save </button>
+            </div>
+        </Dialog>
+    </t>
+</odoo>

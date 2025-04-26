@@ -5,7 +5,7 @@
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
-            <xpath expr="/form/sheet/notebook/page/field[@name='order_line']/tree/field[@name='price_unit']"
+            <xpath expr="/form/sheet/notebook/page/field[@name='order_line']/list/field[@name='price_unit']"
                    position="after">
                 <field name="p_weight"/>
                 <field name="weight"/>
@@ -23,7 +23,7 @@
                     </div>
                     <label for="total_volume"/>
                     <div class="o_row">
-                        <field name="total_volume"/>ft³
+                        <field name="total_volume"/>m³
                         <span>
                             <field name="volume_unit"/>
                         </span>
@@ -45,6 +45,7 @@
             </xpath>
         </field>
     </record>
+
     <record id="view_sale_order_inherit_tree" model="ir.ui.view">
         <field name="name">sale.order.view.tree.inherit</field>
         <field name="model">sale.order</field>
@@ -56,7 +57,6 @@
             </xpath>
         </field>
     </record>
-
 </odoo>
 
 

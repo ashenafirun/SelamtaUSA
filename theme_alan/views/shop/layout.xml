@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Shop Page Layout -->
+    <template id="as_shop_style_layout" name="Shop Style" inherit_id="website.snippet_options">
+        <xpath expr="//div[@data-js='OptionsTab']/we-collapse" position="after">
+            <we-title>Alan Shop Setting</we-title>
+            <we-select string="Shop Style" data-variable="shop-template">
+                <we-button title="Default"
+                    data-name="button_shop0_opt"
+                    data-customize-website-variable="'alan_shop0'">Default</we-button>
+                <we-button title="Shadow"
+                    data-name="button_shop1_opt"
+                    data-customize-website-variable="'alan_shop1'">Shadow</we-button>
+                <we-button title="Glass Blur"
+                    data-name="button_shop2_opt"
+                    data-customize-website-variable="'alan_shop2'">Glass Blur</we-button>
+                <we-button title="Simple"
+                    data-name="button_shop3_opt"
+                    data-customize-website-variable="'alan_shop3'">Simple</we-button>
+                <we-button title="Modern"
+                    data-name="button_shop4_opt"
+                    data-customize-website-variable="'alan_shop4'">Modern</we-button>
+                <we-button title="Clean"
+                    data-name="button_shop5_opt"
+                    data-customize-website-variable="'alan_shop5'">Clean</we-button>
+                <we-button title="Trendy"
+                    data-name="button_shop6_opt"
+                    data-customize-website-variable="'alan_shop6'">Trendy</we-button>
+            </we-select>
+
+            <we-select string="Shop Layout" data-variable="shop-layout">
+                <we-button title="Alan Shop Full Layout"
+                    data-name="shop_layout_opt1"
+                    data-customize-website-variable="'alan_shop_layout_full'">Full</we-button>
+                <we-button title="Alan Shop Box Layout"
+                    data-name="shop_layout_opt2"
+                    data-customize-website-variable="'alan_shop_layout_box'">Box</we-button>
+            </we-select>
+
+            <we-select string="Product Images Size" data-variable="shop-img-size">
+                <we-button title="Default (1/1)"
+                    data-name="shop_img_size1_1"
+                    data-customize-website-variable="'alan_shop_img_size_1_1'">Default (1/1)</we-button>
+                <we-button title="Landscape (4/3)"
+                    data-name="shop_img_size4_3"
+                    data-customize-website-variable="'alan_shop_img_size4_3'">Landscape (4/3)</we-button>
+                <we-button title="Portrait (4/5)"
+                    data-name="shop_img_size4_5"
+                    data-customize-website-variable="'alan_shop_img_size4_5'">Portrait (4/5)</we-button>
+                <we-button title="Vertical (2/3)"
+                    data-name="shop_img_size2_3"
+                    data-customize-website-variable="'alan_shop_img_size2_3'">Vertical (2/3)</we-button>
+            </we-select>
+
+            <we-select string="Product Images Fill" data-variable="shop-img-fill">
+                <we-button title="Cover"
+                    data-name="shop_img_fil_cover"
+                    data-customize-website-variable="'alan_shop_img_fill_cover'">Cover</we-button>
+                <we-button title="Contain"
+                    data-name="shop_img_fill_contain"
+                    data-customize-website-variable="'alan_shop_img_fill_contain'">Contain</we-button>
+            </we-select>
+
+            <we-title>Alan Product Page Setting</we-title>
+            <we-select string="Product Detail Layout" data-variable="product-detail-layout">
+                <we-button title="Alan Product Detail Full Layout"
+                    data-name="product_detail_layout_opt1"
+                    data-customize-website-variable="'alan_product_detail_layout_full'">Full</we-button>
+                <we-button title="Alan Product Detail Box Layout"
+                    data-name="product_detail_layout_opt2"
+                    data-customize-website-variable="'alan_product_detail_layout_box'">Box</we-button>
+            </we-select>
+
+            <we-select string="Product Detail Style" data-variable="product-detail-style">
+                <we-button title="Default"
+                    data-name="button_product0_opt"
+                    data-customize-website-variable="'alan_product0'">Default</we-button>
+                <we-button title="Shadow"
+                    data-name="button_product1_opt"
+                    data-customize-website-variable="'alan_product1'">Shadow</we-button>
+                <we-button title="Clean"
+                    data-name="button_product2_opt"
+                    data-customize-website-variable="'alan_product2'">Clean</we-button>
+                <we-button title="Simple"
+                    data-name="button_product3_opt"
+                    data-customize-website-variable="'alan_product3'">Simple</we-button>
+                <we-button title="Modern"
+                    data-name="button_product4_opt"
+                    data-customize-website-variable="'alan_product4'">Modern</we-button>
+                <we-button title="Trendy"
+                    data-name="button_product5_opt"
+                    data-customize-website-variable="'alan_product5'">Trendy</we-button>
+            </we-select>
+        </xpath>
+    </template>
+</odoo>

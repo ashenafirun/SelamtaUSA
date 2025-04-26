@@ -1,0 +1,466 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="theme_alan.snippet_builder">
+        <Dialog size="'fullscreen'" title="'Alan Snippet Configuration'" header="false" footer="false" bodyClass="'as-snippet-builder'">
+            <div class="as-sb-header">
+                <div class="as-sb-logo">
+                    <i><svg width="50" height="50" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="50" height="50" rx="8" fill="#006BFF"/>
+                        <path d="M34.75 23.5H32.8L27.025 17.725C27.55 16.6 27.1 15.25 25.975 14.725C24.85 14.2 23.5 14.65 22.975 15.775C22.675 16.375 22.675 17.125 22.975 17.725L17.2 23.5H15.25C14.8 23.5 14.5 23.8 14.5 24.25V34.75C14.5 35.2 14.8 35.5 15.25 35.5H34.75C35.2 35.5 35.5 35.2 35.5 34.75V24.25C35.5 23.8 35.2 23.5 34.75 23.5ZM25 16C25.45 16 25.75 16.3 25.75 16.75C25.75 16.975 25.675 17.125 25.525 17.275C25.225 17.575 24.775 17.575 24.475 17.275C24.325 17.125 24.25 16.975 24.25 16.75C24.25 16.3 24.55 16 25 16ZM24.025 18.775C24.625 19.075 25.375 19.075 25.975 18.775L30.7 23.5H19.3L24.025 18.775ZM34 34H16V25H34V34Z" fill="white"/>
+                        </svg>
+                    </i>
+                    <span>Snippet Builder</span>
+                </div>
+                <div class="as-sb-preview">
+                    <h4><i class="asi asi-monitor"></i> Preview</h4>
+                </div>
+                <div class="as-sb-action">
+                    <button type="button" class="btn as-e-btn-danger" t-on-click="() => this.props.close()" ><i class="asi asi-x-circle"></i> Cancel </button>
+                    <button type="button" class="btn as-e-btn-success" t-on-click="_save"> <i class="asi asi-check-circle"></i> Save </button>
+                </div>
+            </div>
+
+            <div class="as-builder-block">
+                <div class="as-snippet-list">
+                    <div class="drag-zone as-sb-snippet-items" t-ref="snippet_container">
+                        <t t-foreach="props.snippets" t-as="snippet" t-key="snippet['technical_name']">
+                            <div t-attf-class="s_item as-sb-s-item as-sb-{{snippet['technical_name']}}" t-att-data-snippet="snippet['technical_name']">
+                                <span class="fa fa-tags"/><span t-esc="snippet['name']"/>
+                            </div>
+                        </t>
+                    </div>
+                </div>
+                <div class="as-snippet-preview-main">
+                    <div t-ref="snippet_preview" class="as-snippet-preview">
+                        <div class="container">
+                            <FrameBuilder snippetBuilder="this"/>
+                        </div>
+                    </div>
+                </div>
+                <div class="as-snippet-options">
+                    <span class="as-sb-snippet-name" t-esc="editor.name"/>
+                    <div t-if="editor.technical_name == 'static_snippets' or editor.technical_name == 'StaticSnippet'">
+                        <div t-on-click="_change_static_snippets">Change Collaction</div>
+                    </div>
+
+                    <ul class="as-sb-tab nav" id="pills-tab" role="tablist">
+                        <li t-if="editor.selection" class="nav-item" role="presentation">
+                          <button class="nav-link active"
+                                id="selection-record"
+                                data-bs-toggle="pill"
+                                data-bs-target="#select-record" type="button" role="tab"
+                                aria-controls="select-record" aria-selected="true"><i class="asi asi-layers"></i> Selection</button>
+                        </li>
+                        <li t-if="editor.design" class="nav-item" role="presentation">
+                          <button class="nav-link"
+                                id="snippet-design-tab"
+                                data-bs-toggle="pill"
+                                data-bs-target="#snippt-design" type="button" role="tab"
+                                aria-controls="snippt-design" aria-selected="false"><i class="asi asi-settings"></i> Design &amp; Edit</button>
+                        </li>
+
+                    </ul>
+                    <div class="as-sb-tab-content tab-content" id="pills-tabContent">
+                        <div t-if="editor.selection" class="tab-pane fade show active" id="select-record"
+                        role="tabpanel" aria-labelledby="selection-record">
+                            <div class="form-group as-edit-search">
+                                <input id="as_search" t-ref="search_record" type="text" class="form-control as_search" placeholder="Search..."/>
+                            </div>
+
+                            <div class="as-exclusive-collection">
+                                <div class="as-edit-title-01">
+                                    <h6 class="h6">Quick Selection </h6>
+                                </div>
+                                <ul class="as-edit-list-selection">
+                                    <t t-foreach="Object.entries(editor.quick_selection[0])" t-as="collection" t-key="collection[0]">
+                                        <li>
+                                            <span t-att-data-collection="collection[0]" t-on-click="(ev)=>this.getoptions(ev, collection[0])"><t t-esc="collection[1]"/></span>
+                                        </li>
+                                    </t>
+                                </ul>
+                            </div>
+                            <ul t-ref="sortable_record" class="as-edit-tab-content as-sortable-record">
+                                <t t-foreach="this.state.record_info" t-as="rec" t-key="rec.id">
+                                    <li class="default">
+                                        <div class="as_data_info" t-att-data-id="rec.id">
+                                            <div class="as-edit-drag-card">
+                                                <div class="as-ed-icon">
+                                                    <img t-att-src="rec.image"/>
+                                                </div>
+                                                <div class="as-ed-text">
+                                                    <h6>
+                                                        <t t-esc="rec.display_name"/>
+                                                    </h6>
+                                                    <div class="as-delete-me" t-on-click="_delete">
+                                                        <a href="#"><i class="fa fa-trash"></i></a>
+                                                    </div>
+                                                    <t t-if="editor.technical_name == 'megamenu_category' || editor.technical_name == 'MegaMenuCategory'">
+                                                        <!-- <t t-set="sub_cat" t-value="get_sub_category(rec.id)"/>
+                                                                <button t-attf-class="{{sub_cat[1] != 0 ? 'as-selected' : 'as-no-select'}}" t-on-click="select_sub_category" t-att-data-id="rec.id" t-att-data-sub-cat="sub_cat[0]">
+                                                                    Subcategories <t t-esc="sub_cat[1]"/>
+                                                                <i class="fa fa-plus-circle"></i></button> -->
+                                                        <t t-set="sub_cat" t-value="get_sub_category(rec.id)"/>
+                                                        <button t-attf-class="{{sub_cat[1] != 0 ? 'as-selected' : 'as-no-select'}}" t-on-click="select_sub_category" t-att-data-id="rec.id" t-att-data-sub-cat="sub_cat[0]">
+                                                            Childs <t t-esc="sub_cat[1]"/>
+                                                        <i class="fa fa-plus-circle"></i></button>
+                                                    </t>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                </t>
+                            </ul>
+                        </div>
+                        <div t-if="editor.design" class="tab-pane fade" id="snippt-design" role="tabpanel"
+                        aria-labelledby="snippet-design-tab">
+                            <!-- Snippet View -->
+                            <div class="pb-4 as_snippet_view">
+                                <div class="as-edit-title-01">
+                                    <h6 class="h6">Layout</h6>
+                                </div>
+                                <!-- Slider -->
+                                <div class="form-check as-edit-form-check-pill mb-2">
+                                    <input class="form-check-input" name="view_type" type="radio" id="slider_view" value="slider" t-att-checked="editor.active_view == 'slider' ? true: undefined"
+                                    t-on-change="_change_active_view"/>
+                                    <label class="form-check-label" for="slider_view">
+                                        <i class="fa fa-window-maximize"></i>
+                                        <span>Slider</span>
+                                    </label>
+                                </div>
+
+                                <!-- Auto Slider -->
+                                <div t-if="editor.active_view == 'slider'" class="as_snippet_auto_slider mb-2">
+                                    <div class="form-check form-switch as-edit-form-check-pill">
+                                        <input class="form-check-input" type="checkbox" id="auto_slide" t-att-checked="editor.auto_slider == true ? true: undefined"
+                                        t-on-change="_change_auto_slider"/>
+                                        <label class="form-check-label" for="auto_slide">
+                                            <i class="asi asi-sliders"></i>
+                                            <span>Auto Slider</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div t-if="editor.auto_slider" class="as_snippet_auto_slider mb-2 row g-1">
+                                    <t t-foreach="[1,2,3,4,5,6]" t-as="time" t-key="time">
+                                        <div class="col-4">
+                                            <div class="form-check as-edit-form-check-pill theme-2nd">
+                                                <input class="form-check-input" name="slider_time" type="radio" t-attf-id="st_{{time}}" t-att-value="time"
+                                                t-att-checked="editor.slider_time == time ? true: undefined"
+                                                t-on-change="_change_slider_time"/>
+                                                <label class="form-check-label" t-attf-for="st_{{time}}">
+                                                    <i class="asi asi-clock"></i>
+                                                    <span><t t-esc="time"/></span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </t>
+                                </div>
+                                <!-- Grid -->
+                                <div  class="form-check as-edit-form-check-pill mb-2">
+                                    <input class="form-check-input" name="view_type" type="radio" id="grid_view" value="grid" t-att-checked="editor.active_view == 'grid' ? true: undefined"
+                                    t-on-change="_change_active_view"/>
+                                    <label class="form-check-label" for="grid_view">
+                                        <i class="asi asi-grid"></i>
+                                        <span>Grid</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <!-- Record Counter-->
+                            <div t-if="editor.technical_name == 'categories_products' or editor.technical_name == 'brand_products' or editor.technical_name == 'CategoryProduct' or editor.technical_name == 'BrandProduct'" class="as-record-counter pb-4">
+                                <div class="as-edit-title-01">
+                                    <h6 class="h6">Number of Product Record</h6>
+                                </div>
+                                <t t-set="record" t-value="[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]"/>
+                                <select class="form-select" t-on-change="_change_record_limit">
+                                    <t t-foreach="record" t-as="rec" t-key="rec">
+                                        <option t-esc="rec" t-att-value="rec" t-att-selected="this.editor.record_limit == rec ? true: undefined"/>
+                                    </t>
+                                </select>
+
+                            </div>
+                            <!-- Cols -->
+                            <div t-if="props.snippet_type == 'as_dynamic_snippets'" class="as_snippet_noi pb-4">
+                                <div class="as-edit-title-01">
+                                    <h6 class="h6">Number of item for Desktop</h6>
+                                </div>
+                                <t t-if="editor.technical_name == 'ProductBanner' or editor.technical_name == 'product_banner'">
+                                    <t t-set="col_lst" t-value="[1,2]"/>
+                                </t>
+                                <t t-else="">
+                                    <t t-set="col_lst" t-value="[1,2,3,4,5,6]"/>
+                                </t>
+                                <div class="row g-2 mb-4">
+                                    <t t-foreach="col_lst" t-as="col" t-key="col">
+                                        <div class="col-4">
+                                            <div class="form-check as-edit-form-check-col">
+                                                <input class="form-check-input" name="desk_col" type="radio" t-attf-id="items_{{col}}" t-att-value="col"
+                                                t-att-checked="this.editor.default_col_desk == col ? true: undefined"
+                                                t-on-change="_change_col_item" data-view-type="desk"/>
+                                                <label class="form-check-label" t-attf-for="items_{{col}}">
+                                                    <em>
+                                                        <t t-esc="col"/>
+                                                    </em>
+                                                    <span>
+                                                        <i></i>
+                                                        <i></i>
+                                                        <i></i>
+                                                        <i></i>
+                                                        <i></i>
+                                                        <i></i>
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </t>
+                                </div>
+                                <div t-if="editor.technical_name != 'ProductBanner' or editor.technical_name != 'product_banner'" class="as-edit-title-01">
+                                    <h6 class="h6">Number of item for Mobile</h6>
+                                </div>
+                                <div t-if="editor.technical_name != 'ProductBanner' or editor.technical_name != 'product_banner'" class="row g-2">
+                                    <t t-foreach="[1,2]" t-as="col" t-key="col">
+                                        <div class="col-6">
+                                            <div class="form-check as-edit-form-check-col">
+                                                <input class="form-check-input" name="mob_col" type="radio" t-attf-id="mob_items_{{col}}" t-att-value="col"
+                                                t-att-checked="editor.default_col_mob == col ? true: undefined"
+                                                t-on-change="_change_col_item" data-view-type="mob"/>
+                                                <label class="form-check-label" t-attf-for="mob_items_{{col}}">
+                                                    <em>
+                                                        <t t-esc="col"/>
+                                                    </em>
+                                                    <span>
+                                                        <i></i>
+                                                        <i></i>
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </t>
+                                </div>
+
+                            </div>
+                            <div t-else="">
+                                <!-- Slider  Option-->
+                                <div class="as_snippet_noi pb-4">
+                                    <div class="as-edit-title-01">
+                                        <h6 class="h6">Number of item</h6>
+                                    </div>
+                                    <div class="row g-2">
+                                        <t t-foreach="[1,2,3,4,5,6]" t-as="col" t-key="col">
+                                            <div class="col-6">
+                                                <div class="form-check as-edit-form-check-col">
+                                                    <input class="form-check-input" name="no_of_item" type="radio" t-attf-id="items_{{col}}" t-att-value="col"
+                                                    t-att-checked="editor.col_item == col ? true: undefined"
+                                                    t-on-change="_change_col_item" />
+                                                    <label class="form-check-label" t-attf-for="items_{{col}}">
+                                                        <em>
+                                                            <t t-esc="col"/>
+                                                        </em>
+                                                        <span>
+                                                            <i></i>
+                                                            <i></i>
+                                                            <i></i>
+                                                            <i></i>
+                                                            <i></i>
+                                                            <i></i>
+                                                        </span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Slider Style-->
+                            <div class="mb-4 as_snippet_style">
+                                <div class="as-edit-title-01">
+                                    <h6 class="h6">Style</h6>
+                                </div>
+
+                                <t t-if="this.editor.active_view == 'slider'">
+                                    <select name="slider_styles" class="form-select" t-on-change="_change_slider_style">
+                                        <t t-foreach="this.props.slider_styles" t-as="style" t-key="style">
+                                            <t t-esc="style"/>
+                                            <option t-att-value="style[2]" t-att-data-template="style[1]"
+                                            t-att-selected="this.editor.slider_style == style[2] ? true: undefined"><t t-esc="style[0]"/></option>
+                                        </t>
+                                    </select>
+                                </t>
+                                <t t-elif="this.editor.active_view == 'grid'">
+                                    <select name="grid_styles" class="form-select" t-on-change="_change_grid_style">
+                                        <t t-foreach="this.props.grid_styles" t-as="style" t-key="style">
+                                            <option t-att-value="style[2]" t-att-data-template="style[1]"
+                                            t-att-selected="this.editor.grid_style == style[2] ? true: undefined"><t t-esc="style[0]"/></option>
+                                        </t>
+                                    </select>
+                                </t>
+                            </div>
+                            <!-- Slider Pagination -->
+                            <div t-if="this.editor.active_view == 'slider' and props.snippet_type == 'as_dynamic_snippets'" class="mb-4 as_snippet_style">
+                                <div class="as-edit-title-01">
+                                    <h6 class="h6">Pagination</h6>
+                                </div>
+                                <select name="pagination_styles" class="form-select" t-on-change="_change_pagination">
+                                    <t t-foreach="this.props.pagination" t-as="pagi" t-key="pagi[0]">
+                                        <option t-att-value="pagi[0]"
+                                        t-att-selected="this.editor.pagination == pagi[0] ? true: undefined"><t t-esc="pagi[1]"/></option>
+                                    </t>
+                                </select>
+                            </div>
+                            <!-- Slider Loop-->
+                            <div t-if="this.editor.active_view == 'slider' and props.snippet_type == 'as_dynamic_snippets'" class="as_snippet_style mb-4">
+                                <div class="as-edit-title-01">
+                                    <h6 class="h6">Infinite Loop</h6>
+                                </div>
+                                 <div class="form-check as-edit-form-check-pill">
+                                    <input class="form-check-input" name="infinit_loop"
+                                    type="checkbox" value="infinit_loop" id="infinit_loop"
+                                    t-att-checked="this.editor.loop ? true: undefined"
+                                    data-target="loop" t-on-change="_change_quick_option"/>
+                                    <label class="form-check-label" for="infinit_loop">
+                                        <i class="fa fa-circle-o-notch"></i> <span>Infinite Loop</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <!-- Product Options -->
+                            <div t-if="editor.technical_name in ['BrandSlider', 'brands', 'megamenu_brand', 'MegaMenuBrand']" class="form-check as-edit-form-check-pill">
+                                <input class="form-check-input" name="brand_link" type="checkbox" value="brand_link" id="qo_brand_link"
+                                t-att-checked="editor.allow_link ? true: undefined"
+                                data-target="allow_link" t-on-change="_change_quick_option"/>
+                                <label class="form-check-label" for="qo_brand_link">
+                                    <i class="asi asi-box"></i> <span>Brand Name</span>
+                                </label>
+                            </div>
+                            <t t-set="other_slider_config" t-value="['CategorySlider','BrandSlider','BlogSlider','categories','brands','blogs']"/>
+                            <t t-if="props.snippet_type == 'as_dynamic_snippets' and !other_slider_config.includes(editor.technical_name)">
+                                <div class="as_snippet_quick as-snippet-quick-options">
+                                    <div class="as-edit-title-01">
+                                        <h6 class="h6">Options</h6>
+                                    </div>
+                                    <div class="row g-2">
+                                        <div class="col-4">
+                                            <div class="form-check as-edit-form-check-pill">
+                                                <input class="form-check-input"
+                                                        name="add_to_cart"
+                                                        type="checkbox"
+                                                        value="add_to_cart" id="qo_add_to_cart"
+                                                        t-att-checked="editor.allow_add_to_cart ? true: undefined"
+                                                        data-target="allow_add_to_cart"
+                                                        t-on-change="_change_quick_option"
+                                                        />
+                                                <label class="form-check-label" for="qo_add_to_cart">
+                                                    <i class="asi asi-shopping-cart"></i>
+                                                    <span>Add to Cart</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="form-check as-edit-form-check-pill">
+                                                <input class="form-check-input" name="quick_view" type="checkbox" value="quick_view" id="qo_quick_view"
+                                                t-att-checked="editor.allow_quick_view ? true: undefined"
+                                                data-target="allow_quick_view" t-on-change="_change_quick_option"/>
+                                                <label class="form-check-label" for="qo_quick_view">
+                                                    <i class="asi asi-eye"></i>
+                                                    <span>Quick View</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="form-check as-edit-form-check-pill">
+                                                <input class="form-check-input" name="wish_list" type="checkbox" value="wish_list" id="qo_wish_list"
+                                                t-att-checked="editor.allow_wishlist ? true: undefined"
+                                                data-target="allow_wishlist" t-on-change="_change_quick_option"/>
+                                                <label class="form-check-label" for="qo_wish_list">
+                                                    <i class="asi asi-heart"></i> <span>Wishlist</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="form-check as-edit-form-check-pill">
+                                                <input class="form-check-input" name="rating" type="checkbox" value="rating" id="qo_rating"
+                                                t-att-checked="editor.allow_rating ? true: undefined"
+                                                data-target="allow_rating" t-on-change="_change_quick_option"/>
+                                                <label class="form-check-label" for="qo_rating">
+                                                    <i class="asi asi-star"></i> <span>Rating</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="form-check as-edit-form-check-pill">
+                                                <input class="form-check-input" name="compare" type="checkbox" value="compare" id="qo_compare"
+                                                t-att-checked="editor.allow_compare ? true: undefined"
+                                                data-target="allow_compare" t-on-change="_change_quick_option"/>
+                                                <label class="form-check-label" for="qo_compare">
+                                                    <i class="asi asi-repeat"></i> <span>Compare</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="form-check as-edit-form-check-pill">
+                                                <input class="form-check-input" name="tag" type="checkbox" value="tag" id="qo_tag"
+                                                t-att-checked="editor.allow_label ? true: undefined"
+                                                data-target="allow_label" t-on-change="_change_quick_option"/>
+                                                <label class="form-check-label" for="qo_tag">
+                                                    <i class="asi asi-tag"></i> <span>Labels</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="form-check as-edit-form-check-pill">
+                                                <input class="form-check-input" name="hover" type="checkbox" value="hover" id="qo_hover"
+                                                t-att-checked="editor.allow_hover_image ? true: undefined"
+                                                data-target="allow_hover_image" t-on-change="_change_quick_option"/>
+                                                <label class="form-check-label" for="qo_hover">
+                                                    <i class="asi asi-image"></i> <span>Hover Image</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="form-check as-edit-form-check-pill">
+                                                <input class="form-check-input" name="stock_info" type="checkbox" value="stock_info" id="qo_stock"
+                                                t-att-checked="editor.allow_stock_info ? true: undefined"
+                                                data-target="allow_stock_info" t-on-change="_change_quick_option"/>
+                                                <label class="form-check-label" for="qo_stock">
+                                                    <i class="asi asi-info"></i> <span>Stock Info</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="form-check as-edit-form-check-pill">
+                                                <input class="form-check-input" name="offer_timer" type="checkbox" value="offer_timer" id="qo_offer_timer"
+                                                t-att-checked="editor.allow_offer_time ? true: undefined"
+                                                data-target="allow_offer_time" t-on-change="_change_quick_option"/>
+                                                <label class="form-check-label" for="qo_offer_timer">
+                                                    <i class="asi asi-clock"></i> <span>Offer Timer</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="form-check as-edit-form-check-pill">
+                                                <input class="form-check-input" name="brand_info" type="checkbox" value="brand_info" id="qo_brand_info"
+                                                t-att-checked="editor.allow_brand_info ? true: undefined"
+                                                data-target="allow_brand_info" t-on-change="_change_quick_option"/>
+                                                <label class="form-check-label" for="qo_brand_info">
+                                                    <i class="asi asi-box"></i> <span>Brand Info</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="form-check as-edit-form-check-pill">
+                                                <input class="form-check-input" name="color_variant" type="checkbox" value="color_variant" id="qo_color_variant"
+                                                t-att-checked="editor.allow_color_variant ? true: undefined"
+                                                data-target="allow_color_variant" t-on-change="_change_quick_option"/>
+                                                <label class="form-check-label" for="qo_color_variant">
+                                                    <i class="fa fa-paint-brush"></i> <span>Color Variant</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Dialog>
+    </t>
+</templates>

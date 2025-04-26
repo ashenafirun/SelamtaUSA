@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Product Detail Page Indentifier -->
+    <template id="as_product_detai_page_identifier" name="AS Product Detail" inherit_id="web.frontend_layout" priority="1">
+        <xpath expr="//div[@id='wrapwrap']" position="attributes">
+            <attribute name="t-attf-class" add="#{'as-product-details-common' if as_product_detail else ''}" separator=" "/>
+        </xpath>
+    </template>
+
+    <!-- Product Page -->
+    <template id="as_product_customization" name="Product Page" inherit_id="website_sale.product" priority="9999">
+
+        <!-- Product Sticky Cart: START -->
+        <xpath expr="//div[@id='wrap']" position="after">
+            <t t-if="website.active_product_sticky" t-call="theme_alan.as_product_stick_cart"/>
+        </xpath>
+        <xpath expr="//div[@id='wrap']" position="attributes">
+            <attribute name="class" add="as-sticky-cart-active" separator=" "/>
+        </xpath>
+        <!-- Product Sticky Cart: END -->
+
+        <!-- Product label: START -->
+        <xpath expr="//div[@id='product_details']/h1[@t-field='product.name']" position="before">
+            <t t-if="website.active_product_label" t-call="theme_alan.product_label"/>
+        </xpath>
+        <!-- Product label: END -->
+
+        <xpath expr="//div[@id='o_product_terms_and_share']" position="before">
+            <!-- Product Brand: START -->
+            <t t-call="theme_alan.as_product_brand_info"/>
+            <!-- Product Brand: END -->
+
+            <!-- Product Advance Info: START -->
+            <t t-call="theme_alan.as_product_adavnce_info"/>
+            <!-- Product Advance Info: END -->
+
+            <!-- Category: START -->
+            <div class="as-pd-extra">
+                <t t-set="show_categories" t-value="product.public_categ_ids.filtered(lambda x: x.website_id == request.website or not x.website_id)"/>
+                <div class="as-pd-cat-list as-pd-lists" t-if="show_categories and website.active_product_category">
+                    <label>Category: </label>
+                    <span t-esc="', '.join(show_categories.mapped('name'))"/>
+                </div>
+                <!-- Category: END -->
+                <!-- Product SKU: START -->
+                <div t-if="website.active_product_reference" class="as_product_sku as-pd-lists d-none">
+                    <label>SKU: </label>
+                    <span></span>
+                </div>
+                <!-- Product SKU: END-->
+            </div>
+        </xpath>
+
+        <!-- Product Pager: START -->
+        <xpath expr="//section[@id='product_detail']" position="before">
+            <div class="as-product-next-prev-history">
+                <div class="container">
+                    <div class="row">
+                        <div class="col">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item o_not_editable">
+                                    <a t-att-href="keep(category=0)">All Products</a>
+                                </li>
+                                <li t-if="category" class="breadcrumb-item">
+                                    <a t-att-href="keep('/shop/category/%s' % slug(category), category=0)" t-field="category.name" />
+                                </li>
+                                <li class="breadcrumb-item active">
+                                    <span t-field="product.name" />
+                                </li>
+                            </ol>
+                        </div>
+                        <div t-if="website.active_product_pager" class="col as-pre-nxt-col">
+                            <div t-if="previous_product or next_product" class="as-pre-nxt-prod">
+                                <div t-if="previous_product" class="as-pre-prod-info as-pager-prod-info d-none">
+                                    <div class="as-np-card">
+                                        <div class="as-np-card-media">
+                                            <img t-att-src="request.website.image_url(previous_product, 'image_128')"/>
+                                        </div>
+                                        <div class="as-np-card-info">
+                                            <div class="as-pre-title">
+                                                <span t-esc="previous_product.display_name"/>
+                                            </div>
+                                            <div class="as_pre_price as-pre-price">
+                                                <t t-set="as_combination" t-value="previous_product._get_combination_info()"/>
+                                                <span class="oe_price" style="white-space: nowrap;" t-esc="as_combination['price']" t-options="{'widget': 'monetary', 'display_currency': website.currency_id}"/>
+                                                <span t-attf-class="text-danger oe_default_price ms-1 {{'' if as_combination['has_discounted_price'] else 'd-none'}}" style="text-decoration: line-through !important; white-space: nowrap;"
+                                                t-esc="as_combination['list_price']" t-options="{'widget': 'monetary', 'display_currency': website.currency_id}"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <a id="as-pre-prod-info" t-attf-href="/shop/#{slug(previous_product) if previous_product else None}" t-attf-class="as-pager-prod #{'inactive' if not previous_product else 'active'}">
+                                    <i class="fa fa-caret-left"></i>
+                                </a>
+                                <a href="/shop" class="as-shop-prod">
+                                    <i class="fa fa-home"></i>
+                                </a>
+                                <a id="as-next-prod-info" t-attf-href="/shop/#{slug(next_product) if next_product else None}" t-attf-class="as-pager-prod #{'inactive' if not next_product else 'active'}">
+                                    <i class="fa fa-caret-right"></i>
+                                </a>
+                                <div t-if="next_product" class="as-next-prod-info as-pager-prod-info d-none">
+                                    <div class="as-np-card">
+                                        <div class="as-np-card-media">
+                                            <img t-att-src="request.website.image_url(next_product, 'image_128')"/>
+                                        </div>
+                                        <div class="as-np-card-info">
+                                            <div class="as-pre-title">
+                                                <span t-esc="next_product.display_name"/>
+                                            </div>
+                                            <div class="as_next_price as-pre-price">
+                                                <t t-set="as_combination" t-value="next_product._get_combination_info()"/>
+                                                <span class="oe_price" style="white-space: nowrap;" t-esc="as_combination['price']" t-options="{'widget': 'monetary', 'display_currency': website.currency_id}"/>
+                                                <span t-attf-class="text-danger oe_default_price ms-1 {{'' if as_combination['has_discounted_price'] else 'd-none'}}" style="text-decoration: line-through !important; white-space: nowrap;"
+                                                t-esc="as_combination['list_price']" t-options="{'widget': 'monetary', 'display_currency': website.currency_id}"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </xpath>
+
+        <!-- Search bar and negivation replace -->
+        <xpath expr="//section[@id='product_detail']/div" position="replace">
+        </xpath>
+
+        <!-- Last month count, Bulk Save, Offer Timer: START  -->
+        <xpath expr="//div/t[@t-call='website_sale.product_price']" position="after">
+            <div t-if="website.active_last_month_count" class="as_month_sale_count as-month-sale-count d-none"/>
+            <div t-if="website.active_product_bulk_save" class="as_bulk_save as-bulk-table d-none"/>
+            <t t-set="offer_timer" t-value="product_variant._get_offer_timing(website._get_current_pricelist())"/>
+            <div t-if="website.active_product_offer_timer" class="as_offer_timer as-product-offer-time d-none" t-att-data-offer="offer_timer"/>
+        </xpath>
+        <!-- Last month count, Bulk Save, Offer Timer: END  -->
+
+        <!-- Product Queries: START-->
+        <xpath expr="//div[@id='product_option_block']" position="inside">
+            <section t-if="not (request.env.user._is_public()) and website.active_product_inquiry" class="product_queries">
+                <button type="button" role="button" class="btn btn-link px-0 pe-3" id="any_queries">
+                    <i class="fa fa-comment-o me-2" aria-hidden="true"/>Ask Queries ?
+                    <input id= "product" type="hidden" class="form-control s_website_form_input" name="product" t-att-value="product.id"/>
+                    <input id= "user" type="hidden" class="form-control s_website_form_input" name="product" t-att-value="request.env.user.partner_id.id"/>
+                </button>
+            </section>
+            <span style="color: #d73838;margin-top:20px" class="query-msg d-none">You have already submitted a query for this product today.</span>
+        </xpath>
+        <!-- Product Queries: END-->
+
+    </template>
+
+    <!-- Product Tabs: START-->
+    <template id="as_product_comment" inherit_id="website_sale.product_comment">
+        <xpath expr="//div[hasclass('o_shop_discussion_rating')]" position="attributes">
+            <attribute name="t-attf-style">{{'display:none !important;'}}</attribute>
+        </xpath>
+    </template>
+    <template id="product_specification_custom" inherit_id="website_sale_comparison.product_attributes_body" name="Product Specification" priority="99">
+        <xpath expr="//section[@id='product_full_spec']" position="replace"/>
+    </template>
+    <!-- Product Tabs: End-->
+
+    <!-- Accessory and Alternative product: START -->
+    <template id="product_attributes_body" inherit_id="website_sale.product" name="Product attributes table">
+        <xpath expr="//section[hasclass('o_wsale_alternative_products')]" position="replace"/>
+        <xpath expr="//div[@id='product_full_description']" position="after">
+            <t t-call="theme_alan.as_product_content_tabs"/>
+            <t t-call="theme_alan.as_accessory_and_alternative_products"/>
+        </xpath>
+    </template>
+    <!-- Accessory and Alternative product: END -->
+
+    <!-- Product Variants Information: START-->
+    <template id="as_product_variants" name="Variant Extenda" inherit_id="website_sale.variants">
+        <xpath expr="//strong[hasclass('attribute_name')]" position="replace">
+            <strong class="attribute_name"><t t-esc="ptal.attribute_id.name"/><span t-if="ptal.sudo().attribute_id.attribute_extra_info_id and request.website.active_product_variant_info" class="show_advance_product as-advance-attribute-link" t-att-data-info_id="ptal.attribute_id.attribute_extra_info_id.id"><t t-esc="ptal.attribute_id.attribute_extra_info_id.name"/> <i class="fa fa-angle-right"></i> </span> </strong>
+        </xpath>
+    </template>
+    <!-- Product Variants Information: END-->
+
+</odoo>

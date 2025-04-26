@@ -7,6 +7,7 @@ from odoo.addons.website_sale.controllers.variant import WebsiteSaleVariantContr
 class WebsiteSaleBackToStock(WebsiteSale):
     @http.route(['/shop/back/stock/notify'], type='json', auth="public", website=True)
     def notify_stock(self, notify=True, product_id=None,**kw):
+        print("in notify")
         if request.website.is_public_user():
             return
         if product_id:

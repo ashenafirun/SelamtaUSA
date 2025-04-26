@@ -23,7 +23,7 @@
 {
     'name': 'Stock Location Priority',
     'summary': "Auto pick up the priority source location on delivery order",
-    'version': '15.0.0.0.1',
+    'version': '18.0.0.0.1',
     'category': 'Base',
     'author': 'Harhu IT Solutions',
     'maintainer': 'Harhu IT Solutions',

@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="as_product_compare" inherit_id="website_sale_comparison.product_compare" name="Theme Alan Comparator Page">
+        <xpath expr="//div[hasclass('product_summary')]/span[hasclass('o_comparison_price')][1]" position="attributes">
+            <attribute name="t-attf-style">{{'display:none !important;' if request.env.user._is_public() and website.active_b2b_mode else ''}}</attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('product_summary')]/span[hasclass('o_comparison_price')][2]" position="attributes">
+            <attribute name="t-attf-style">{{'display:none !important;' if request.env.user._is_public() and website.active_b2b_mode else ''}}</attribute>
+        </xpath>
+        <xpath expr="//form[@action='/shop/cart/update']" position="attributes">
+            <attribute name="t-attf-style">{{'display:none !important;' if request.env.user._is_public() and website.active_b2b_mode else ''}}</attribute>
+        </xpath>
+    </template>
+    <template id="as_product_product" inherit_id="website_sale_comparison.product_product" name="Theme Alan Comparator - Product row in comparator popover">
+        <xpath expr="//h6/div" position="attributes">
+            <attribute name="t-attf-class">{{'d-none' if combination_info['prevent_zero_price_sale'] or (website.env.user._is_public() and website.active_b2b_mode) else ''}}</attribute>
+        </xpath>
+    </template>
+    <template id="as_price_dynamic_filter_template_product_product" inherit_id="website_sale.price_dynamic_filter_template_product_product" name="Theme Alan Dynamic Product Filter Price">
+        <xpath expr="//span[contains(@t-field, 'website.prevent_zero_price_sale_text')]" position="attributes">
+            <attribute name="t-if"> not (website.env.user._is_public() and website.active_b2b_mode)</attribute>
+        </xpath>
+        <xpath expr="//t[2]" position="attributes">
+            <attribute name="t-elif">not (website.env.user._is_public() and website.active_b2b_mode)</attribute>
+        </xpath>
+    </template>
+    <template id="as_one_hybrid" inherit_id="website.one_hybrid" name="Theme Alan Single any Search Results">
+        <xpath expr="//b[hasclass('text-nowrap')]" position="attributes">
+            <attribute name="t-if">result.get('detail') and not is_b2b_mode</attribute>
+        </xpath>
+    </template>
+
+    <!-- Shop Page -->
+    <template id="theme_alan_products_add_to_cart" inherit_id="website_sale.products_add_to_cart" name="Theme Alan Add to Cart">
+        <xpath expr="//a[contains(@t-if, 'product._website_show_quick_add()')]" position="attributes">
+            <attribute name="t-if" separator=" and " add=" not (request.env.user._is_public() and website.active_b2b_mode)"/>
+        </xpath>
+    </template>
+    <template id="theme_alan_filter_products_price" inherit_id="website_sale.filter_products_price" name="Theme Alan Filter by Prices">
+        <xpath expr="//div[@id='o_wsale_price_range_option']" position="attributes">
+            <attribute name="t-attf-style">{{'display:none !important;' if request.env.user._is_public() and website.active_b2b_mode else ''}}</attribute>
+        </xpath>
+    </template>
+    <template id="as_header_cart_link" inherit_id="website_sale.header_cart_link" name="Theme Alan Header Cart Link">
+        <xpath expr="//t[@t-set='show_cart']" position="attributes">
+            <attribute name="t-value">not (request.env.user._is_public() and website.active_b2b_mode)</attribute>
+        </xpath>
+    </template>
+    <template id="as_product_wishlist" inherit_id="website_sale_wishlist.product_wishlist" name="Theme Alan Wishlist Page">
+        <xpath expr="//td[hasclass('o_wish_price')]" position="attributes">
+            <attribute name="t-if">not (request.env.user._is_public() and website.active_b2b_mode)</attribute>
+        </xpath>
+        <xpath expr="//td[hasclass('td-wish-btn')]" position="attributes">
+            <attribute name="t-if">not (request.env.user._is_public() and website.active_b2b_mode)</attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('checkbox')]" position="attributes">
+            <attribute name="t-if">not (request.env.user._is_public() and website.active_b2b_mode)</attribute>
+        </xpath>
+    </template>
+    <template id="as_shop_price" inherit_id="website_sale.products_item" name="Shop Page Price">
+        <xpath expr="//div[hasclass('product_price')]" position="attributes">
+            <attribute name="t-if">not (request.env.user._is_public() and website.active_b2b_mode)</attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('product_price')]" position="after">
+            <div t-if="request.env.user._is_public() and website.active_b2b_mode" class="as-b2b-price">
+                <a role="button" href="/web/login" t-attf-class="#{'as_login_popup' if website.active_login_popup else ''}">
+                    <i class="asi asi-lock"></i> <span>Login for price</span>
+                </a>
+            </div>
+        </xpath>
+    </template>
+    <template id="theme_alan_similar_product" name="Theme Alan Similar Product" inherit_id="theme_alan.as_similar_product">
+        <xpath expr="//div[@t-if='product.product_variant_ids']" position="attributes">
+            <attribute name="t-if" add=" not(request.env.user._is_public() and website.active_b2b_mode)" separator=" and "/>
+        </xpath>
+    </template>
+
+    <!-- Product Page -->
+    <template id="theme_alan_product_price" inherit_id="website_sale.product_price">
+        <xpath expr="//div[contains(@t-attf-class, 'product_price')]" position="attributes">
+            <attribute name="t-attf-style">{{'display:none !important;' if request.env.user._is_public() and website.active_b2b_mode else ''}}</attribute>
+        </xpath>
+        <xpath expr="//h3[hasclass('css_editable_mode_hidden')]" position="inside">
+            <span t-if="combination_info['has_discounted_price'] and website.active_product_discount" t-attf-class="as-product-discounted {{'' if combination_info['has_discounted_price'] else 'd-none'}}">
+                <t t-esc="combination_info['as_offer_discount']"/> % OFF
+            </span>
+        </xpath>
+    </template>
+    <template id="theme_alan_product_quantity" inherit_id="website_sale.product_quantity" priority="99">
+        <xpath expr="//div[contains(@t-attf-class,'css_quantity')]" position="attributes">
+            <attribute name="t-attf-style">{{'display:none !important;' if request.env.user._is_public() and website.active_b2b_mode else ''}}</attribute>
+        </xpath>
+    </template>
+    <template id="theme_alan_product" inherit_id="website_sale.product" priority="99">
+        <xpath expr="//div[@id='add_to_cart_wrap']" position="attributes">
+            <attribute name="t-attf-style">{{'display:none !important;' if request.env.user._is_public() and website.active_b2b_mode else ''}}</attribute>
+        </xpath>
+        <xpath expr="//div[@id='o_wsale_cta_wrapper']" position="before">
+            <div t-if="request.env.user._is_public() and website.active_b2b_mode" class="as-pd-login-popup-wrap">
+                <a href="/web/login" t-attf-class="btn btn-primary #{'as_login_popup' if website.active_login_popup else ''}"> <i class="asi asi-lock"></i> <span>Login for price</span></a>
+            </div>
+        </xpath>
+    </template>
+    <template id="theme_alan_product_variants" name="Theme Alan List View of Variants" inherit_id="website_sale.product_variants">
+        <xpath expr="//span[@t-if='diff_price != 0']" position="attributes">
+            <attribute name="t-if" add="not(request.env.user._is_public() and website.active_b2b_mode)" separator=" and "/>
+        </xpath>
+    </template>
+    <template id="theme_alan_badge_extra_price" name="Theme Alan Badge Extra Price" inherit_id="website_sale.badge_extra_price">
+        <xpath expr="//span[@t-if='price_extra']" position="attributes">
+            <attribute name="t-if" add=" not(request.env.user._is_public() and website.active_b2b_mode)" separator=" and "/>
+        </xpath>
+    </template>
+    <template id="theme_alan_offer_table" name="Theme Alan Bulk Offer Table" inherit_id="theme_alan.bulk_save_offers">
+        <xpath expr="//t[1]" position="attributes">
+            <attribute name="t-if" add=" not(request.env.user._is_public() and website.active_b2b_mode)" separator=" and "/>
+        </xpath>
+    </template>
+    <template id="theme_alan_stick_cart" name="Theme Alan Stick Cart" inherit_id="theme_alan.as_product_stick_cart">
+        <xpath expr="//div[contains(@t-attf-class, 'as_product_price')]" position="attributes">
+            <attribute name="t-if"> not(request.env.user._is_public() and website.active_b2b_mode)</attribute>
+        </xpath>
+    </template>
+    <template id="theme_alan_product_pager" name="Theme Alan Product Pager" inherit_id="theme_alan.as_product_customization">
+        <xpath expr="//div[hasclass('as_pre_price')]" position="attributes">
+            <attribute name="t-if"> not(request.env.user._is_public() and website.active_b2b_mode)</attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('as_next_price')]" position="attributes">
+            <attribute name="t-if"> not(request.env.user._is_public() and website.active_b2b_mode)</attribute>
+        </xpath>
+    </template>
+
+</odoo>

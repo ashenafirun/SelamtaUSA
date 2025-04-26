@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="theme_alan.ProductQueries">
+        <div class="o_dialog">
+            <div role="dialog" t-attf-class="modal d-block" tabindex="-1">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content queries-container">
+                        <div class="modal-header">
+                            <div class="flex-fill">
+                                <h5><t t-esc="props.dialog_header"/></h5>
+                                <p><t t-esc="props.dialog_header_desc"/></p>
+                            </div>
+                            <button type="button" class="btn-close" t-on-click="() => this.props.close()" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body p-5">
+                            <div class="container">
+                                <div class="row gy-3 gx-2">
+                                    <div class="col-md-12">
+                                        <label class="form-label small">Your Name</label>
+                                        <input id="customer" name="customer_name" type="text" class="form-control website_form_input name" placeholder="Your Name" t-att-value="props.user_name" t-att-readonly="props.user_name"/>
+                                        <input id="customer_id" name="customer_id" type="hidden" t-att-value="props.user_id"/>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="form-label small">Your Email</label>
+                                        <input id="email" name="customer_email" type="text" class="form-control website_form_input email" placeholder="Your Mail" t-att-value="props.user_email" t-att-readonly="props.user_email"/>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label small">What Can I Help You With Today?</label>
+                                        <textarea id="message" name="customer_inquiry" type="text" class="form-control website_form_input msg" rows="3" placeholder="Message" t-on-keyup="() => this._onChangeInput()"></textarea>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label small">How Would You Like Me To Contact You?</label>
+                                        <div class="contact_info d-flex gap-2">
+                                            <div>
+                                                <input class="btn-check ContactPreference" type="radio" name="ContactPreference" id="Email" checked="checked"/>
+                                                <label class="btn btn-outline-primary btn-sm" for="Email">
+                                                    Email
+                                                </label>
+                                            </div>
+                                            <div>
+                                                <input class="btn-check ContactPreference" type="radio" name="ContactPreference" id="Phone" />
+                                                <label class="btn btn-outline-primary btn-sm" for="Phone">
+                                                    Phone
+                                                </label>
+                                            </div>
+                                            <div>
+                                                <input class="btn-check ContactPreference" type="radio" name="ContactPreference" id="Both"/>
+                                                <label class="btn btn-outline-primary btn-sm" for="Both">
+                                                    Both
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <button type="button" class="btn btn-dark w-100" t-on-click="(ev) => this.send_queries(ev)">SEND QUESTIONS</button>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                    <div id="thank-you" class="o_hidden modal-content text-center py-4">
+                        <h1 class="text-success"><t t-esc="props.acknowledgement_message"/></h1>
+                        <p>Your form is submitted successfully.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>

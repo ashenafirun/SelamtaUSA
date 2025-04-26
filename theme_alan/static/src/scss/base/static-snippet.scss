@@ -1,0 +1,30 @@
+.as-snippet-drop-container {
+	.static-container {
+		height: 100%;
+	}
+}
+
+
+.as-static-snippet-3 {
+	.card {
+		background: rgba($white, 0.1);
+		backdrop-filter: blur(15px);
+		border: 1px solid $white;
+	}
+}
+
+.as-static-snippet-6 {
+	.media-box {
+		display:flex;
+
+		.media-body {
+			padding-left: 18px;
+		}
+	}
+}
+
+.width-60px {
+	width: 60px;
+	height: 60px;
+	max-width: 100%;
+}

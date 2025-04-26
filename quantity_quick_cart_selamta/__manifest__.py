@@ -1,8 +1,8 @@
 {
     "name": "Quantity Quick Cart Selamta",
     "category": "Website",
-    "version": "15.0.1",
-    "depends": ['theme_alan', 'stock', 'website_sale_stock', 'website_sale_wishlist'],
+    "version": "18.0.0.1",
+    "depends": ['atharva_theme_base','theme_alan', 'stock', 'website_sale_stock', 'website_sale_wishlist'],
     "data": [
         'views/sh_shop_template.xml',
     ],

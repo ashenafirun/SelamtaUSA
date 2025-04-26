@@ -1,0 +1,233 @@
+@if o-website-value('header-template')=='as_header7' {
+    .header-top {
+        border-bottom: 1px solid rgba(var(--as-header-color-rgb), .09);
+
+        .ht-top-start {
+            display: flex;
+            margin: 0;
+            padding: 2px 0;
+            list-style: none;
+            gap: 20px;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            .s_text_block {
+                text-align: center;
+            }
+        }
+    }
+
+    .header-middle {
+        padding-top: 10px;
+        padding-bottom: 10px;
+        @include o-apply-colors('menu');
+        @include o-apply-colors('menu-custom');
+        @include o-add-gradient('menu-secondary-gradient');
+
+        >.container {
+            position: relative;
+        }
+
+        .h-logo {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            flex: 0 0 300px;
+            .logo {
+                margin: 0;
+            }
+        }
+
+        .mh-end {
+            flex: 0 0 calc(50% - 150px);
+            display: flex;
+            justify-content: flex-end;
+
+            >li {
+                +li {
+                    position: relative;
+                    margin-left: 12px;
+                    padding-left: 12px;
+
+                    &:after {
+                        content: "";
+                        position: absolute;
+                        top: 0;
+                        bottom: 0;
+                        margin: auto;
+                        width: 1px;
+                        background: rgba(var(--as-menu-color-rgb), .2);
+                        height: 15px;
+                        left: 0;
+                    }
+                }
+            }
+
+            a {
+                text-decoration: none;
+                color: rgba(var(--as-menu-color-rgb), 1) !important;
+            }
+        }
+
+        .hm-search {
+            flex: 0 0 calc(50% - 150px);
+        }
+
+        .as-h-search-form {
+            max-width: 300px;
+            position: static;
+
+            .form-control {
+                background: none !important;
+                border: none;
+                border-bottom: 1px solid rgba(var(--as-menu-color-rgb), 0.2) !important;
+                color: rgba(var(--as-menu-color-rgb), 1);
+                border-radius: 0;
+                height: 50px;
+                padding-right: 0;
+                outline: none !important;
+                box-shadow: none !important;
+            }
+
+            .oe_search_button {
+                padding: 0 5px;
+                height: 50px;
+                border-radius: 0;
+                background: none !important;
+                box-shadow: none;
+                outline: none;
+                top: 0;
+                left: 0;
+                text-align: left;
+                order: -1;
+                color: rgba(var(--as-menu-color-rgb), 1);
+                border: none;
+                border-bottom: 1px solid rgba(var(--as-menu-color-rgb), 0.2) !important;
+                outline: none !important;
+                box-shadow: none !important;
+            }
+
+            .o_dropdown_menu {
+                border: 1px solid var(--gray-300);
+            }
+        }
+
+        .hm-icon {
+            width: 40px;
+            height: 40px;
+            background: none;
+            color: rgba(var(--as-menu-color-rgb), 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            font-size: 25px;
+            border-radius: 0;
+
+            .fa-stack {
+                width: auto;
+                height: auto;
+                line-height: normal;
+            }
+
+            .h-sup {
+                position: absolute;
+                top: -4px;
+                right: -4px;
+                font-size: 10px;
+                padding: 0;
+                border-radius: 50px;
+                min-width: 20px;
+                height: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+        }
+
+        .as-h-user {
+            font-size: 0px;
+
+            &:before {
+                font-size: 25px;
+            }
+        }
+    }
+
+    .header-navbar {
+        @include o-apply-colors('menu');
+        @include o-apply-colors('menu-custom');
+        @include o-add-gradient('menu-secondary-gradient');
+
+        .navbar-nav {
+            >.nav-item {
+                >.nav-link {
+                    padding: 0.55rem 1.1rem;
+                    font-weight: 400;
+                    color: rgba(var(--as-menu-color-rgb), .75) !important;
+
+                    &.active,
+                    &:hover {
+                        color: rgba(var(--as-menu-color-rgb), 1) !important;
+                    }
+                }
+            }
+        }
+    }
+
+
+    // o header overlay
+    .o_header_overlay {
+        > header:not(.o_header_affixed):not(.o_header_sidebar):not(:hover) {
+            --as-ho-color: 255, 255, 255;
+            --as-menu-color: #fff;
+            --as-menu-color-rgb: 255, 255, 255;
+
+            .as-main-header {
+                box-shadow: none !important;
+
+                .header-top {
+                    background: transparent;
+                    border-bottom: 1px solid rgba(var(--as-ho-color), 0.1);
+                }
+
+                .header-middle {
+                    background: transparent;
+                    .as-h-search-form {
+                        .as-h-search-input {
+                            border-color: transparent !important;
+                        }
+                        .as-h-search-btn {
+                            border-color: transparent !important;
+                        }
+                    }
+                }
+
+                .header-navbar {
+                    background: transparent;
+                }
+
+                .navbar-brand.logo {
+                    img {
+                        filter: invert(1);
+                    }
+                }
+
+            }
+
+            .as-ah-navbar {
+                --as-ah-link-color: #fff !important;
+                background-color: transparent !important;
+                border-top: 1px solid rgba(var(--as-ho-color), 0.1);
+                border-bottom: 1px solid rgba(var(--as-ho-color), 0.1);
+            }
+
+        }
+    }
+
+    // o header overlay
+    #wrapwrap.o_header_overlay > header:not(.o_header_affixed):not(.o_header_sidebar) > .navbar.as-mobile-header {
+        background: var(--white) !important;
+    }
+
+}

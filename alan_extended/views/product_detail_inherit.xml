@@ -1,0 +1,103 @@
+<odoo>
+
+<!--    <template id="theme_alan.as_product_price">-->
+<!--        <div itemprop="offers" itemscope="itemscope" itemtype="http://schema.org/Offer" class="product_price" t-if="product.product_variant_ids and not request.website.is_public_user()">-->
+<!--            <b>-->
+<!--                <del t-attf-class="text-danger mr-2 {{'' if combination_info['has_discounted_price'] else 'd-none'}}" style="white-space: nowrap;" t-esc="combination_info['list_price']" t-options="{'widget': 'monetary', 'display_currency': website.currency_id}" />-->
+<!--                <span t-if="combination_info['price']" t-esc="combination_info['price']" t-options="{'widget': 'monetary', 'display_currency': website.currency_id}"/>-->
+<!--                <span itemprop="price" style="display:none;" t-esc="combination_info['price']" />-->
+<!--                <span itemprop="priceCurrency" style="display:none;" t-esc="website.currency_id.name" />-->
+<!--            </b>-->
+<!--        </div>-->
+<!--    </template>-->
+
+<!--    <template id="product_as_product_price_hide_website_sale" inherit_id="theme_alan.as_product_price">-->
+<!--    <xpath expr="//div" position="attributes">-->
+<!--        <attribute name="t-if">-->
+<!--            not request.website.is_public_user()-->
+<!--        </attribute>-->
+<!--    </xpath>-->
+<!--    </template>-->
+
+    <template id="product_shop_page_price_hide_website_sale" inherit_id="website_sale.products_item">
+        <xpath expr="//div[hasclass('product_price')]" position="attributes">
+            <attribute name="t-if">
+                not request.website.is_public_user()
+            </attribute>
+        </xpath>
+    </template>
+
+    <template id="product_cart_summary_price_hide_website_sale" inherit_id="website_sale.checkout_layout">
+        <xpath expr="//div[@id='o_wsale_accordion_item']" position="attributes">
+            <attribute name="t-if">
+                not request.website.is_public_user()
+            </attribute>
+        </xpath>
+    </template>
+
+<!--    <template id="product_cart_lines_price_hide_website_sale" inherit_id="website_sale.cart_lines">-->
+<!--        <xpath expr="//th[hasclass('td-price')]" position="attributes">-->
+<!--            <attribute name="t-if">-->
+<!--                not request.website.is_public_user()-->
+<!--            </attribute>-->
+<!--        </xpath>-->
+<!--         <xpath expr="//td[hasclass('td-price')]" position="attributes">-->
+<!--            <attribute name="t-if">-->
+<!--                not request.website.is_public_user()-->
+<!--            </attribute>-->
+<!--        </xpath>-->
+<!--    </template>-->
+
+<!--    <template id="product_short_cart_summary_price_hide_website_sale" inherit_id="website_sale.short_cart_summary">-->
+<!--        <xpath expr="//div[hasclass('js_cart_summary')]" position="attributes">-->
+<!--            <attribute name="t-if" separator="and">-->
+<!--                not request.website.is_public_user()-->
+<!--            </attribute>-->
+<!--        </xpath>-->
+<!--    </template>-->
+
+    <template id="product_detail_page_price_hide_website_sale" inherit_id="website_sale.product">
+        <xpath expr='//t[@t-call="website_sale.product_price"]' position="attributes">
+            <attribute name="t-if">
+                not request.website.is_public_user()
+            </attribute>
+        </xpath>
+        <xpath expr="//div[@id='product_details']/h1" position="after">
+            <h6 t-field="product.sku_code"/>
+        </xpath>
+    </template>
+
+    <!--    Discount Offer Only To Login Users-->
+    <template id="product_discount_offer_customize_html" inherit_id="website_sale.product"
+              active="False" customize_show="True" name="Discount Offer">
+        <xpath expr="//p[@t-field='product.description_sale']" position="after">
+            <div t-if="not request.website.is_public_user()">
+                <p t-out="product.discount_offer"/>
+            </div>
+        </xpath>
+    </template>
+
+    <template id="product_compare_customize_html_hide_price" inherit_id="website_sale_comparison.product_compare">
+        <xpath expr="//div[hasclass('product_summary')]/span" position="attributes">
+            <attribute name="t-if">
+                not request.website.is_public_user()
+            </attribute>
+        </xpath>
+    </template>
+
+    <template id="product_product_customize_html_hide_price" inherit_id="website_sale_comparison.product_compare">
+        <xpath expr="//span[hasclass('o_comparison_price')][2]/del" position="replace">
+        <del t-if="combination_info['compare_list_price'] and (combination_info['compare_list_price'] &gt; combination_info['price']) and not request.website.is_public_user()"
+                                                     t-attf-class="text-muted mr8"
+                                                     style="white-space: nowrap;"
+                                                     t-esc="combination_info['compare_list_price']"
+                                                     t-options="{'widget': 'monetary', 'display_currency': website.currency_id}" />
+        </xpath>
+<!--        <xpath expr="//span[hasclass('o_comparison_price')]/del[0]" position="replace">-->
+<!--            <attribute name="t-if">-->
+<!--                not request.website.is_public_user()-->
+<!--            </attribute>-->
+<!--        </xpath>-->
+    </template>
+
+</odoo>

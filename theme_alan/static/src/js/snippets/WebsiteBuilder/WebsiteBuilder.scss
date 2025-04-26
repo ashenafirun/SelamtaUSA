@@ -1,0 +1,250 @@
+.as_website_builder {
+    &.modal-body {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        overflow: inherit;
+    }
+    .snippets_collection {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+    .edit-snippet-builder-box {
+        display: flex;
+        height: 100%;
+        flex-direction: column;
+        > .row {
+            height: 100%;
+        }
+    }
+
+    .e-sb-btn {
+         --btn-padding-x: 1.125rem;
+        --btn-padding-y: 0.8125rem;
+        --btn-font-size: 0.9rem;
+        --btn-font-weight: 600;
+        --btn-line-height: 1;
+        --btn-border-radius: 5px;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        text-transform: uppercase;
+
+        &.btn-primary {
+            --btn-bg: var(--as-sb-primary);
+            --btn-color: var(--as-sb-white);
+            --btn-border-color: var(--as-sb-primary);
+
+            --btn-hover-color: var(--as-sb-white);
+            --btn-hover-border-color: var(--as-sb-dark);
+            --btn-hover-bg: var(--as-sb-dark);
+        }
+
+        &.btn-secondary {
+            --btn-bg: transparent;
+            --btn-color: var(--as-sb-dark);
+            --btn-border-color: var(--as-sb-border-dark);
+
+            --btn-hover-color: var(--as-sb-dark);
+            --btn-hover-border-color: var(--as-sb-border-dark);
+            --btn-hover-bg: var(--as-sb-gray);
+        }
+    }
+
+}
+
+
+
+.edit-snippet-builder-box {
+    --as-sb-primary: #05f;
+    --as-sb-primary-rgb: 0, 85, 255;
+
+    --as-sb-secondary: #dbdde1;
+
+
+    --as-sb-bg: rgba(var(--as-sb-primary-rgb), .04);
+    --as-sb-gray: #f7f7f8;
+    --as-sb-white: #fff;
+    --as-sb-dark: #000;
+    --as-sb-border: #e0e5eb;
+    --as-sb-border-dark: #c7cad1;
+    --as-sb-start-width: 200px;
+    --as-sb-end-width: 280px;
+
+    --as-sb-text: #4e5562;
+
+
+    .e-sb-tab-col,
+    .e-sb-tab-wrap {
+        &::-webkit-scrollbar {
+            width: 10px;
+        }
+        &::-webkit-scrollbar-track {
+            background: #FFF;
+        }
+        &::-webkit-scrollbar-thumb {
+            background-color: #CBD5E0;
+            border-radius: 10px;
+            border: 3px solid #FFF;
+        }
+    }
+
+
+    .e-sb-tab-col {
+        width: 200px;
+        max-height: 100%;
+        overflow-y: auto;
+        label {
+            font-weight: 500;
+            font-size: 14px;
+            line-height: 17px;
+            color: var(--as-sb-text);
+            border-radius: 7px;
+            padding: 12px 10px;
+            width: 100%;
+            padding-left: 20px;
+            overflow: hidden;
+            border: 1px solid var(--as-sb-border);
+            cursor: pointer;
+
+            &.e-sb-active {
+                // background-color: rgba(var(--as-sb-primary-rgb, 0.1));
+                color: var(--as-sb-white);
+                background: var(--as-sb-primary);
+                position: relative;
+                border-color: var(--as-sb-primary);
+            }
+        }
+
+        ul {
+            list-style: none;
+            padding-left: 0;
+        }
+    }
+
+    .e-sb-tab-wrap {
+        flex: 0 0 calc(100% - 200px);
+        max-height: 100%;
+        overflow-y: auto;
+        width: calc(100% - 200px);
+    }
+
+    .e-sb-tab-content {
+        img {
+            max-width: 100%;
+        }
+
+        .img {
+            width: 100%;
+            position: relative;
+            padding-bottom: 90%;
+            background-color: var(--as-sb-white);
+
+            img {
+                width: 100%;
+                height: 100%;
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                object-fit: contain;
+            }
+        }
+
+        .e_sb_snnippet_box {
+            border: 1px solid var(--as-sb-border);
+            border-radius: 15px;
+            background: var(--as-sb-white);
+            position: relative;
+            padding: 5px;
+            overflow: hidden;
+
+
+            .snippet-as {
+                display: flex;
+                align-items: center;
+                padding: 0 10px 15px;
+
+                h6 {
+                    text-align: center;
+                    color: #000;
+                    font-weight: 500;
+                    font-size: 15px;
+                    letter-spacing: 0.05rem;
+                    margin: 0;
+                    width: 100%;
+                    line-height: 25px;
+                    border-radius: 12px;
+                    padding-bottom: 20px;
+                    position: absolute;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                }
+
+                .e-sb-label {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    margin: 0;
+                    cursor: pointer;
+
+                    input[type="radio"] {
+                        opacity: 0;
+                        position: absolute;
+                    }
+
+                    input[type="radio"]:checked+span {
+                        background: var(--as-light-bg);
+
+                        &::before,
+                        &::after {
+                            opacity: 1;
+                        }
+                    }
+
+                    span {
+                        position: relative;
+                        display: flex;
+                        width: 100%;
+                        height: 100%;
+
+                        &::before {
+                            content: "\f00c";
+                            font-family: 'FontAwesome';
+                            position: absolute;
+                            top: 10px;
+                            left: 10px;
+                            width: 28px;
+                            height: 28px;
+                            opacity: 0;
+                            color: var(--as-sb-white);
+                            background: var(--as-sb-primary);
+                            text-align: center;
+                            line-height: 28px;
+                            border-radius: 15px;
+                        }
+
+                        &::after {
+                            content: "";
+                            position: absolute;
+                            top: 0;
+                            left: 0;
+                            right: 0;
+                            bottom: 0;
+                            border: 2px solid var(--as-sb-primary);
+                            opacity: 0;
+                            border-radius: 15px;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,107 @@
+@if o-website-value('header-template') == 'as_header9' {
+
+    .as-alone-search {
+        margin: 0 !important;
+        padding: 0 !important;
+        list-style: none;
+    }
+    .as-main-header {
+        .as-h-container {
+            @media(min-width: 1440px){
+                max-width: 1400px;
+            }
+            @media(min-width: 1600px){
+                max-width: 1500px;
+            }
+            @media(min-width: 1900px){
+                max-width: 1800px;
+            }
+        }
+    }
+
+
+    .header-top {
+        .ht-top-end,
+        .ht-top-start {
+            display: flex;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            gap: 20px;
+            align-items: center;
+        }
+
+    }
+
+    .header-middle {
+        .mh-end {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            a {
+                text-decoration: none;
+                color: inherit !important;
+            }
+        }
+
+        .hm-icon {
+            width: 40px;
+            height: 40px;
+            background: none;
+            color: var(--as-menu-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            font-size: 16px;
+            border-radius: 40px !important;
+            transition: ease all 0.35s;
+            background: rgba(var(--as-menu-color-rgb), 0.08);
+            &:hover {
+                background: $primary;
+                color: $white !important;
+            }
+            .fa-stack {
+                width: auto;
+                height: auto;
+                line-height: normal;
+            }
+            .h-sup {
+                position: relative;
+                font-size: 10px;
+                padding: 3px 5px;
+                border-radius: 10px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin-left: 5px;
+                top: auto;
+            }
+        }
+        .o_wsale_my_cart,
+        .o_wsale_my_wish {
+            .hm-icon {
+                width: auto;
+                padding: 0 16px;
+            }
+        }
+        .as-h-user {
+            font-size: 0px;
+            &:before {
+                font-size: 16px;
+            }
+        }
+        .navbar-nav {
+            > .nav-item {
+                > .nav-link {
+                    line-height: 80px;
+                    padding: 0 15px;
+                    font-weight: 500;
+                }
+            }
+        }
+    }
+
+}
+
+

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="product_template_form_view_inherit_setting" model="ir.ui.view">
+        <field name="name">product.template.product.form</field>
+        <field name="model">product.template</field>
+        <field name="type">form</field>
+        <field name="priority" eval="8" />
+        <field name="inherit_id" ref="product.product_template_only_form_view" />
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='invoicing']" position="after">
+                <page name="cart_limit" string="Cart Quantity Limit">
+                    <group>
+                        <field name="check_box" default='False'></field>
+                    </group>
+                    <group>
+                        <field name="minimum_product_quantity" invisible = "not check_box"
+                             default='-1'></field>
+                    </group>
+                    <group>
+                        <field name="max_product_quantity" invisible = "not check_box"
+                            default='-1'></field>
+                    </group>
+                </page>
+            </xpath>
+
+
+        </field>
+    </record>
+    <record id="product_normal_form_view_inherit_min_max_quant" model="ir.ui.view">
+        <field name="name">product.product.form.min_max_quant</field>
+        <field name="model">product.product</field>
+        <field name='type'>form</field>
+        <field name="inherit_id" ref="product.product_normal_form_view" />
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='invoicing']" position="after">
+                <page name="variant_limit" string="Cart Quantity Limit">
+                    <group>
+                        <field name="check_box" default='False'></field>
+                    </group>
+                    <group>
+                        <field name="minimum_product_quantity"
+                            invisible="not check_box" default='-1'></field>
+                    </group>
+                    <group>
+                        <field name="max_product_quantity"
+                        invisible="not check_box" default='-1'></field>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+
+</odoo>

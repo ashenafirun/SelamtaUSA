@@ -1,0 +1,801 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+<template id="s_product_slider" name="Product Slider">
+    <div t-attf-class="swiper as_page_swiper" contenteditable="false">
+        <div class="swiper-button-prev asi asi-chevron-left"></div>
+        <div class="swiper-button-next asi asi-chevron-right"></div>
+        <div class="swiper-wrapper">
+            <t t-foreach="records" t-as="product">
+                <div t-attf-class="swiper-slide" >
+                    <t t-if="configuration.get('slider_style') == 'as-slider-1'">
+                        <t t-call="theme_alan.as_product_slider_one"/>
+                    </t>
+                    <t t-if="configuration.get('slider_style') == 'as-slider-2'">
+                        <t t-call="theme_alan.as_product_slider_two"/>
+                    </t>
+                    <t t-if="configuration.get('slider_style') == 'as-slider-3'">
+                        <t t-call="theme_alan.as_product_slider_three"/>
+                    </t>
+                    <t t-if="configuration.get('slider_style') == 'as-slider-4'">
+                        <t t-call="theme_alan.as_product_slider_four"/>
+                    </t>
+                    <t t-if="configuration.get('slider_style') == 'as-slider-5'">
+                        <t t-call="theme_alan.as_product_slider_five"/>
+                    </t>
+                </div>
+            </t>
+        </div>
+        <t t-if="configuration.get('pagination') != 'scroll_bar'">
+            <div class="swiper-pagination"></div>
+        </t>
+        <t t-else="">
+            <div class="swiper-scrollbar"></div>
+        </t>
+    </div>
+</template>
+
+<template id="s_product_grid" name="Product Grid">
+    <div class="container">
+        <div t-attf-class="row g-2 g-md-3 as-snippets-row row-cols-2 row-cols-lg-5">
+            <t t-foreach="records" t-as="product">
+                <t t-set="col_mob_size" t-value="configuration.get('default_col_mob')"/>
+                <t t-if="int(configuration.get('default_col_desk')) == 5">
+                    <t t-set="col_size" t-value="'five'"/>
+                </t>
+                <t t-else="">
+                    <t t-set="col_size" t-value="int(12/int(configuration.get('default_col_desk')))"/>
+                </t>
+                <t t-if="configuration.get('grid_style') == 'as-grid-1'">
+                    <t t-call="theme_alan.as_product_grid_one"/>
+                </t>
+                <t t-if="configuration.get('grid_style') == 'as-grid-2'">
+                    <t t-call="theme_alan.as_product_grid_two"/>
+                </t>
+                <t t-if="configuration.get('grid_style') == 'as-grid-3'">
+                    <t t-call="theme_alan.as_product_grid_three"/>
+                </t>
+                <t t-if="configuration.get('grid_style') == 'as-grid-4'">
+                    <t t-call="theme_alan.as_product_grid_four"/>
+                </t>
+                <t t-if="configuration.get('grid_style') == 'as-grid-5'">
+                    <t t-call="theme_alan.as_product_grid_five"/>
+                </t>
+            </t>
+        </div>
+    </div>
+</template>
+
+<template id="as_product_slider_one" name="Product Slider 1">
+    <t t-call="theme_alan.as_product_base_slider_01"/>
+</template>
+<template id="as_product_slider_two" name="Product Slider 2">
+    <t t-call="theme_alan.as_product_base_slider_02"/>
+</template>
+<template id="as_product_slider_three" name="Product Slider 3">
+    <t t-call="theme_alan.as_product_base_slider_03"/>
+</template>
+<template id="as_product_slider_four" name="Product Slider 4">
+    <t t-call="theme_alan.as_product_base_slider_04"/>
+</template>
+<template id="as_product_slider_five" name="Product Slider 5">
+    <t t-call="theme_alan.as_product_base_slider_05"/>
+</template>
+
+
+<template id="as_product_grid_one" name="Product Grid 1">
+    <div t-attf-class="col-lg-#{col_size} mob-col-#{col_mob_size} as_color_variant">
+        <t t-call="theme_alan.as_product_base_slider_01"/>
+    </div>
+</template>
+
+<template id="as_product_grid_two" name="Product Grid 2">
+    <div t-attf-class="col-lg-#{col_size} mob-col-#{col_mob_size} as_color_variant">
+        <t t-call="theme_alan.as_product_base_slider_02"/>
+    </div>
+</template>
+
+<template id="as_product_grid_three" name="Product Grid 3">
+    <div t-attf-class="col-lg-#{col_size} mob-col-#{col_mob_size} as_color_variant">
+        <t t-call="theme_alan.as_product_base_slider_03"/>
+    </div>
+</template>
+
+<template id="as_product_grid_four" name="Product Grid 4">
+    <div t-attf-class="col-lg-#{col_size} mob-col-#{default_col_mob} as_color_variant">
+        <t t-call="theme_alan.as_product_base_slider_04"/>
+    </div>
+</template>
+
+<template id="as_product_grid_five" name="Product Grid 5">
+    <div t-attf-class="col-lg-#{col_size} mob-col-#{default_col_mob} as_color_variant">
+        <t t-call="theme_alan.as_product_base_slider_05"/>
+    </div>
+</template>
+
+<!-- Product Template 1 -->
+<template id="as_product_base_slider_01">
+    <div class="as-product-card as-product-card-01 oe_website_sale">
+        <form action="/shop/cart/update" method="post" class="as_color_variant as-product-card-form">
+            <t t-set="combination" t-value="product.sudo()._get_first_possible_combination()"/>
+            <t t-set="combination_info" t-value="product.sudo()._get_combination_info(combination, add_qty=add_qty or 1)"/>
+            <t t-set="product_variant" t-value="product.env['product.product'].browse(combination_info['product_id'])"/>
+            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()" t-nocache="The csrf token must always be up to date."/>
+            <input name="product_id" t-att-value="product_variant.id" type="hidden"/>
+            <input name="product_template_id" t-att-value="product.id" type="hidden"/>
+
+            <!-- Product Img -->
+
+            <div class="as-product-card-media as-media-ratio">
+                <div class="as-product-card-media-primary as-media-ratio-wrap">
+                    <a class="oe_product_image_img_wrapper" t-attf-href="/shop/{{slug(product.sudo())}}">
+                        <img class="as_product_main_img" t-att-src="request.website.image_url(product,'image_1024')"/>
+                    </a>
+                </div>
+                <!-- Hover Image -->
+                <div t-if="configuration.get('allow_hover_image') and product.sudo().hover_image" class="as-hover-image">
+                    <img t-att-src="request.website.image_url(product,'hover_image')"/>
+                </div>
+                <!-- Label -->
+                <t t-if="configuration.get('allow_label')">
+                    <t t-call="theme_alan.product_label"/>
+                </t>
+                <!-- Rating -->
+                <div t-if="configuration.get('allow_rating')" class="as-pc-rating">
+                    <t t-call="theme_alan.as_rating_template">
+                        <t t-set="product" t-value="product"/>
+                    </t>
+                </div>
+            </div>
+
+            <div class="as-product-card-body">
+                <!-- Offer Timer -->
+                <div t-if="configuration.get('allow_offer_time')" class="as-offer-time as-pc-timer">
+                    <t t-call="theme_alan.as_offer_timer"/>
+                </div>
+
+                <div class="as-product-card-action as-quick-option">
+                    <a t-if="configuration.get('allow_quick_view')" href="#" role="button" class="as-pc-btn as-pc-quick-view  as_quick_view" t-att-data-product_tmpl_id="product.id" title="Quick View">
+                        <span class="asi asi-eye"/>
+                    </a>
+                    <t t-if="configuration.get('allow_compare')">
+                        <t t-set="categories" t-value="product.valid_product_template_attribute_line_ids._prepare_categories_for_display()"/>
+                        <t t-set="product_variant_id" t-value="product._get_first_possible_variant_id()"/>
+                        <button
+                            t-if="product_variant_id and categories"
+                            type="button"
+                            role="button"
+                            class="as-pc-btn as-pc-compare o_add_compare"
+                            title="Compare"
+                            aria-label="Compare"
+                            t-att-data-product-product-id="product_variant_id"
+                            data-action="o_comparelist"
+                        >
+                            <span class="asi asi-repeat"/>
+                        </button>
+                    </t>
+                </div>
+
+                <div class="as-product-card-cart">
+                    <t t-if="configuration.get('allow_add_to_cart') and not (request.env.user._is_public() and request.website.active_b2b_mode)">
+                        <t t-set="product_variant_id" t-value="product._get_first_possible_variant_id()"/>
+                        <input name="product_id" t-att-value="product_variant_id" type="hidden"/>
+                        <input name="product_template_id" t-att-value="product.id" type="hidden"/>
+                        <t t-if="product.sudo().allow_out_of_stock_order" >
+                            <a id="add_to_cart" t-attf-class="{{'d-none' if combination_info['prevent_zero_price_sale'] else 'as-pc-cart-btn'}}"
+                            href="#" role="button" class="btn btn-primary a-submit" aria-label="Shopping cart" title="Shopping cart">
+                                <i class="asi asi-shopping-cart"/> <span>ADD TO CART</span>
+                            </a>
+                        </t>
+                    </t>
+                    <t t-elif="request.env.user._is_public() and request.website.active_b2b_mode">
+                            <a href="/web/login" role="button" title="Login For Price" t-attf-class="as-pc-cart-btn #{'as_login_popup' if request.website.active_login_popup else ''}">
+                            <i class="fa fa-lock"/> <span>Login For Price</span>
+                        </a>
+                    </t>
+                </div>
+
+
+                <div class="as-product-card-info">
+                    <div t-if="configuration.get('allow_brand_info')" class="as-pc-brand">
+                        <t t-call="theme_alan.product_brand"/>
+                    </div>
+
+                    <div class="as-pc-title">
+                        <a t-attf-href="/shop/{{slug(product.sudo())}}" t-esc="product.name" />
+                    </div>
+                    <div t-if="not (request.env.user._is_public() and request.website.active_b2b_mode)" class="as-price as-pc-price" >
+                        <span t-esc="combination_info['price']"
+                            class="fw-bold"
+                            name="product_price"
+                            t-options="{'widget': 'monetary', 'display_currency': website.currency_id}"/>
+                        <del t-if="combination_info.get('has_discounted_price')" class="text-danger ms-1 h6" style="white-space: nowrap;"
+                            t-esc="combination_info['list_price']"
+                            t-options="{'widget': 'monetary', 'display_currency': website.currency_id}"/>
+                    </div>
+                    <!-- Color Variant -->
+                    <div t-if="product.have_color_attribute and configuration.get('allow_color_variant')" class="as-color-variant as-pc-colors">
+                        <ul>
+                            <t t-foreach="product.get_variant_color_images()" t-as="vc">
+                                <li>
+                                    <label t-att-data-product_tmpl_id="product.id"  class="as_color_variant_img p-3" t-attf-style="background-image: url({{vc}}); background-size: cover;">
+                                        <span t-att-data-color-image="vc" />
+                                    </label>
+                                </li>
+                            </t>
+                        </ul>
+                    </div>
+
+                    <!-- Stock Info -->
+                    <div t-if="configuration.get('allow_stock_info')" id="out_of_stock_message" class="as-pc-message">
+                        <t t-call="theme_alan.as_out_of_stock">
+                            <t t-set="product" t-value="product"/>
+                        </t>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</template>
+
+<!-- Product Template 2 -->
+<template id="as_product_base_slider_02">
+    <div class="as-product-card as-product-card-02 oe_website_sale">
+        <form action="/shop/cart/update" method="post" class="as_color_variant as-product-card-form">
+            <t t-set="combination" t-value="product.sudo()._get_first_possible_combination()"/>
+            <t t-set="combination_info" t-value="product.sudo()._get_combination_info(combination, add_qty=add_qty or 1)"/>
+            <t t-set="product_variant" t-value="product.env['product.product'].browse(combination_info['product_id'])"/>
+            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()" t-nocache="The csrf token must always be up to date."/>
+            <input name="product_id" t-att-value="product_variant.id" type="hidden"/>
+            <input name="product_template_id" t-att-value="product.id" type="hidden"/>
+            <!-- Product Img -->
+            <div class="as-product-card-media as-media-ratio">
+                <div class="as-product-card-media-primary as-media-ratio-wrap">
+                    <a class="oe_product_image_img_wrapper" t-attf-href="/shop/{{slug(product.sudo())}}">
+                        <img class="as_product_main_img" t-att-src="request.website.image_url(product,'image_1024')"/>
+                    </a>
+                </div>
+                <!-- Hover Image -->
+                <div t-if="configuration.get('allow_hover_image') and product.sudo().hover_image" class="as-hover-image">
+                    <a t-attf-href="/shop/{{slug(product.sudo())}}">
+                        <img t-att-src="request.website.image_url(product,'hover_image')"/>
+                    </a>
+                </div>
+
+                <t t-if="configuration.get('allow_label')">
+                    <t t-call="theme_alan.product_label"/>
+                </t>
+                 <!-- Rating -->
+                <div t-if="configuration.get('allow_rating')" class="as-pc-rating">
+                    <t t-call="theme_alan.as_rating_template">
+                        <t t-set="product" t-value="product"/>
+                    </t>
+                </div>
+                <t t-if="configuration.get('allow_wishlist')">
+                    <t t-nocache="The wishlist depends on the user and must not be shared with other users. As this rendering is in the loop, the product value is set in the template, we must retain the id of the product on which we are."
+                    t-nocache-product_template_id="product.id">
+                        <t t-set="in_wish" t-value="product._is_in_wishlist()"/>
+                        <t t-set="product_variant_id" t-value="in_wish or product._get_first_possible_variant_id()"/>
+                        <button t-if="product_variant_id"
+                                type="button"
+                                role="button"
+                                class="as-pc-btn as-pc-wishlist o_add_wishlist"
+                                t-att-disabled='in_wish or None' title="Add to Wishlist"
+                                t-att-data-product-template-id="product.id"
+                                t-att-data-product-product-id="product_variant_id"
+                                data-action="o_wishlist">
+                            <span class="asi asi-heart" role="img" aria-label="Add to wishlist"/>
+                        </button>
+                    </t>
+                </t>
+
+            </div>
+
+            <div class="as-product-card-body">
+                <div class="as-product-card-cart">
+                    <t t-if="configuration.get('allow_compare')">
+                        <t t-set="categories" t-value="product.valid_product_template_attribute_line_ids._prepare_categories_for_display()"/>
+                        <t t-set="product_variant_id" t-value="product._get_first_possible_variant_id()"/>
+                        <button
+                            t-if="product_variant_id and categories"
+                            type="button"
+                            role="button"
+                            class="as-pc-btn as-pc-compare o_add_compare"
+                            title="Compare"
+                            aria-label="Compare"
+                            t-att-data-product-product-id="product_variant_id"
+                            data-action="o_comparelist"
+                        >
+                            <span class="asi asi-repeat"/>
+                        </button>
+                    </t>
+                    <t t-if="configuration.get('allow_add_to_cart') and not (request.env.user._is_public() and request.website.active_b2b_mode)">
+                        <t t-set="product_variant_id" t-value="product._get_first_possible_variant_id()"/>
+                        <input name="product_id" t-att-value="product_variant_id" type="hidden"/>
+                        <input name="product_template_id" t-att-value="product.id" type="hidden"/>
+                        <t t-if="product.sudo().allow_out_of_stock_order" >
+                            <a id="add_to_cart" t-attf-class="{{'d-none' if combination_info['prevent_zero_price_sale'] else 'as-pc-cart-btn'}}"
+                            href="#" role="button" class="btn btn-primary a-submit" aria-label="Shopping cart" title="Shopping cart">
+                                <i class="asi asi-shopping-cart"></i> <span>ADD TO CART</span>
+                            </a>
+                        </t>
+                    </t>
+                    <t t-elif="request.env.user._is_public() and request.website.active_b2b_mode">
+                        <a role="button" href="/web/login" t-attf-class="as-pc-cart-btn #{'as_login_popup' if request.website.active_login_popup else ''}" title="Login For Price">
+                            <i class="fa fa-lock"/> <span>Login For Price</span>
+                        </a>
+                    </t>
+                    <a t-if="configuration.get('allow_quick_view')" href="#" role="button" class="as-pc-btn as-pc-quick-view as_quick_view" t-att-data-product_tmpl_id="product.id" title="Quick View">
+                        <span class="asi asi-eye"/>
+                    </a>
+                </div>
+
+                <div t-if="configuration.get('allow_brand_info')" class="as-pc-brand">
+                    <t t-call="theme_alan.product_brand"/>
+                </div>
+                <div class="as-pc-title">
+                    <a t-attf-href="/shop/{{slug(product.sudo())}}" t-esc="product.name" />
+                </div>
+                <div class="as-price as-pc-price" t-if="not (request.env.user._is_public() and request.website.active_b2b_mode)">
+                    <t t-call="website_sale.product_price"/>
+                    <small t-if="combination_info['base_unit_price']"
+                            class="ms-1 text-muted o_base_unit_price_wrapper d-none" groups="website_sale.group_show_uom_price">
+                        <t t-call='website_sale.base_unit_price'/>
+                    </small>
+                </div>
+                <!-- Color Variant -->
+                <div t-if="product.have_color_attribute and configuration.get('allow_color_variant')" class="as-color-variant as-pc-colors">
+                    <ul>
+                        <t t-foreach="product.get_variant_color_images()" t-as="vc">
+                            <li>
+                                <label t-att-data-product_tmpl_id="product.id"  class="as_color_variant_img p-3" t-attf-style="background-image: url({{vc}}); background-size: cover;">
+                                    <span t-att-data-color-image="vc" />
+                                </label>
+                            </li>
+                        </t>
+                    </ul>
+                </div>
+                <!-- Offer Timer -->
+                <div t-if="configuration.get('allow_offer_time')" class="as-offer-time as-pc-timer">
+                    <t t-call="theme_alan.as_offer_timer"/>
+                </div>
+
+                <!-- Stock Info -->
+                <div t-if="configuration.get('allow_stock_info')" id="out_of_stock_message" class="as-pc-message">
+                    <t t-call="theme_alan.as_out_of_stock">
+                        <t t-set="product" t-value="product"/>
+                    </t>
+                </div>
+
+            </div>
+        </form>
+    </div>
+</template>
+
+<!-- Product Template 3 -->
+<template id="as_product_base_slider_03">
+    <div class="as-product-card as-product-card-03 oe_website_sale">
+        <form action="/shop/cart/update" method="post" class="as_color_variant as-product-card-form">
+            <t t-set="combination" t-value="product.sudo()._get_first_possible_combination()"/>
+            <t t-set="combination_info" t-value="product.sudo()._get_combination_info(combination, add_qty=add_qty or 1)"/>
+            <t t-set="product_variant" t-value="product.env['product.product'].browse(combination_info['product_id'])"/>
+            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()" t-nocache="The csrf token must always be up to date."/>
+            <input name="product_id" t-att-value="product_variant.id" type="hidden"/>
+            <input name="product_template_id" t-att-value="product.id" type="hidden"/>
+            <!-- Product Img -->
+            <div class="as-product-card-media as-media-ratio">
+                <div class="as-product-card-media-primary as-media-ratio-wrap">
+                    <a class="oe_product_image_img_wrapper" t-attf-href="/shop/{{slug(product.sudo())}}">
+                        <img class="as_product_main_img" t-att-src="request.website.image_url(product,'image_1024')"/>
+                    </a>
+                </div>
+                <!-- Hover Image -->
+                <div t-if="configuration.get('allow_hover_image') and product.sudo().hover_image" class="as-hover-image">
+                    <a t-attf-href="/shop/{{slug(product.sudo())}}">
+                        <img t-att-src="request.website.image_url(product,'hover_image')"/>
+                    </a>
+                </div>
+
+                <t t-if="configuration.get('allow_label')">
+                    <t t-call="theme_alan.product_label"/>
+                </t>
+                 <!-- Rating -->
+                <div t-if="configuration.get('allow_rating')" class="as-pc-rating">
+                    <t t-call="theme_alan.as_rating_template">
+                        <t t-set="product" t-value="product"/>
+                    </t>
+                </div>
+            </div>
+
+            <div class="as-product-card-body">
+
+                <div t-if="configuration.get('allow_brand_info')" class="as-pc-brand">
+                    <t t-call="theme_alan.product_brand"/>
+                </div>
+                <div class="as-pc-title">
+                    <a t-attf-href="/shop/{{slug(product.sudo())}}" t-esc="product.name" />
+                </div>
+                <div t-if="not (request.env.user._is_public() and request.website.active_b2b_mode)" class="as-price as-pc-price" >
+                    <span t-esc="combination_info['price']"
+                        class="fw-bold"
+                        name="product_price"
+                        t-options="{'widget': 'monetary', 'display_currency': website.currency_id}"/>
+                    <del t-if="combination_info.get('has_discounted_price')" class="text-danger ms-1 h6" style="white-space: nowrap;"
+                        t-esc="combination_info['list_price']"
+                        t-options="{'widget': 'monetary', 'display_currency': website.currency_id}"/>
+                </div>
+
+                <div class="as-product-card-action">
+                    <t t-if="configuration.get('allow_wishlist')">
+                        <t t-nocache="The wishlist depends on the user and must not be shared with other users. As this rendering is in the loop, the product value is set in the template, we must retain the id of the product on which we are."
+                        t-nocache-product_template_id="product.id">
+                            <t t-set="in_wish" t-value="product._is_in_wishlist()"/>
+                            <t t-set="product_variant_id" t-value="in_wish or product._get_first_possible_variant_id()"/>
+                            <button t-if="product_variant_id"
+                                    type="button"
+                                    role="button"
+                                    class="as-pc-btn as-pc-wishlist o_add_wishlist"
+                                    t-att-disabled='in_wish or None' title="Add to Wishlist"
+                                    t-att-data-product-template-id="product.id"
+                                    t-att-data-product-product-id="product_variant_id"
+                                    data-action="o_wishlist">
+                                <span class="asi asi-heart" role="img" aria-label="Add to wishlist"/>
+                            </button>
+                        </t>
+                    </t>
+                    <t t-if="configuration.get('allow_compare')">
+                        <t t-set="categories" t-value="product.valid_product_template_attribute_line_ids._prepare_categories_for_display()"/>
+                        <t t-set="product_variant_id" t-value="product._get_first_possible_variant_id()"/>
+                        <button
+                            t-if="product_variant_id and categories"
+                            type="button"
+                            role="button"
+                            class="as-pc-btn as-pc-compare o_add_compare"
+                            title="Compare"
+                            aria-label="Compare"
+                            t-att-data-product-product-id="product_variant_id"
+                            data-action="o_comparelist"
+                        >
+                            <span class="asi asi-repeat"/>
+                        </button>
+                    </t>
+                    <t t-if="configuration.get('allow_add_to_cart') and not (request.env.user._is_public() and request.website.active_b2b_mode)">
+                        <t t-set="free_qty" t-value="sum(website._get_product_available_qty(prod) for prod in product.sudo().product_variant_ids)"/>
+                        <t t-set="product_variant_id" t-value="product._get_first_possible_variant_id()"/>
+                        <input name="product_id" t-att-value="product_variant_id" type="hidden"/>
+                        <input name="product_template_id" t-att-value="product.id" type="hidden"/>
+                        <t t-if="product.sudo().allow_out_of_stock_order and free_qty &lt; 1" >
+                            <a id="add_to_cart" t-attf-class="{{'d-none' if combination_info['prevent_zero_price_sale'] else 'as-pc-btn as-pc-cart-btn'}}"
+                            href="#" role="button" class="btn btn-primary a-submit" aria-label="Shopping cart" title="Shopping cart">
+                                <i class="asi asi-shopping-cart" />
+                            </a>
+                        </t>
+                    </t>
+                    <t t-elif="request.env.user._is_public() and request.website.active_b2b_mode">
+                        <a role="button" href="/web/login" t-attf-class="as-pc-btn as-pc-cart-btn #{'as_login_popup' if request.website.active_login_popup else ''}" title="Login For Price">
+                            <i class="fa fa-lock"/>
+                        </a>
+                    </t>
+                    <a t-if="configuration.get('allow_quick_view')" href="#" role="button" class="as-pc-btn as-pc-quick-view as_quick_view" t-att-data-product_tmpl_id="product.id" title="Quick View">
+                        <span class="asi asi-eye"/>
+                    </a>
+                </div>
+
+
+                <!-- Color Variant -->
+                <div t-if="product.have_color_attribute and configuration.get('allow_color_variant')" class="as-color-variant as-pc-colors">
+                    <ul>
+                        <t t-foreach="product.get_variant_color_images()" t-as="vc">
+                            <li>
+                                <label t-att-data-product_tmpl_id="product.id"  class="as_color_variant_img p-3" t-attf-style="background-image: url({{vc}}); background-size: cover;">
+                                    <span t-att-data-color-image="vc" />
+                                </label>
+                            </li>
+                        </t>
+                    </ul>
+                </div>
+
+
+                <!-- Offer Timer -->
+                <div t-if="configuration.get('allow_offer_time')" class="as-offer-time as-pc-timer">
+                    <t t-call="theme_alan.as_offer_timer"/>
+                </div>
+
+
+                <!-- Stock Info -->
+                <div t-if="configuration.get('allow_stock_info')" id="out_of_stock_message" class="as-pc-message">
+                    <t t-call="theme_alan.as_out_of_stock">
+                        <t t-set="product" t-value="product"/>
+                    </t>
+                </div>
+
+            </div>
+        </form>
+    </div>
+</template>
+
+<!-- Product Template 4 -->
+<template id="as_product_base_slider_04">
+    <div class="as-product-card as-product-card-04 oe_website_sale">
+        <form action="/shop/cart/update" method="post" class="as_color_variant as-product-card-form">
+            <t t-set="combination" t-value="product.sudo()._get_first_possible_combination()"/>
+            <t t-set="combination_info" t-value="product.sudo()._get_combination_info(combination, add_qty=add_qty or 1)"/>
+            <t t-set="product_variant" t-value="product.env['product.product'].browse(combination_info['product_id'])"/>
+            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()" t-nocache="The csrf token must always be up to date."/>
+            <input name="product_id" t-att-value="product_variant.id" type="hidden"/>
+            <input name="product_template_id" t-att-value="product.id" type="hidden"/>
+            <!-- Product Img -->
+            <div class="as-product-card-media as-media-ratio">
+                <div class="as-product-card-media-primary as-media-ratio-wrap">
+                    <a class="oe_product_image_img_wrapper" t-attf-href="/shop/{{slug(product.sudo())}}">
+                        <img class="as_product_main_img" t-att-src="request.website.image_url(product,'image_1024')"/>
+                    </a>
+                </div>
+                <!-- Hover Image -->
+                <div t-if="configuration.get('allow_hover_image') and product.sudo().hover_image" class="as-hover-image">
+                    <a t-attf-href="/shop/{{slug(product.sudo())}}">
+                        <img t-att-src="request.website.image_url(product,'hover_image')"/>
+                    </a>
+                </div>
+
+                <t t-if="configuration.get('allow_label')">
+                    <t t-call="theme_alan.product_label"/>
+                </t>
+
+                <div class="as-product-card-action">
+                    <t t-if="configuration.get('allow_wishlist')">
+                        <t t-nocache="The wishlist depends on the user and must not be shared with other users. As this rendering is in the loop, the product value is set in the template, we must retain the id of the product on which we are."
+                        t-nocache-product_template_id="product.id">
+                            <t t-set="in_wish" t-value="product._is_in_wishlist()"/>
+                            <t t-set="product_variant_id" t-value="in_wish or product._get_first_possible_variant_id()"/>
+                            <button t-if="product_variant_id"
+                                    type="button"
+                                    role="button"
+                                    class="as-pc-btn as-pc-wishlist o_add_wishlist"
+                                    t-att-disabled='in_wish or None' title="Add to Wishlist"
+                                    t-att-data-product-template-id="product.id"
+                                    t-att-data-product-product-id="product_variant_id"
+                                    data-action="o_wishlist">
+                                <span class="asi asi-heart" role="img" aria-label="Add to wishlist"/>
+                            </button>
+                        </t>
+                    </t>
+                    <t t-if="configuration.get('allow_compare')">
+                        <t t-set="categories" t-value="product.valid_product_template_attribute_line_ids._prepare_categories_for_display()"/>
+                        <t t-set="product_variant_id" t-value="product._get_first_possible_variant_id()"/>
+                        <button
+                            t-if="product_variant_id and categories"
+                            type="button"
+                            role="button"
+                            class="as-pc-btn as-pc-compare o_add_compare"
+                            title="Compare"
+                            aria-label="Compare"
+                            t-att-data-product-product-id="product_variant_id"
+                            data-action="o_comparelist"
+                        >
+                            <span class="asi asi-repeat"/>
+                        </button>
+                    </t>
+                    <a t-if="configuration.get('allow_quick_view')" href="#" role="button" class="as-pc-btn as-pc-quick-view as_quick_view" t-att-data-product_tmpl_id="product.id" title="Quick View">
+                        <span class="asi asi-eye"/>
+                    </a>
+                </div>
+            </div>
+
+            <div class="as-product-card-body">
+                 <!-- Rating -->
+                <div t-if="configuration.get('allow_rating')" class="as-pc-rating">
+                    <t t-call="theme_alan.as_rating_template">
+                        <t t-set="product" t-value="product"/>
+                    </t>
+                </div>
+                <div t-if="configuration.get('allow_brand_info')" class="as-pc-brand">
+                    <t t-call="theme_alan.product_brand"/>
+                </div>
+
+                <div class="as-pc-title">
+                    <a t-attf-href="/shop/{{slug(product.sudo())}}" t-esc="product.name" />
+                </div>
+
+                <div t-if="not (request.env.user._is_public() and request.website.active_b2b_mode)" class="as-price as-pc-price" >
+                    <span t-esc="combination_info['price']"
+                        class="fw-bold"
+                        name="product_price"
+                        t-options="{'widget': 'monetary', 'display_currency': website.currency_id}"/>
+                    <del t-if="combination_info.get('has_discounted_price')" class="text-danger ms-1 h6" style="white-space: nowrap;"
+                        t-esc="combination_info['list_price']"
+                        t-options="{'widget': 'monetary', 'display_currency': website.currency_id}"/>
+                </div>
+
+                <!-- Color Variant -->
+                <div t-if="product.have_color_attribute and configuration.get('allow_color_variant')" class="as-color-variant as-pc-colors">
+                    <ul>
+                        <t t-foreach="product.get_variant_color_images()" t-as="vc">
+                            <li>
+                                <label t-att-data-product_tmpl_id="product.id"  class="as_color_variant_img p-3" t-attf-style="background-image: url({{vc}}); background-size: cover;">
+                                    <span t-att-data-color-image="vc" />
+                                </label>
+                            </li>
+                        </t>
+                    </ul>
+                </div>
+
+                <!-- Offer Timer -->
+                <div t-if="configuration.get('allow_offer_time')" class="as-offer-time as-pc-timer">
+                    <t t-call="theme_alan.as_offer_timer"/>
+                </div>
+
+                <!-- Stock Info -->
+                <div t-if="configuration.get('allow_stock_info')" id="out_of_stock_message" class="as-pc-message">
+                    <t t-call="theme_alan.as_out_of_stock">
+                        <t t-set="product" t-value="product"/>
+                    </t>
+                </div>
+
+                <div class="as-product-card-cart">
+                    <t t-if="configuration.get('allow_add_to_cart') and not (request.env.user._is_public() and request.website.active_b2b_mode)">
+                        <t t-set="product_variant_id" t-value="product._get_first_possible_variant_id()"/>
+                        <input name="product_id" t-att-value="product_variant_id" type="hidden"/>
+                        <input name="product_template_id" t-att-value="product.id" type="hidden"/>
+                        <t t-if="product.sudo().allow_out_of_stock_order" >
+                            <a id="add_to_cart" t-attf-class="{{'d-none' if combination_info['prevent_zero_price_sale'] else 'as-pc-btn as-pc-cart-btn'}}"
+                            href="#" role="button" class="btn btn-primary a-submit" aria-label="Shopping cart" title="Shopping cart">
+                                <i class="asi asi-shopping-cart"/> <span>Add to Cart</span>
+                            </a>
+                        </t>
+                    </t>
+                    <t t-elif="request.env.user._is_public() and request.website.active_b2b_mode">
+                        <a role="button" href="/web/login" t-attf-class="as-pc-btn as-pc-cart-btn #{'as_login_popup' if request.website.active_login_popup else ''}" title="Login For Price">
+                            <i class="fa fa-lock"/> <span>Login For Price</span>
+                        </a>
+                    </t>
+                </div>
+            </div>
+        </form>
+    </div>
+</template>
+
+<!-- Product Template 5 -->
+<template id="as_product_base_slider_05">
+    <div class="as-product-card as-product-card-05 oe_website_sale">
+        <form action="/shop/cart/update" method="post" class="as_color_variant as-product-card-form">
+            <t t-set="combination" t-value="product.sudo()._get_first_possible_combination()"/>
+            <t t-set="combination_info" t-value="product.sudo()._get_combination_info(combination, add_qty=add_qty or 1)"/>
+            <t t-set="product_variant" t-value="product.env['product.product'].browse(combination_info['product_id'])"/>
+            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()" t-nocache="The csrf token must always be up to date."/>
+            <input name="product_id" t-att-value="product_variant.id" type="hidden"/>
+            <input name="product_template_id" t-att-value="product.id" type="hidden"/>
+            <!-- Product Img -->
+            <div class="as-product-card-media as-media-ratio">
+                <div class="as-product-card-media-primary as-media-ratio-wrap">
+                    <a class="oe_product_image_img_wrapper" t-attf-href="/shop/{{slug(product.sudo())}}">
+                        <img class="as_product_main_img" t-att-src="request.website.image_url(product,'image_1024')"/>
+                    </a>
+                </div>
+                <!-- Hover Image -->
+                <div t-if="configuration.get('allow_hover_image') and product.sudo().hover_image" class="as-hover-image">
+                    <a t-attf-href="/shop/{{slug(product.sudo())}}">
+                        <img t-att-src="request.website.image_url(product,'hover_image')"/>
+                    </a>
+                </div>
+
+                <t t-if="configuration.get('allow_label')">
+                    <t t-call="theme_alan.product_label"/>
+                </t>
+                <t t-if="configuration.get('allow_wishlist')">
+                    <t t-nocache="The wishlist depends on the user and must not be shared with other users. As this rendering is in the loop, the product value is set in the template, we must retain the id of the product on which we are."
+                    t-nocache-product_template_id="product.id">
+                        <t t-set="in_wish" t-value="product._is_in_wishlist()"/>
+                        <t t-set="product_variant_id" t-value="in_wish or product._get_first_possible_variant_id()"/>
+                        <button t-if="product_variant_id"
+                                type="button"
+                                role="button"
+                                class="as-pc-btn as-pc-wishlist o_add_wishlist"
+                                t-att-disabled='in_wish or None' title="Add to Wishlist"
+                                t-att-data-product-template-id="product.id"
+                                t-att-data-product-product-id="product_variant_id"
+                                data-action="o_wishlist">
+                            <span class="asi asi-heart" role="img" aria-label="Add to wishlist"/>
+                        </button>
+                    </t>
+                </t>
+                <div class="as-product-card-cart">
+                    <t t-if="configuration.get('allow_add_to_cart') and not (request.env.user._is_public() and request.website.active_b2b_mode)">
+                        <t t-set="product_variant_id" t-value="product._get_first_possible_variant_id()"/>
+                        <input name="product_id" t-att-value="product_variant_id" type="hidden"/>
+                        <input name="product_template_id" t-att-value="product.id" type="hidden"/>
+                        <t t-if="product.sudo().allow_out_of_stock_order" >
+                            <a id="add_to_cart" t-attf-class="{{'d-none' if combination_info['prevent_zero_price_sale'] else 'as-pc-cart-btn'}}"
+                            href="#" role="button" class="btn btn-primary a-submit" aria-label="Shopping cart" title="Shopping cart">
+                                <i class="asi asi-shopping-cart"/> <span>ADD TO CART</span>
+                            </a>
+                        </t>
+                    </t>
+                    <t t-elif="request.env.user._is_public() and request.website.active_b2b_mode">
+                        <a role="button" href="/web/login" t-attf-class="as-pc-btn as-pc-cart-btn #{'as_login_popup' if request.website.active_login_popup else ''}" title="Login For Price">
+                            <i class="fa fa-lock"/> <span>Login For Price</span>
+                        </a>
+                    </t>
+                </div>
+            </div>
+
+            <div class="as-product-card-body">
+                <div class="as-product-card-action">
+                    <!-- Rating -->
+                    <div t-if="configuration.get('allow_rating')" class="as-pc-rating">
+                        <t t-call="theme_alan.as_rating_template">
+                            <t t-set="product" t-value="product"/>
+                        </t>
+                    </div>
+                    <div class="ms-auto">
+                        <t t-if="configuration.get('allow_compare')">
+                            <t t-set="categories" t-value="product.valid_product_template_attribute_line_ids._prepare_categories_for_display()"/>
+                            <t t-set="product_variant_id" t-value="product._get_first_possible_variant_id()"/>
+                            <button
+                                t-if="product_variant_id and categories"
+                                type="button"
+                                role="button"
+                                class="as-pc-btn as-pc-compare o_add_compare"
+                                title="Compare"
+                                aria-label="Compare"
+                                t-att-data-product-product-id="product_variant_id"
+                                data-action="o_comparelist"
+                            >
+                                <span class="asi asi-repeat"/>
+                            </button>
+                        </t>
+                        <a t-if="configuration.get('allow_quick_view')" href="#" role="button" class="as-pc-btn as-pc-quick-view as_quick_view" t-att-data-product_tmpl_id="product.id" title="Quick View">
+                            <span class="asi asi-eye"/>
+                        </a>
+                    </div>
+                </div>
+
+                <div t-if="configuration.get('allow_brand_info')" class="as-pc-brand">
+                    <t t-call="theme_alan.product_brand"/>
+                </div>
+
+                <div class="as-pc-title">
+                    <a t-attf-href="/shop/{{slug(product.sudo())}}" t-esc="product.name" />
+                </div>
+
+                <div t-if="not (request.env.user._is_public() and request.website.active_b2b_mode)" class="as-price as-pc-price" >
+                    <span t-esc="combination_info['price']"
+                        class="fw-bold"
+                        name="product_price"
+                        t-options="{'widget': 'monetary', 'display_currency': website.currency_id}"/>
+                    <del t-if="combination_info.get('has_discounted_price')" class="text-danger ms-1 h6" style="white-space: nowrap;"
+                        t-esc="combination_info['list_price']"
+                        t-options="{'widget': 'monetary', 'display_currency': website.currency_id}"/>
+                </div>
+
+                <!-- Color Variant -->
+                <div t-if="product.have_color_attribute and configuration.get('allow_color_variant')" class="as-color-variant as-pc-colors">
+                    <ul>
+                        <t t-foreach="product.get_variant_color_images()" t-as="vc">
+                            <li>
+                                <label t-att-data-product_tmpl_id="product.id"  class="as_color_variant_img p-3" t-attf-style="background-image: url({{vc}}); background-size: cover;">
+                                    <span t-att-data-color-image="vc" />
+                                </label>
+                            </li>
+                        </t>
+                    </ul>
+                </div>
+
+                <!-- Offer Timer -->
+                <div t-if="configuration.get('allow_offer_time')" class="as-offer-time as-pc-timer">
+                    <t t-call="theme_alan.as_offer_timer"/>
+                </div>
+
+                <!-- Stock Info -->
+                <div t-if="configuration.get('allow_stock_info')" id="out_of_stock_message" class="as-pc-message">
+                    <t t-call="theme_alan.as_out_of_stock">
+                        <t t-set="product" t-value="product"/>
+                    </t>
+                </div>
+            </div>
+        </form>
+    </div>
+</template>
+
+
+</odoo>

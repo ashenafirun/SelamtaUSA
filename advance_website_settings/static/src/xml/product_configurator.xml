@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xml:space="preserve">
+    <t t-name="advance_website_settings.ProductConfigurator" t-inherit="sale.ProductConfiguratorDialog" t-inherit-mode="extension">
+        <!-- <xpath xpath="//button[@name='website_sale_product_configurator_checkout_button']" position="attributes">
+            <attribute name="class" add="o_sale_product_configurator_edit" separator=" "/>
+        </xpath> -->
+        <button name="website_sale_product_configurator_checkout_button" position="attributes">
+            <attribute name="class" add="o_sale_product_configurator_edit" separator=" "/>
+        </button>
+    </t>
+    </templates>

@@ -1,0 +1,58 @@
+# -*- coding: utf-8 -*-
+{
+    'name': 'Atharva Theme Base',
+    'category': 'Base',
+    'summary': 'Atharva E-commerce themes Base module',
+    'version': '1.2',
+    'license': 'OPL-1',
+    'author': 'Atharva System',
+	'support': 'support@atharvasystem.com',
+    'website' : 'https://www.atharvasystem.com',
+	'description': """Atharva E-commerce themes Base module""",
+    'depends': [
+        'website_sale',
+        'website_sale_wishlist',
+        'website_sale_comparison',
+        'website_blog',
+        'stock',
+        'crm',
+        'sale',
+        'delivery',
+        'website_sale_loyalty',
+    ],
+    'data': [
+        'security/ir.model.access.csv',
+        'data/ppg_data.xml',
+        'views/admin/ppg_views.xml',
+        'views/admin/product_config.xml',
+        'views/admin/product_label.xml',
+        'views/admin/brand_views.xml',
+        'views/admin/product_faqs.xml',
+        'views/admin/attribute_views.xml',
+        'views/admin/pricelist.xml',
+        'views/admin/product_queries.xml',
+        'views/admin/product_info.xml',
+        'views/admin/menu_tag.xml',
+        'views/megamenu/megamenu.xml',
+        'views/megamenu/template.xml',
+        'views/megamenu/advance_megamenu.xml',
+    ],
+    'assets': {
+        'web.assets_frontend': [
+            '/atharva_theme_base/static/bundles/swiper/swiper-bundle.min.js',
+            '/atharva_theme_base/static/bundles/swiper/swiper-bundle.min.scss',
+        ],
+        'website.assets_wysiwyg': [
+            '/atharva_theme_base/static/bundles/select2/select2.js',
+            '/atharva_theme_base/static/bundles/select2/select2.css',
+            '/atharva_theme_base/static/bundles/swiper/swiper-bundle.min.js',
+            '/atharva_theme_base/static/bundles/swiper/swiper-bundle.min.scss',
+            '/atharva_theme_base/static/bundles/sortable/jquery-sortable.js',
+         ]
+    },
+    'price': 6.00,
+    'images': ['static/description/as-theme-base.png'],
+    'currency': 'EUR',
+    'installable': True,
+    'application': True
+}

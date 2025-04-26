@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="theme_alan.frame_builder">
+        <div class="row g-3" t-ref="main_row">
+            <div class="as-build-frame d-none">
+                <div class="as-sb-no-frame-found">
+                    <div class="as-sb-no-media">
+                        <img src="/theme_alan/static/src/img/frame_selection.svg" />
+                    </div>
+                    <h4>No frame has been added yet.</h4>
+                    <div class="as-sb-no-btn" t-on-click="AddFrame"><span>Click to Add a Frame</span></div>
+                </div>
+            </div>
+            <div class="col col-12 as_col as-snippet-drop-container" t-on-click="handleclick">
+                <div class="container static-container"></div>
+                <div class="as-sb-drop-action">
+                        <!-- Row Resizer -->
+                        <div class="as-sb-drop-btn dropdown show">
+                            <a class="as-sb-d-icon dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fa fa-arrows-h"/>
+                            </a>
+                            <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
+                                <div class="as-sb-col-select">
+                                    <t t-foreach="['lg-1','lg-2','lg-3','lg-4','lg-5','lg-6','lg-7','lg-8','lg-9','lg-10','lg-11','lg-12']" t-as="num" t-key="num">
+                                        <span class="as_col_select dropdown-item" t-attf-data-row="col-{{num}}" t-esc="num.replace('lg-', '')" t-on-click="resize"/>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Col Adders -->
+                        <div class="as-sb-drop-btn add_col" t-on-click="add_col">
+                            <a class="as-sb-d-icon" >
+                                <i class="fa fa-plus-circle"></i>
+                            </a>
+                        </div>
+                        <!-- Col Position -->
+                        <div class="as-sb-drop-btn pos_cols">
+                            <a class="as-sb-d-icon pos_col" t-on-click="change_col_pos" data-cp="left">
+                                <i class="fa fa-arrow-left" data-cp="left"></i>
+                            </a>
+
+                            <a class="as-sb-d-icon pos_col" t-on-click="change_col_pos" data-cp="right">
+                                <i class="fa fa-arrow-right" data-cp="right"></i>
+                            </a>
+                        </div>
+                        <!-- Col Delete -->
+                        <div class="as-sb-drop-btn delete_col" t-on-click="delete_col">
+                            <a class="as-sb-d-icon as-sb-d-icon-x" >
+                                <i class="fa fa-trash"></i>
+                            </a>
+                        </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>

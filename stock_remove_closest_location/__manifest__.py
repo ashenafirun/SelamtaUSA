@@ -9,7 +9,7 @@
 {
     # App information
     'name': "Stock Remove Closet Locaition",
-    'version': '15.0.1.0',
+    'version': '18.0.1.0',
     'category': 'Inventory/Inventory',
     'summary': "Stock related customizations",
     'description': "Show users to pick items according to the removal sequence on normal inventory transfer.",
@@ -21,16 +21,18 @@
     'license': "Other proprietary",
 
     # Dependencies
-    'depends': [
-        'sale_stock'
-    ],
-
+    'depends': ['stock_barcode','stock','sale'],
     # Views
     'data': [
         'views/stock_location_views.xml',
         'views/stock_picking_type_views.xml',
         'views/stock_move_line_views.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'stock_remove_closest_location/static/src/**/*.js',
+        ]
+    },
 
     # Module Specific
     'application': False,

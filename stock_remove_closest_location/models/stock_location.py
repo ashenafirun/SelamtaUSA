@@ -26,3 +26,7 @@ class Location(models.Model):
             domain = ['|', ('barcode', operator, name), ('complete_name', operator, name)]
         return self._search(expression.AND([domain, args]), limit=limit, access_rights_uid=name_get_uid,
                             order='removal_sequence asc')
+
+    @api.model
+    def _get_fields_stock_barcode(self):
+        return ['barcode', 'display_name', 'name', 'parent_path', 'usage', 'removal_sequence']

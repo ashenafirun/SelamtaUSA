@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="as_snippet_builder" name="Alan Snippet Builder">
+        <section class="as-snippet-builder" data-as-snippet="as_dynamic_snippets">
+            <div class="container text-center">
+                <h2> Alan Dynamic Snippets</h2>
+            </div>
+        </section>
+    </template>
+
+    <template id="snippet_options" inherit_id="website.snippet_options">
+        <xpath expr="." position="inside">
+            <div data-js="SnippetBuilderOption"
+                data-selector=".as-snippet-builder">
+                <we-checkbox string="Alan Snippet Editor" data-select-class="as_static_menu" />
+                <we-row string="Open Builder">
+                    <we-button class="fa fa-fw fa-pencil-square-o as_snippet_open_preview"
+                    data-no-preview="true" title="Open Builder"/>
+                </we-row>
+            </div>
+        </xpath>
+    </template>
+
+</odoo>

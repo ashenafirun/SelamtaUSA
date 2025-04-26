@@ -21,11 +21,11 @@ class ProductBackToStock(models.Model):
 
         notified = self.env['product.back.to.stock']
 
-        tmpl = self.env.ref("out_of_stock_notification.availability_email_body_stock_back")
+        # tmpl = self.env.ref("out_of_stock_notification.availability_email_body_stock_back")
         for rec in to_notify:
             product = rec.product_id
             if not product._is_sold_out():
-                body_html = tmpl._render({"wishlist": rec, "company": self.env.company})
+                body_html = self.env['ir.qweb']._render("out_of_stock_notification.availability_email_body_stock_back" ,{"wishlist": rec, "company": self.env.company})
                 msg = self.env["mail.message"].sudo().new(dict(body=body_html, record_name=product.name))
                 full_mail = self.env["mail.render.mixin"]._render_encapsulate(
                     "mail.mail_notification_light",

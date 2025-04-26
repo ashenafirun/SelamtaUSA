@@ -18,7 +18,7 @@
             <xpath expr="//field[@name='location_id']" position="after">
                 <field name="removal_sequence" optional="hide"/>
             </xpath>
-            <xpath expr="//tree" position="attributes">
+            <xpath expr="//list" position="attributes">
                 <attribute name="default_order">removal_sequence asc</attribute>
             </xpath>
         </field>

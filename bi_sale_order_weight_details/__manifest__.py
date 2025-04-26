@@ -3,7 +3,7 @@
 
 {
     'name': 'Sale Order Weight Details',
-    'version': '15.0.0.0',
+    'version': '18.0.0.0',
     'category': 'Sales',
     'summary': 'All in One Total Weight on Sale Order Weight on purchase order weight on delivery Total Weight on Sales Total Weight on purchase Total weight on delivery Calculate weight on sales calculate weight on delivery weight product weight all in one product weight',
     'description': """
@@ -17,10 +17,10 @@
           Product Weight Details on Tree view in odoo,
 
     """,
-    'author': 'BrowseInfo',
+    'author': 'BROWSEINFO',
     "price": 8,
     "currency": 'EUR',
-    'website': 'https://www.browseinfo.in',
+    'website': "https://www.browseinfo.com/demo-request?app=bi_sale_order_weight_details&version=18&edition=Community",
     'depends': ['sale_management', 'stock'],
     'data': [
         'report/sale_order_report.xml',
@@ -31,6 +31,6 @@
     'license': 'OPL-1',
     'installable': True,
     'auto_install': False,
-    'live_test_url':'https://youtu.be/4orkZwCgdsU',
-    "images":['static/description/Banner.png'],
+    'live_test_url':'https://www.browseinfo.com/demo-request?app=bi_sale_order_weight_details&version=18&edition=Community',
+    "images":['static/description/Banner.gif'],
 }

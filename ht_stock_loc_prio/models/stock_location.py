@@ -223,7 +223,7 @@ class StockLocationProductQuantitySet(models.Model):
 class StockPiking(models.Model):
     _inherit = "stock.picking"
 
-    @api.model
+    @api.model_create_multi
     def create(self,vals):
         res = super(StockPiking,self).create(vals)       
         if res.origin:           

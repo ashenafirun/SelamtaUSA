@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="theme_alan.LoginPopup">
+        <div class="o_dialog">
+            <div role="dialog" t-attf-class="modal d-block as-login-modal" tabindex="-1">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <button type="button" class="btn-close" t-on-click="() => this.props.close()" aria-label="Close"></button>
+                        <div class="modal-body as-login-popup">                            
+                            <div class="as_choose_login d-none">
+                                <t t-if="state.users.length">
+                                    <t t-if="state.displayUserChoice">
+                                        <div class="oe_login_form o_user_switch user-select-none my-4" t-ref="root">
+                                            <p>Choose a user</p>
+                                            <div class="list-group my-3">
+                                                <t t-foreach="state.users" t-as="user" t-key="user">
+                                                    <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" t-on-click="() => this.fillForm(user.login)">
+                                                        <span class="d-flex justify-content-begin align-items-center">
+                                                            <img class="o_avatar o_user_avatar rounded me-2" t-attf-src="{{getAvatarUrl(user)}}" t-att-alt="user.login"/>
+                                                            <t t-esc="user.name" />
+                                                        </span>
+                                                        <i class="fa fa-times" title="Remove user from switcher" t-on-click.stop="() => this.remove(user)"/>
+                                                    </button>
+                                                </t>
+                                            </div>
+                                            <button type="button" class="btn btn-link btn-sm w-100" t-on-click="() => this.fillForm()">
+                                                <i class="fa fa-user-circle-o"/> <span class="ms-1">Use another user</span>
+                                            </button>
+                                        </div>
+                                    </t>
+                                    <t t-else="" t-portal="'label.form-label'">
+                                        <button type="button" class="o_user_switch_btn btn btn-sm btn-link m-0 p-0" tabindex="1" t-on-click="() => this.toggleFormDisplay()">
+                                            Choose a user
+                                        </button>
+                                    </t>
+                                </t>
+                            </div>
+                            <div t-attf-class="as_login_popup_form">
+                                <ul class="nav nav-tabs" id="myTab" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="as-login" data-bs-toggle="tab" data-bs-target="#as-login-tab" type="button" role="tab" aria-controls="Login" aria-selected="true">Login</button>
+                                    </li>
+                                    <li t-if="props.signup_enabled" class="nav-item" role="presentation">
+                                        <button class="nav-link" id="as-signup" data-bs-toggle="tab" data-bs-target="#as-signup-tab" type="button" role="tab" aria-controls="Signup" aria-selected="false">SignUp</button>
+                                    </li>
+                                </ul>
+                                <div class="as-login-logo text-center">
+                                    <img t-attf-src="{{props.website_logo}}" />
+                                </div>
+                                <div class="tab-content">
+                                    <div class="tab-pane fade show active" id="as-login-tab" role="tabpanel" aria-labelledby="as-login">
+                                        <form class="oe_login_form" role="form" t-attf-action="/web/login" method="post" onsubmit="this.action = '/web/login' + location.hash">
+                                            <input type="hidden" name="csrf_token" t-att-value="props.csrf_token"/>
+                                            <div class="form-group field-login">
+                                                <label for="login">Email
+                                                    <t t-if="state.users.length and state.displayUserChoice">
+                                                        <button type="button" class="o_user_switch_btn btn btn-sm btn-link m-0 p-0" tabindex="1" t-on-click="() => this.toggleFormDisplay()">
+                                                            Choose a user
+                                                        </button>
+                                                    </t>
+                                                </label>
+                                                <input type="text" placeholder="Email" class="form-control form-control-sm" name="login" id="login" required="required" />
+                                            </div>
+                                            <div class="form-group field-password">
+                                                <label for="password">Password <a t-if="props.reset_password_enabled" class="btn btn-link btn-sm" tabindex="1" t-attf-href="/web/reset_password">Reset Password</a></label>
+                                                <input type="password" placeholder="Password" class="form-control form-control-sm" name="password" id="password" required="required" autocomplete="current-password"  maxlength="4096"/>
+                                            </div>
+                                            <p class="alert alert-danger" id="errormsg" role="alert" style="display:none"></p>
+                                            <div t-attf-class="clearfix oe_login_buttons text-center mb-1">
+                                                <button class="btn btn-primary btn-block loginbtn as-btn" t-on-click="(ev) => this.checkAuthentication(ev)">Log in</button>
+                                                <div class="o_login_auth">
+                                                    <t t-if="props.providers.length &gt; 0">
+                                                        <em t-attf-class="d-block text-center text-muted small">- or -</em>
+                                                        <div class="o_auth_oauth_providers list-group mt-1 mb-1 text-start">
+                                                            <a t-foreach="props.providers" t-as="p" t-key="p.id" class="list-group-item list-group-item-action py-2" t-att-href="p['auth_link']">
+                                                                <i t-att-class="p['css_class']"/>
+                                                                <t t-esc="p['body']"/>
+                                                            </a>
+                                                        </div>
+                                                    </t>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                    <div  class="tab-pane fade" id="as-signup-tab" role="tabpanel" aria-labelledby="as-signup">
+                                        <form class="oe_signup_form" role="form" method="post">
+                                            <input type="hidden" name="csrf_token" t-att-value="props.csrf_token"/>
+                                            <div class="form-group field-login">
+                                                <label for="login">Your Email</label>
+                                                <input type="text" name="login" id="logins" class="form-control form-control-sm" required="required"/>
+                                            </div>
+                                            <div class="form-group field-name">
+                                                <label for="name">Your Name</label>
+                                                <input type="text" name="name" id="names" class="form-control form-control-sm" placeholder="e.g. John Doe"
+                                                    required="required"/>
+                                            </div>
+                                            <div class="form-group field-password pt-2">
+                                                <label for="password">Password</label>
+                                                <input type="password" name="password" id="passwords" class="form-control form-control-sm"
+                                                    required="required"/>
+                                            </div>
+                                            <div class="form-group field-confirm_password">
+                                                <label for="confirm_password">Confirm Password</label>
+                                                <input type="password" name="confirm_password" id="confirm_passwords" class="form-control form-control-sm" required="required"/>
+                                            </div>
+                                            <p class="alert alert-danger" id="errors" style="display:none;" ></p>
+                                            <div class="text-center oe_login_buttons pt-3">
+                                                <a href="#" class="btn btn-link btn-sm haveAccount" t-on-click="() => this.backToLogin()">Already have an account?</a>
+                                                <button class="btn btn-primary btn-block signupbtn as-btn" t-on-click="(ev) => this.userSignup(ev)">Sign up</button>
+                                                <div class="o_login_auth">
+                                                    <t t-if="props.providers.length &gt; 0">
+                                                        <em t-attf-class="d-block text-center text-muted small">- or -</em>
+                                                        <div class="o_auth_oauth_providers list-group mt-1 mb-1 text-start">
+                                                            <a t-foreach="props.providers" t-as="p" t-key="p.id" class="list-group-item list-group-item-action py-2" t-att-href="p['auth_link']">
+                                                                <i t-att-class="p['css_class']"/>
+                                                                <t t-esc="p['body']"/>
+                                                            </a>
+                                                        </div>
+                                                    </t>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>

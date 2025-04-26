@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+
+advance_website_settings_admin,admin_advance_website_settings,model_advance_website_settings,base.group_user,1,1,1,1
+advance_website_product_template,admin_advance_product_template,model_product_template,base.group_user,1,1,1,1

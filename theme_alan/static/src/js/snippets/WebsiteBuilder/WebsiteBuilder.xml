@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="theme_alan.website_builder">
+        <Dialog size="'fullscreen'" title="'Alan Website Builder'" bodyClass="'as_website_builder'">
+            <div class="snippets_collection" id="builder">
+                <div class="edit-snippet-builder-box">
+                    <div class="row">
+                        <div class="col-md-3 e-sb-tab-col">
+                            <ul class="e-sb-tab">
+                                <t t-foreach="Object.entries(this.props.tabs)" t-as="tab" t-key="tab[0]">
+                                    <li>
+                                        <label t-att-data-tag="tab[0]" t-att-class="{'e-sb-active': tab[0] === 'e_slider'}" t-on-click="(ev) => this.activeTab(ev, tab[0])">
+                                            <t t-esc="tab[1]"/>
+                                        </label>
+                                    </li>
+                                </t>
+                            </ul>
+                        </div>
+                        <div class="col-md-9 e-sb-tab-wrap">
+                            <div class="e-sb-tab-content">
+                                <!-- Slider tab -->
+                                <div id="e_slider" class="e-sb-tab--content">
+                                    <div class="row g-3 row-cols row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5">
+                                        <t t-set="temp_range" t-value="[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46]"/>
+                                        <t t-foreach="temp_range" t-as="number" t-key="number">
+                                            <t t-call="theme_alan.slider_temp{{number}}"/>
+                                        </t>
+
+                                    </div>
+                                </div>
+
+                                <!-- Banner tab -->
+                                <div id="e_banner" class="e-sb-tab--content d-none">
+                                    <div class="row g-3 row-cols row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5">
+                                        <t t-set="temp_range" t-value="[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]"/>
+                                        <t t-foreach="temp_range" t-as="number" t-key="number">
+                                            <t t-call="theme_alan.banner_temp{{number}}"/>
+                                        </t>
+                                    </div>
+                                </div>
+
+                                <!-- About tab -->
+                                <div id="e_about" class="e-sb-tab--content d-none">
+                                    <div class="row g-3 row-cols row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5">
+                                        <t t-set="temp_range" t-value="[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+                                         21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45,
+                                          46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58 , 59]"/>
+                                        <t t-foreach="temp_range" t-as="number" t-key="number">
+                                            <t t-call="theme_alan.about_temp{{number}}"/>
+                                        </t>
+                                    </div>
+                                </div>
+
+                                <!-- Title tab -->
+                                <div id="e_title_style" class="e-sb-tab--content d-none">
+                                    <div class="row g-3 row-cols row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5">
+                                        <t t-set="temp_range" t-value="[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"/>
+                                        <t t-foreach="temp_range" t-as="number" t-key="number">
+                                            <t t-call="theme_alan.title_{{number}}"/>
+                                        </t>
+                                    </div>
+                                </div>
+
+                                <!-- Call To Action tab -->
+                                <div id="e_cta" class="e-sb-tab--content d-none">
+                                    <div class="row g-3 row-cols row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5">
+                                        <t t-set="temp_range" t-value="[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+                                         17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28 , 29 , 30]"/>
+                                        <t t-foreach="temp_range" t-as="number" t-key="number">
+                                            <t t-call="theme_alan.cta_temp{{number}}"/>
+                                        </t>
+                                    </div>
+                                </div>
+
+                                <!-- Category tab -->
+                                <div id="e_category" class="e-sb-tab--content d-none">
+                                    <div class="row g-3 row-cols row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5">
+                                        <t t-set="temp_range" t-value="[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]"/>
+                                        <t t-foreach="temp_range" t-as="number" t-key="number">
+                                            <t t-call="theme_alan.category_temp{{number}}"/>
+                                        </t>
+                                    </div>
+                                </div>
+
+                                <!-- Client tab -->
+                                <div id="e_our_client" class="e-sb-tab--content d-none">
+                                    <div class="row g-3 row-cols row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5">
+                                        <!-- col -->
+                                        <t t-call="theme_alan.our_client_temp1"/>
+                                        <!-- end col -->
+
+                                        <!-- col -->
+                                        <t t-call="theme_alan.our_client_temp2"/>
+                                        <!-- end col -->
+                                    </div>
+                                </div>
+
+                                <!-- Collection tab -->
+                                <div id="e_collection" class="e-sb-tab--content d-none">
+                                    <div class="row g-3 row-cols row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5">
+                                        <t t-set="temp_range" t-value="[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 , 14]"/>
+                                        <t t-foreach="temp_range" t-as="number" t-key="number">
+                                            <t t-call="theme_alan.collection_temp{{number}}"/>
+                                        </t>
+                                    </div>
+                                </div>
+
+                                <!-- Contact Us tab -->
+                                <div id="e_contact_us" class="e-sb-tab--content d-none">
+                                    <div class="row g-3 row-cols row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5">
+                                        <!-- col -->
+                                        <t t-call="theme_alan.cont_us_temp1"/>
+                                        <!-- end col -->
+
+                                        <!-- col -->
+                                        <t t-call="theme_alan.cont_us_temp2"/>
+                                        <!-- end col -->
+
+                                        <!-- col -->
+                                        <t t-call="theme_alan.cont_us_temp3"/>
+                                        <!-- end col -->
+                                    </div>
+                                </div>
+
+                                <!-- Features tab -->
+                                <div id="e_features" class="e-sb-tab--content d-none">
+                                    <div class="row g-3 row-cols row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5">
+                                        <t t-set="temp_range" t-value="[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,29]"/>
+                                        <t t-foreach="temp_range" t-as="number" t-key="number">
+                                            <t t-call="theme_alan.feature_temp{{number}}"/>
+                                        </t>
+                                    </div>
+                                </div>
+
+                                <!-- Our Team tab -->
+                                <div id="e_our_team" class="e-sb-tab--content d-none">
+                                    <div class="row g-3 row-cols row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5">
+                                        <t t-set="temp_range" t-value="[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]"/>
+                                        <t t-foreach="temp_range" t-as="number" t-key="number">
+                                            <t t-call="theme_alan.our_team_temp{{number}}"/>
+                                        </t>
+                                    </div>
+                                </div>
+
+                                <!-- POrtfolio tab -->
+                                <div id="e_portfolio" class="e-sb-tab--content d-none">
+                                    <div class="row g-3 row-cols row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5">
+                                        <!-- col -->
+                                        <t t-call="theme_alan.portfolio_temp_1"/>
+                                        <!-- end col -->
+
+                                        <!-- col -->
+                                        <t t-call="theme_alan.portfolio_temp_2"/>
+                                        <!-- end col -->
+
+                                        <!-- col -->
+                                        <t t-call="theme_alan.portfolio_temp_3"/>
+                                        <!-- end col -->
+
+                                        <!-- col -->
+                                        <t t-call="theme_alan.portfolio_temp_4"/>
+                                        <!-- end col -->
+                                    </div>
+                                </div>
+
+                                <!-- Price Table tab -->
+                                <div id="e_price_table" class="e-sb-tab--content d-none">
+                                    <div class="row g-3 row-cols row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5">
+                                        <!-- col -->
+                                        <t t-call="theme_alab.price_table_temp1"/>
+                                        <!-- end col -->
+
+                                        <!-- col -->
+                                        <t t-call="theme_alab.price_table_temp2"/>
+                                        <!-- end col -->
+
+                                        <!-- col -->
+                                        <t t-call="theme_alab.price_table_temp3"/>
+                                        <!-- end col -->
+
+                                        <!-- col -->
+                                        <t t-call="theme_alab.price_table_temp4"/>
+                                        <!-- end col -->
+                                    </div>
+                                </div>
+
+                                <!-- Promotion tab -->
+                                <div id="e_promotion" class="e-sb-tab--content d-none">
+                                    <div class="row g-3 row-cols row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5">
+                                        <t t-set="temp_range" t-value="[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]"/>
+                                        <t t-foreach="temp_range" t-as="number" t-key="number">
+                                            <t t-call="theme_alan.pro_temp{{number}}"/>
+                                        </t>
+                                    </div>
+                                </div>
+
+                                <!-- Services tab -->
+                                <div id="e_services" class="e-sb-tab--content d-none">
+                                    <div class="row g-3 row-cols row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5">
+                                        <t t-set="temp_range" t-value="[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]"/>
+                                        <t t-foreach="temp_range" t-as="number" t-key="number">
+                                            <t t-call="theme_alan.service_temp{{number}}"/>
+                                        </t>
+                                    </div>
+                                </div>
+
+                                <!-- Shop Banner tab -->
+                                <div id="e_shop_banner" class="e-sb-tab--content d-none">
+                                    <div class="row g-3 row-cols row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5">
+                                        <t t-set="temp_range" t-value="[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+                                         17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41,
+                                          42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58 , 59 , 60]"/>
+                                        <t t-foreach="temp_range" t-as="number" t-key="number">
+                                            <t t-call="theme_alan.shop_banner_temp{{number}}"/>
+                                        </t>
+                                    </div>
+                                </div>
+
+                                <!-- Testimonial tab -->
+                                <div id="e_testimonial" class="e-sb-tab--content d-none">
+                                    <div class="row g-3 row-cols row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5">
+                                        <t t-set="temp_range" t-value="[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 ,19]"/>
+                                        <t t-foreach="temp_range" t-as="number" t-key="number">
+                                            <t t-call="theme_alan.testimonial_temp{{number}}"/>
+                                        </t>
+                                    </div>
+                                </div>
+                                
+                                <!-- Video Popup tab -->
+                                <div id="e_video_popup" class="e-sb-tab--content d-none">
+                                    <div class="row g-3 row-cols row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5">
+                                        <!-- col -->
+                                        <t t-call="theme_alan.video_temp1"/>
+                                        <!-- end col -->
+                                        <!-- col -->
+                                        <t t-call="theme_alan.video_temp2"/>
+                                        <!-- end col -->
+                                        <!-- col -->
+                                        <t t-call="theme_alan.video_temp3"/>
+                                        <!-- end col -->
+                                    </div>
+                                </div>
+
+                                <!-- Subscribe Newsletter tab -->
+                                <div id="e_subscribe_newsletter" class="e-sb-tab--content d-none">
+                                    <div class="row g-3 row-cols row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5">
+                                        <t t-set="temp_range" t-value="[1, 2, 3, 4, 5, 6, 7]"/>
+                                        <t t-foreach="temp_range" t-as="number" t-key="number">
+                                            <t t-call="theme_alan.subscribe_temp{{number}}"/>
+                                        </t>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <t t-set-slot="footer">
+                <button class="btn btn-primary e-sb-btn" t-on-click="_confirm">Save</button>
+                <button class="btn btn-secondary e-sb-btn" t-on-click="() => this.props.close()">Discard</button>
+            </t>
+        </Dialog>
+    </t>
+</templates>

@@ -10,12 +10,12 @@
  -->
 <odoo>
     <!-- Adds "Remove From Closet Location?" field to Operation Types form-view -->
-    <record id="view_picking_type_form_inherit_stock_extended" model="ir.ui.view">
+    <record id="view_picking_type_form_inherit_stock_remove_closet" model="ir.ui.view">
         <field name="name">Operation Types</field>
         <field name="model">stock.picking.type</field>
         <field name="inherit_id" ref="stock.view_picking_type_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='show_operations']" position="after">
+            <xpath expr="//field[@name='return_picking_type_id']" position="after">
                 <field name="is_remove_closet_location"/>
             </xpath>
         </field>

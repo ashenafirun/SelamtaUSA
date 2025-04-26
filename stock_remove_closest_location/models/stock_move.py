@@ -12,11 +12,12 @@ from odoo import models, fields
 class StockMove(models.Model):
     _inherit = "stock.move"
 
-    def _action_assign(self):
-        return super(StockMove, self.with_context(move=self))._action_assign()
+    def _action_assign(self,force_qty=False):
+        return super(StockMove, self.with_context(move=self))._action_assign(force_qty=force_qty)
 
 
 class StockMoveLine(models.Model):
     _inherit = "stock.move.line"
 
     removal_sequence = fields.Integer(related="location_id.removal_sequence", store=True)
+    removal_sequence_display_name = fields.Char(related="location_id.display_name", store=True)

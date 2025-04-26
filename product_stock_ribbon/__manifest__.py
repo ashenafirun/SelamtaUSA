@@ -1,8 +1,8 @@
 {
     "name": "Shop Page Product Ribbon",
     "category": "Website",
-    "version": "15.0.1",
-    "depends": ['theme_alan', 'website_sale_stock'],
+    "version": "18.0.0.1",
+    "depends": ['website_sale_stock'],
     "data": [
         'views/shop_page.xml',
     ],

@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+# Part of BrowseInfo. See LICENSE file for full copyright and licensing details.
+
 from odoo import fields, models, api, _
 
 
@@ -5,10 +8,10 @@ class SaleOrderLine(models.Model):
     _inherit = "sale.order.line"
 
     p_weight = fields.Float(string="Weight(kg)", related='product_id.weight')
-    p_volume = fields.Float(string="Volume(ft³)", related='product_id.volume')
+    p_volume = fields.Float(string="Volume(m³)", related='product_id.volume')
 
     weight = fields.Float(string="Total Weight(kg)", compute="_compute_weight", store=True)
-    volume = fields.Float(string="Total Volume(ft³)", compute="_compute_volume", store=True)
+    volume = fields.Float(string="Total Volume(m³)", compute="_compute_volume", store=True)
 
     @api.onchange('product_id', 'product_uom_qty')
     def onchange_product_weight(self):
@@ -44,7 +47,7 @@ class SaleOrderLine(models.Model):
 class SaleOrder(models.Model):
     _inherit = "sale.order"
 
-    total_volume = fields.Float(string="Total Volume(ft³)", readonly=True, compute='_compute_total_volume')
+    total_volume = fields.Float(string="Total Volume(m³)", readonly=True, compute='_compute_total_volume')
     total_weight = fields.Float(string="Total Weight(kg)", readonly=True, compute='_compute_total_weight')
     weight_unit = fields.Char(string="kg", readonly=True)
     volume_unit = fields.Char(string="m³", readonly=True)

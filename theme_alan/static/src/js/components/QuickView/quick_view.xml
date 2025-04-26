@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Quick View Dialog Template-->
+    <t t-name="theme_alan.QuickView">
+        <Dialog size="'lg'" title="''" header="false" footer="false" bodyClass="'as-quick-view-modal as-product-details-common'">
+            <button type="button" class="btn-close" t-on-click="() => this.props.close()" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div t-if="this.state.products.length" class="js_sale as-quick-view-js-sale">
+                <t t-foreach="this.state.products" t-as="product" t-key="product.product_tmpl_id">
+                    <AlanProductBlock t-props="product" configuratordialog="this.props"/>
+                </t>
+            </div>
+        </Dialog>
+    </t>
+
+    <t t-name="theme_alan.AlanProductBlock">
+        <div class="quick-view-detail" t-on-pointerenter="onPointerTimer">
+            <div class="row align-items-start">
+                <!-- Image -->
+                <div class="col-lg-6 sticky-lg-top">
+                    <div class="as-quick-media">
+                        <img t-att-src="quickViewImageUrl" alt="Product Image"/>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="as-quick-info">
+                        <!-- Name -->
+                        <div class="h1" t-out="props.display_name"/>
+                        <!-- Rating -->
+                        <div class="rating"><t t-out="state.rating_template"/></div>
+                        <!-- Sale Description -->
+                        <div
+                            t-if="props.description_sale"
+                            t-out="props.description_sale"
+                            class="as-qv-desc"
+                        />
+                        <!--  Price -->
+                        <div t-if="env.showQuantityAndPrice and (! state.active_b2b_mode)" class="as-qv-price">
+                            <t>
+                                <t t-call="website_sale.strikethrough_product_price"/>
+                                <t t-call="sale.product_price"/>
+                            </t>
+                        </div>
+                        <!-- Offer Timer -->
+                        <div t-ref="offerTimerRef"  class="as-product-offer-time" t-if="state.offer_timing and state.active_offer_timer">
+                            <div t-attf-class="as_offer_timer" t-att-data-offer="state.offer_timing"></div>
+                        </div>
+                        <!-- Sale Count-->
+                        <div class="as-month-sale-count">
+                            <span t-if="state.sale_count"><b><t t-esc="state.sale_count"/></b> sold in last month</span>
+                        </div>
+                        <!-- Bulk Save -->
+                        <div class="as-bulk-table"><t t-out="state.bulk_save_view"/></div>
+                        <!-- Attributes -->
+                        <ul class="as-qv-variants list-unstyled mb-0 flex-column">
+                            <t t-foreach="this.props.attribute_lines" t-as="ptal" t-key="ptal.id">
+                                <AlanProductAttributeLine
+                                    t-if="shouldShowPtal(ptal)"
+                                    t-props="ptal"
+                                    productTmplId="this.props.product_tmpl_id"
+                                />
+                            </t>
+                        </ul>
+                        <div t-if="!this.env.isPossibleCombination(this.props)" class="alert alert-warning mt-3">
+                            <span>This option or combination of options is not available</span>
+                        </div>
+
+                        <div class="as-qv-cta-wrapper">
+                            <!-- Quantity Buttons -->
+                            <QuantityButtons
+                                t-if="this.props.can_be_sold and !isOutOfStock() and ! state.active_b2b_mode and this.env.isPossibleCombination(this.props)"
+                                quantity="this.props.quantity"
+                                setQuantity="quantity => this.env.setQuantity(this.props.product_tmpl_id, quantity)"
+                                isMinusButtonDisabled="this.props.quantity === 1 &amp;&amp; isMainProduct"
+                                isPlusButtonDisabled="!env.isQuantityAllowed(props, props.quantity + 1)"/>
+                            <t t-call="website_sale.not_for_sale"/>
+                            <t t-call="website_sale_stock.out_of_stock"/>
+                            <!-- Add to Cart And Buy Now-->
+                            <div t-if="! state.active_b2b_mode" id="add_to_cart_wrap">
+                                <t t-if="!isOutOfStock()">
+                                    <a role="button" id="add_to_cart" t-attf-class="btn btn-primary a-submit flex-grow-1 btn-lg #{!this.env.isPossibleCombination(this.props) ? 'disabled' : ''}" t-on-click="addToCart" href="#">
+                                        <i class="fa fa-shopping-cart me-2"/>
+                                        <span style="font-weight: bold">Add To Cart</span>
+                                    </a>
+                                    <a  href="/shop/cart" t-if="state.show_buy_now" role="button" t-attf-class="btn btn-outline-primary o_we_buy_now ms-1 #{!this.env.isPossibleCombination(this.props) ? 'disabled' : ''}" t-on-click="buyNow">
+                                        <i class="fa fa-bolt me-2"/>
+                                        Buy now
+                                    </a>
+                                </t>
+                            </div>
+                            <div t-else="" class="as-pd-b2b-login-btn">
+                                <a href="#" t-on-click="loginPopup" t-att-class=" 'btn btn-primary' ">
+                                    Login for Price
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="as-qv-product-option">
+                            <!-- Wishlist -->
+                            <button t-if="state.show_wishlist and !isOutOfStock() and this.env.isPossibleCombination(this.props)" type="button" role="button" class="btn btn-link px-0 pe-3 o_add_wishlist_dyn" data-action="o_wishlist" title="Add to wishlist" t-on-click="addWishlist"><i class="fa fa-heart-o me-2" role="img" aria-label="Add to wishlist"/>Add to wishlist</button>
+
+                            <!-- Compare -->
+                            <button t-if="state.show_compare" type="button" role="button" class="d-none d-md-block btn btn-link px-0 o_add_compare_dyn" aria-label="Compare" t-on-click="addToCompareList">
+                                    <span class="fa fa-exchange me-2"/>Compare
+                            </button>
+                        </div>
+                        <!-- Tags -->
+                        <t t-out="state.tag_template"/>
+                        <!-- Brand -->
+                        <t t-out="state.brand_template"/>
+                        <!-- Advance Info -->
+                        <div class="as-offers-box">
+                            <ul>
+                                <t t-foreach="Object.values(state.advance_info)" t-as="offer" t-key="offer.id">
+                                    <li>
+                                        <div class="as-offer-icon"><span t-attf-class="fa fa-{{offer.icon}}"/></div>
+                                        <div class="as-offer-text"><p><strong t-esc="offer.name"/>
+                                        <t t-esc="offer.short_description"/></p>
+                                        <span class="show_advance_product"  t-on-click="() => this.showAdvanceInfo(offer.id)"> Detail <i class="fa fa-angle-right" /> </span></div>
+                                    </li>
+                                </t>
+                            </ul>
+                        </div>
+                        <div class="as-pd-extra">
+                            <!-- Category -->
+                            <t t-out="state.category_template"/>
+                            <!-- SKU -->
+                            <t t-out="state.sku_template"/>
+                        </div>
+                        <!-- More Info -->
+                        <div class="pd-q-more-info">
+                            <a class="btn btn-primary btn-sm" t-attf-href="/shop/{{props.product_tmpl_id}}"><i class="fa fa-info-circle"></i> More Information</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <t t-name="theme_alan.AlanProductAttributeLine">
+        <li name="ptal" t-attf-class="#{this.props.attribute_values.length === 1 &amp;&amp; hasPTAVCustom() ? 'd-flex' : ''}">
+            <div class="as-qv-attribute_name">
+                <label
+                    t-if="showValuesChoice || (
+                        this.props.attribute_values.length === 1 &amp;&amp; isSelectedPTAVCustom())"
+                    t-out="this.props.attribute.name"
+                    t-attf-class="#{this.props.attribute_values.length === 1
+                        &amp;&amp; hasPTAVCustom() ? '' : ''}">
+                    <!-- Variant Info-->
+                </label>
+                <span class="as-advance-attribute-link" t-if="this.props.active_product_variant_info" t-esc="this.props.attribute.attribute_extra_info_id[1]"  t-on-click="() => this.showAdvanceInfo(this.props.attribute.attribute_extra_info_id[0])"> <i class="fa fa-angle-right"></i></span>
+            </div>
+            <t t-if="showValuesChoice" t-call="{{getPTAVTemplate()}}"/>
+            <input
+                class="o_input w-lg-75 mb-4 ms-lg-auto"
+                type="text"
+                placeholder="Enter a customized value"
+                t-if="hasPTAVCustom &amp;&amp; isSelectedPTAVCustom()"
+                t-att-value="this.props.customValue"
+                t-on-change="updateCustomValue"
+            />
+        </li>
+    </t>
+
+</templates>

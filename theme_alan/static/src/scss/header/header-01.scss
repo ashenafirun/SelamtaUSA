@@ -1,0 +1,177 @@
+@if o-website-value('header-template')=='as_header1' {
+
+    .header-top {
+        min-height: 35px;
+        .ht-top-end,
+        .ht-top-start {
+            display: flex;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            gap: 20px;
+            align-items: center;
+        }
+    }
+
+    .header-middle {
+        padding: 1.1rem 0;
+
+        >.container {
+            display: flex;
+            align-items: center;
+        }
+
+        .hm-search {
+            flex: 1;
+            margin: 0;
+            padding: 0 3rem;
+            list-style: none;
+
+            .input-group {
+                position: relative;
+            }
+
+            .search-query {
+                height: 48px;
+                background-color: rgba(var(--as-menu-color-rgb), 0.09) !important;
+                color: var(--as-menu-color);
+                border: none;
+                box-shadow: none;
+                border-radius: 15px 0px 0px 15px !important;
+                padding-left: 1.3rem;
+                z-index: 0;
+            }
+
+            .oe_search_button {
+                height: 48px;
+                background-color: rgba(var(--as-menu-color-rgb), 0.09) !important;
+                color: var(--as-menu-color);
+                border: none;
+                box-shadow: none;
+                border-radius: 0px 15px 15px 0px !important;
+                z-index: 0;
+                margin: 0 !important;
+                padding: 0 20px;
+            }
+        }
+
+        .mh-end {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+
+            .hm-icon {
+                position: relative;
+                border: none;
+                background: none;
+                padding: 0;
+                width: 48px;
+                height: 48px;
+                font-size: 1rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 15px;
+                position: relative;
+                transition: ease all 0.35s;
+                color: var(--as-menu-color);
+                background-color: rgba(var(--as-menu-color-rgb), 0.09);
+                box-shadow: none;
+                text-decoration: none;
+
+                &:before {
+                    font-size: 1.2rem;
+                }
+
+                sup {
+                    min-width: 20px;
+                    height: 20px;
+                    border-radius: 50% !important;
+                    padding: 0;
+                    font-size: 0.65rem;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                .fa-stack {
+                    width: auto;
+                    height: auto;
+                }
+
+                &:hover {
+                    background-color: rgba(var(--as-menu-color-rgb), 1);
+                    color: var(--as-menu-color-mode);
+                }
+
+                &.hm-icon-pill {
+                    width: auto;
+                    padding-right: 1rem;
+
+                    .hm-icon {
+                        background: transparent;
+                    }
+
+                    &:hover {
+                        .hm-icon {
+                            color: var(--as-menu-color-mode);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+    .navbar-light {
+        .header-navbar {
+            @include o-apply-colors('menu');
+            @include o-apply-colors('menu-custom');
+            @include o-add-gradient('menu-secondary-gradient');
+
+            >.container {
+                display: flex;
+            }
+
+            .navbar-nav {
+                .nav-link {
+                    color: rgba(var(--as-menu-color-rgb), 0.75);
+                    padding: 0.7rem 1.4rem;
+                    position: relative;
+
+                    &.active {
+                        color: var(--as-menu-color);
+                    }
+                }
+            }
+
+            .h-cta-end {
+                margin: 0;
+                padding: 0;
+                list-style: none;
+
+                .btn_cta {
+                    white-space: nowrap;
+                    padding: 0.83rem 1.4rem;
+                    border: none;
+                    line-height: 1.2;
+                    box-shadow: none !important;
+
+                    .fa {
+                        margin-right: 8px;
+                    }
+                }
+            }
+        }
+    }
+
+
+    .asi-user {
+        font-size: 0px !important;
+    }
+
+
+}

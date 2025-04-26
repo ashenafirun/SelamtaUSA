@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="snippets" inherit_id="website.snippets" name="Alan Snippets">
+        <xpath expr="//t[@id='default_snippets']//snippets" position="before">
+           <snippets id="snippet_alan" string="Theme Alan">
+                <t t-snippet="theme_alan.as_snippet_builder" string="Snippet Builder" t-thumbnail="/theme_alan/static/src/img/snippets/snippet_builder.svg">
+                    <keywords>snippet, builder, alan</keywords>
+                </t>
+                <t t-snippet="theme_alan.website_builder" string="Website Builder" t-thumbnail="/theme_alan/static/src/img/snippets/website_builder.svg">
+                </t>
+           </snippets>
+        </xpath>
+    </template>
+</odoo>

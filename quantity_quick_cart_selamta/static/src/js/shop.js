@@ -1,15 +1,18 @@
-odoo.define("quantity_quick_cart_selamta.website_sale", function (require) {
-    "use strict";
 
-    require('website_sale.website_sale');
-    var publicWidget = require('web.public.widget');
-    var wSaleUtils = require("website_sale.utils");
-    publicWidget.registry.WebsiteSale.include({
-    	
-    	events: _.extend({}, publicWidget.registry.WebsiteSale.prototype.events || {}, {
-            "click .sh_add_cart, .sh_add_cart_dyn, .sh_add_cart_list": "_onClickAddDirectCart",
-            'change input[name="add_qty"]': '_onChangeAddQuantity',
-        }),
+import publicWidget from "@web/legacy/js/public/public_widget";
+import WebsiteSale from '@website_sale/js/website_sale';
+import { browser } from "@web/core/browser/browser";
+import { registry } from "@web/core/registry";
+import { session } from "@web/session";
+import wSaleUtils from '@website_sale/js/website_sale_utils';
+import { Component } from "@odoo/owl";
+
+publicWidget.registry.WebsiteSale.include({
+
+//    	events: _.extend({}, publicWidget.registry.WebsiteSale.prototype.events || {}, {
+//            "click .sh_add_cart, .sh_add_cart_dyn, .sh_add_cart_list": "_onClickAddDirectCart",
+//            'change input[name="add_qty"]': '_onChangeAddQuantity',
+//        }),
 
         _onClickAddDirectCart: function (ev) {
             ev.preventDefault();
@@ -66,7 +69,7 @@ odoo.define("quantity_quick_cart_selamta.website_sale", function (require) {
                 }
             });
         },
-        
+
         //--------------------------------------------------------------------------
         // Handlers
         //--------------------------------------------------------------------------
@@ -80,7 +83,7 @@ odoo.define("quantity_quick_cart_selamta.website_sale", function (require) {
         		var set_data = default_value;
 //        		document.getElementById("qty_id").value = set_data;
         		$link.closest('input[name="add_qty"]').val(set_data);
-        		
+
         	}
             this._super.apply(this, arguments);
             return false;
@@ -106,4 +109,3 @@ odoo.define("quantity_quick_cart_selamta.website_sale", function (require) {
             }
         },
     });
-});

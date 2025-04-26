@@ -1,0 +1,373 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Product Barand: STRAT -->
+    <template id="product_brand" name="Product Brand">
+        <t t-if="website.active_shop_brand_info">
+            <t t-if="product.product_brand_id and (product.product_brand_id.website_id == request.website or not product.product_brand_id.website_id)">
+                <div class="as-product-brand">
+                    <span t-esc="product.product_brand_id.name" />
+                </div>
+            </t>
+        </t>
+    </template>
+    <!-- Product Barand: END -->
+
+    <!-- Product Label: START -->
+    <template id="product_label" name="Product Label Option">
+        <t t-set="labels" t-value="product.sudo().pro_label_line_ids.filtered(lambda l: l.website_id.id == website.id)"/>
+        <div t-if="labels" class="as-ribbon-wrpa">
+            <div t-attf-class="ribbon-style-#{(labels.label.label_option).replace('option_', '')}" t-att-id="labels.label.label_option">
+                <span t-attf-style="background-color:#{labels.label.label_color} ; color:#{labels.label.label_text_color}"><i t-if="labels.label.label_option == 'option_5'" class="fa fa-tag"/> <t t-esc="labels.label.name" /></span>
+            </div>
+        </div>
+    </template>
+    <!-- Product Label: END -->
+
+    <!-- Login Popup: START -->
+    <template id="as_sign_in_popup" name="Login Popup" inherit_id="portal.user_sign_in">
+        <xpath expr="." position="replace">
+            <li t-nocache="Profile session and user group can change unrelated to parent caches."
+                t-nocache-_item_class="_item_class"
+                t-nocache-_link_class="_link_class"
+                groups="base.group_public" t-attf-class="#{_item_class} o_no_autohide_item">
+                <a t-attf-href="/web/login" t-attf-class="#{_link_class} #{'as_login_popup' if website.active_login_popup else ''}">Sign in<span t-if="request.session.profile_session" class="text-danger fa fa-circle"/></a>
+            </li>
+        </xpath>
+    </template>
+    <!-- Login Popup: END -->
+
+    <!-- Rating Info Template-->
+    <template id="as_rating_template" name="Rating Template">
+        <t t-if="website.active_shop_rating">
+            <div t-if="is_view_active('website_sale.product_comment') and product.rating_avg" class="as_product_rating">
+                <a t-att-href="product.website_url + '?open=reviews'">
+                    <i class="fa fa-star"/>
+                    <t t-if="product.rating_avg % 1 == 0"><t t-esc="int(product.rating_avg)"/></t>
+                    <t t-else=""><t t-esc='"{:.1f}".format(product.rating_avg)'/></t>
+                    <span class="rating-count" t-if="product.rating_count"  t-esc="product.rating_count"/>
+                </a>
+            </div>
+        </t>
+    </template>
+
+    <!-- Brand Page: START -->
+     <template id="brand_list" name="Brand Page">
+        <t t-call="website.layout">
+            <div class="as-brand-breadcrumb">
+                <div class="container">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-md-6 text-center text-md-start">
+                            <h3 class="as-all-brand-title m-0">Brands</h3>
+                        </div>
+                        <div class="col-md-6">
+                            <ol class="breadcrumb justify-content-center justify-content-md-end m-0 p-0">
+                                <li class="breadcrumb-item">
+                                    <a href="/shop">All Products</a>
+                                </li>
+                                <li class="breadcrumb-item active">
+                                    <span>Brand</span>
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="as-all-brand-page">
+                <div class="container">
+                    <div class="oe_structure" id="as_brands_page1" data-editor-message="Drag and drop the snippet"/>
+                    <div class="row as-letter-container-box g-3">
+                        <t t-foreach="brands" t-as="brand">
+                            <div class="col-6 col-sm-6 col-md-4 col-lg-3">
+                                <div class="as-lp-brand-box">
+                                    <span class="brand-img" t-field="brand.logo" t-options="{'widget': 'image', 'class': 'img-rounded'}" />
+                                    <div class="as-lp-brand-info">
+                                        <h6>
+                                            <a t-att-href="'/shop?brand=%s' % brand.id" target="new">
+                                                <t t-esc="brand.name"/>
+                                            </a>
+                                        </h6>
+                                        <span class="brand-count">
+                                            <t t-if="len(brand.brand_product_ids) == 1">
+                                                <t t-esc="len(brand.brand_product_ids)" /> Product
+                                            </t>
+                                            <t t-else="">
+                                                <t t-esc="len(brand.brand_product_ids)" /> Products
+                                            </t>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </div>
+                    <t t-call="website.pager"/>
+                    <div class="oe_structure" id="as_brands_page2" data-editor-message="Drag and drop the snippet"/>
+                </div>
+            </div>
+        </t>
+    </template>
+    <!-- Brand Page: END -->
+
+    <!-- Menu Tags: START -->
+    <template id="as_menu_tags" name="Menu Tags">
+        <span class="as-menu-tags" t-if="submenu.sudo().is_tag_active" t-esc="submenu.sudo().tag_text"
+            t-attf-style="background-color:#{submenu.sudo().tag_bg_color};color:#{submenu.sudo().tag_text_color}"/>
+    </template>
+    <!-- Menu Tags: END -->
+
+    <!-- Menu highlight: START -->
+    <template id="as_website_menu" name="Website Menu Tags" inherit_id="website.submenu">
+        <xpath expr="//li" position="replace">
+
+            <li t-if="submenu.is_visible and not (submenu.child_id or submenu.is_mega_menu)" t-attf-class="#{item_class or ''} #{'as-advance-nav-dropdown' if submenu.is_advance_megamenu else ''}"  role="presentation">
+                <a t-att-href="submenu._clean_url()"
+                    t-attf-style="background-color:{{submenu.hlt_menu_bg_color if submenu.hlt_menu else '' }};color:{{submenu.hlt_menu_ft_col if submenu.hlt_menu else ''}} !important"
+                    t-attf-class="#{link_class or ''} #{submenu._is_active() and 'active'}"
+                    role="menuitem"
+                    t-ignore="true"
+                    t-att-target="'_blank' if submenu.new_window else None">
+                    <t t-call="theme_alan.as_menu_tags"/>
+                    <span t-if="submenu.hlt_menu" t-attf-class="fa {{submenu.hlt_menu_icon}}"/>
+                    <span t-field="submenu.name"/>
+                </a>
+                <t t-if="submenu.is_advance_megamenu">
+                    <span class="as-advance-nav-mob"></span>
+                </t>
+                <t t-if="submenu.is_advance_megamenu">
+                    <t t-call="atharva_theme_base.website_advance_megamenu">
+                        <t t-set="website_id" t-value="website"/>
+                        <t t-set="advance_menu_id" t-value="submenu.advance_megamenu_id"/>
+                    </t>
+                </t>
+            </li>
+        </xpath>
+        <xpath expr="//li[@t-elif='show_dropdown']" position="replace">
+            <li t-elif="show_dropdown" t-attf-class="#{item_class or ''} dropdown #{submenu.is_mega_menu and 'position-static'}">
+                <a t-attf-class="#{link_class or ''} dropdown-toggle #{submenu.is_mega_menu and 'o_mega_menu_toggle'} #{submenu._is_active() and 'active'} #{dropdown_toggler_classes}"
+                data-bs-toggle="dropdown" href="#"
+                t-attf-style="background-color:{{submenu.hlt_menu_bg_color if submenu.hlt_menu else '' }};color:{{submenu.hlt_menu_ft_col if submenu.hlt_menu else ''}} !important"
+                t-att-data-bs-display="'static' if submenu.is_mega_menu else None">
+                    <t t-call="theme_alan.as_menu_tags"/>
+                    <span t-if="submenu.hlt_menu" t-attf-class="fa {{submenu.hlt_menu_icon}}"/>
+                    <span t-field="submenu.name"/>
+                </a>
+                <t t-if="submenu.active_mega_tabs">
+                    <!--   Here is tabs is come  -->
+                    <div t-if="submenu.is_mega_menu"
+                        t-attf-class="dropdown-menu as-mega-tab-menu o_mega_menu #{submenu.mega_menu_classes}"
+                        data-name="Mega Menu">
+                        <div class="as-mm-tabs-container container">
+                            <div class="as-mm-tabs-levels">
+                                <t t-set="first_count" t-value="0"/>
+                                <t t-foreach="submenu.megamenu_tabs" t-as="mega_tab">
+
+                                    <!-- Loop -->
+                                    <div t-attf-class="as-mm-tabs-level-1 #{'active' if not first_count else ''}">
+                                        <t t-set="first_count" t-value="1"/>
+
+                                        <!-- Title Wrap  -->
+                                        <div class="s-mm-tabs-level-title">
+                                            <a t-att-href="mega_tab.redirect">
+                                                <span class="mm-t-icon"> <image t-att-src="request.website.image_url(mega_tab, 'icon')"/></span>
+                                                <span class="mm-t-title" t-esc="mega_tab.name"/>
+                                            </a>
+                                            <span class="as-mob-tab-menu">
+                                                <span />
+                                            </span>
+                                        </div>
+                                        <!-- End Title Wrap  -->
+                                        <!-- Content Wrap  -->
+                                        <div class="as-mm-tabs-level-2">
+                                            <div class="as-mm-tabs-level-2-in">
+                                                <!-- Content -->
+                                                <span class="mm-t-title" t-field="mega_tab.description"/>
+                                            </div>
+                                        </div>
+                                        <!-- End Content Wrap  -->
+                                    </div>
+                                    <!-- Loop -->
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+                    <!--   Here is tabs is come  -->
+                </t>
+                <t t-else="">
+                    <div t-if="submenu.is_mega_menu and not is_mobile"
+                        t-attf-class="dropdown-menu o_mega_menu #{submenu.mega_menu_classes}"
+                        data-name="Mega Menu"
+                        t-field="submenu.mega_menu_content"/>
+                    <t t-elif="submenu.is_mega_menu"/>
+                    <div t-if="submenu.is_mega_menu" t-elif="False"
+                        t-attf-class="dropdown-menu o_mega_menu #{submenu.mega_menu_classes}"
+                        data-name="Mega Menu"
+                        t-field="submenu.mega_menu_content"
+                        role="menuitem"/>
+                    <ul t-else="" t-attf-class="dropdown-menu #{dropdown_menu_classes}" role="menu">
+                        <t t-foreach="submenu.child_id" t-as="submenu">
+                            <t t-call="website.submenu">
+                                <t t-set="item_class" t-value="None"/>
+                                <t t-set="link_class" t-valuef="dropdown-item"/>
+                            </t>
+                        </t>
+                    </ul>
+                </t>
+
+            </li>
+        </xpath>
+    </template>
+    <!-- Menu highlight: END -->
+
+    <!-- Mini Cart: START -->
+    <template id="as_shop_mini_cart" name="Mini Cart Extend" inherit_id="website_sale.header_cart_link" priority="1">
+        <xpath expr="//a[@href='/shop/cart']" position="attributes">
+            <attribute name="t-attf-class" separator=" " add="#{'as_mini_cart' if website.active_mini_cart else ''}"/>
+        </xpath>
+        <xpath expr="//sup[contains(@t-attf-class,'my_cart_quantity')]" position="attributes">
+            <attribute name="t-attf-class" separator=" " remove="#{'d-none' if (website_sale_cart_quantity == 0) else ''}"/>
+        </xpath>
+    </template>
+    <!-- Mini Cart: END -->
+
+    <!-- Mobile Header: START -->
+    <template id="template_header_mobile" name="Template Header Mobile" inherit_id="website.template_header_mobile">
+        <xpath expr="//t[@t-call='website.navbar']" position="replace">
+            <t t-call="website.navbar">
+                <t t-set="_navbar_classes" t-valuef="o_header_mobile d-block d-lg-none shadow-sm as-mobile-header"/>
+                <t t-set="_navbar_expand_class" t-valuef="None"/>
+                <t t-set="_navbar_name" t-valuef="Mobile"/>
+
+                <div id="o_main_nav" class="container flex-nowrap">
+
+                    <ul class="o_header_mobile_buttons_wrap as-mob-header-wrap navbar-nav flex-row align-items-center gap-2 mb-0">
+                        <li class="as-mob-toggle">
+                            <button
+                                class="btn hm-icon o_not_editable p-0"
+                                type="button"
+                                data-bs-toggle="offcanvas"
+                                data-bs-target="#top_menu_collapse_mobile"
+                                aria-controls="top_menu_collapse_mobile"
+                                aria-expanded="false"
+                                aria-label="Toggle navigation"
+                                >
+                                <span class="navbar-toggler-icon"/>
+                            </button>
+                        </li>
+                        <li class="as-mob-logo">
+                            <!-- Brand -->
+                            <t t-call="website.placeholder_header_brand"/>
+                        </li>
+                        <!-- Cart -->
+                        <t t-call="website_sale.header_cart_link">
+                            <t t-set="_icon" t-value="True"/>
+                            <t t-set="_link_class" t-value="'o_navlink_background hm-icon-item as-h-bag'"/>
+                            <t t-set="_badge_class" t-value="'h-sup'"/>
+                            <t t-set="_icon_wrap_class" t-value="'hm-icon'"/>
+                        </t>
+                    </ul>
+                    <div class="offcanvas offcanvas-end as-mob-search-offcanvas" tabindex="-1" id="as_mob_search_modal" aria-labelledby="as_mob_search_modalLabel">
+                        <div class="offcanvas-header">
+                            <h5 class="offcanvas-title" id="as_mob_search_modalLabel">Search our site</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+                        </div>
+                        <div class="offcanvas-body">
+                            <ul class="as-mob-search-ul">
+                                <t t-call="website.placeholder_header_search_box">
+                                    <t t-set="_classes" t-valuef=""/>
+                                    <t t-set="_input_classes" t-valuef="text-bg-light"/>
+                                    <t t-set="_submit_classes" t-valuef="bg-o-color-3"/>
+                                    <t t-set="limit" t-valuef="0"/>
+                                </t>
+                            </ul>
+                        </div>
+                    </div>
+                    <!-- Search bar -->
+
+                    <div t-attf-class="offcanvas #{_side if _side else 'offcanvas-start'} o_navbar_mobile" id="top_menu_collapse_mobile">
+                        <div class="offcanvas-header o_not_editable">
+                            <div class="offcanvas-header-overlay"></div>
+                            <ul class="as-mob-user">
+                                <!-- Sign In -->
+                                <t t-call="portal.placeholder_user_sign_in">
+                                    <t t-set="_link_class" t-valuef="as-mob-user-link"/>
+                                </t>
+                                <!-- User Dropdown -->
+                                <t t-call="portal.user_dropdown">
+                                    <t t-set="_icon" t-value="true"/>
+                                    <t t-set="_user_name" t-value="true"/>
+                                    <t t-set="_user_name_class" t-valuef=""/>
+                                    <t t-set="_link_class" t-valuef="as-mob-user-link"/>
+                                    <t t-set="_icon_class" t-valuef="as-mob-user-icon"/>
+                                    <t t-set="_item_class" t-valuef="dropdown dropup"/>
+                                    <t t-set="_dropdown_menu_class" t-valuef=""/>
+                                </t>
+                            </ul>
+                            <ul class="as-mob-extra">
+                                <!-- Website wishlist -->
+                                <t t-call="website_sale_wishlist.header_wishlist_link">
+                                    <t t-set="_text" t-value="True"/>
+                                    <t t-set="_icon" t-value="True"/>
+                                    <t t-set="_item_class" t-valuef="nav-item"/>
+                                    <t t-set="_link_class" t-value="'nav-link as-h-x-link'"/>
+                                    <t t-set="_badge_class" t-value="'position-absolute top-0 end-0 mt-n1 me-n1 rounded-pill'"/>
+                                    <t t-set="_icon_wrap_class" t-value="'position-relative'"/>
+                                </t>
+                                <!-- Language Selector -->
+                                <t t-call="website.placeholder_header_language_selector">
+                                    <t t-set="_btn_class" t-valuef="as-h-x-link"/>
+                                    <t t-set="_txt_class" t-valuef=""/>
+                                    <t t-set="_flag_class" t-valuef=""/>
+                                    <t t-set="_div_classes" t-valuef="dropup"/>
+                                    <t t-set="_dropdown_menu_class" t-valuef=""/>
+                                </t>
+                            </ul>
+                            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close">
+                                <i class="asi asi-x"></i>
+                            </button>
+                        </div>
+                        <div class="offcanvas-body">
+                            <div t-if ="website.is_advance_megamenu" class="as-mob-2nd-menu">
+                                <button class="as_mob_2nd_btn">
+                                    <i class="asi asi-grid"></i>
+                                    <span>Categories</span>
+                                </button>
+                                <t t-call="atharva_theme_base.website_advance_megamenu">
+                                    <t t-set="website_id" t-value="request.env['website'].get_current_website()"/>
+                                    <t t-if="website_id and website_id.is_advance_megamenu" t-set="advance_menu_id" t-value="website_id.advance_megamenu_id"/>
+                                </t>
+                            </div>
+                            <ul class="navbar-nav">
+                                <!-- Navbar -->
+                                <t t-call="website.navbar_nav">
+                                    <t t-set="_no_autohide_menu_mobile" t-valuef="True"/>
+
+                                    <!-- Menu -->
+                                    <t t-foreach="website.menu_id.child_id" t-as="submenu">
+                                        <t t-call="website.submenu">
+                                            <t t-set="item_class" t-valuef="nav-item"/>
+                                            <t t-set="link_class" t-valuef="nav-link"/>
+                                            <t t-set="dropdown_toggler_classes" t-valuef="d-flex justify-content-between align-items-center"/>
+                                            <t t-set="dropdown_menu_classes" t-valuef="position-relative rounded-0 o_dropdown_without_offset"/>
+                                        </t>
+                                    </t>
+                                </t>
+                                <!-- <t t-call="website.placeholder_header_text_element">
+                                    <t t-set="_txt_elt_content" t-valuef="sentence"/>
+                                </t>
+
+                                <t t-call="website.placeholder_header_social_links">
+                                    <t t-set="_div_class" t-valuef="mt-2 border-top pt-2 o_border_contrast"/>
+                                </t> -->
+                            </ul>
+                            <ul class="as-mob-bottom-link">
+                                <!-- Call To Action -->
+                                <!-- <t t-call="website.header_call_to_action_large"/> -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+    </template>
+    <!-- Mobile Header: END -->
+
+</odoo>
