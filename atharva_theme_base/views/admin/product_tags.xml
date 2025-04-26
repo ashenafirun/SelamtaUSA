@@ -87,11 +87,11 @@
         <field name="name">product.tags.view.tree</field>
         <field name="model">product.tags</field>
         <field name="arch" type="xml">
-            <tree>
+            <list>
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
                 <field name="active"/>
-            </tree>
+            </list>
         </field>
     </record>
 
