@@ -9,7 +9,7 @@
 {
     # App information
     'name': "Stock Remove Closet Locaition",
-    'version': '18.0.0.0',
+    'version': '18.0.1.0',
     'category': 'Inventory/Inventory',
     'summary': "Stock related customizations",
     'description': "Show users to pick items according to the removal sequence on normal inventory transfer.",
