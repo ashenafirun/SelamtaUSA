@@ -17,7 +17,6 @@ class IrHttp(models.AbstractModel):
 class CustomWebsite(models.Model):
     _inherit = 'website'
 
-    is_pwa_active = fields.Boolean(string='PWA', help="Enable PWA.")
     is_advance_megamenu = fields.Boolean(string="Active Advance Megamenu")
     advance_megamenu_id = fields.Many2one("advance.megamenu", string="Advance Megamenu", domain="[('website_id', '=', id)]")
 
