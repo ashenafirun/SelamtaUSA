@@ -14,3 +14,5 @@ from . import sale_order
 from . import blog
 from . import megamenu
 from . import frame
+from . import product_tags
+from . import pwa
