@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+<!--    <template id="theme_alan.quick_add_to_cart">-->
+<!--&lt;!&ndash;        <xpath expr="//a[hasclass('as-quick-submit')]" position="attributes">&ndash;&gt;-->
+<!--&lt;!&ndash;            <attribute name="t-if">&ndash;&gt;-->
+<!--&lt;!&ndash;                not request.website.is_public_user()&ndash;&gt;-->
+<!--&lt;!&ndash;            </attribute>&ndash;&gt;-->
+<!--&lt;!&ndash;        </xpath>&ndash;&gt;-->
+<!--        <xpath expr="//a[hasclass('a-submit')]" position="replace">-->
+<!--            <t t-set="combination" t-value="product._get_first_possible_combination()"/>-->
+<!--            <a href="#" t-if="not request.website.is_public_user()" role="button" class="btn btn-primary as-quick-submit" aria-label="Quick Cart" title="Quick Cart"-->
+<!--            t-attf-data-has-variant="#{'True' if product.product_variant_count > 1 else 'False' }"-->
+<!--            t-attf-data-product-id="#{product.id if product.product_variant_count > 1 else product_variant_id}">-->
+<!--                <span class="fa fa-shopping-cart"/>-->
+<!--            </a>-->
+<!--        </xpath>-->
+<!--    </template>-->
+
+    <template id="product_price_page_cart_button_hide_website_sale" inherit_id="website_sale.product_price">
+        <xpath expr="//div" position="attributes">
+            <attribute name="t-att-data-hide">
+                request.website.is_public_user()
+            </attribute>
+        </xpath>
+    </template>
+
+    <template id="product_shop_page_cart_button_hide_website_sale" inherit_id="website_sale.products_item">
+        <xpath expr="//div[hasclass('product_price')]" position="attributes">
+                <attribute name="t-att-data-hide">
+                request.website.is_public_user()
+            </attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('o_wsale_product_btn')]" position="attributes">
+            <attribute name="t-att-data-hide">
+                request.website.is_public_user()
+            </attribute>
+        </xpath>
+    </template>
+
+    <template id="product_detail_page_cart_button_hide_website_sale" inherit_id="website_sale.product">
+        <xpath expr="//a[@id='add_to_cart']" position="before">
+            <div class="text-primary" t-if="request.website.is_public_user()">
+                LogIn To See Prices
+            </div>
+        </xpath>
+        <xpath expr="//a[@id='add_to_cart']" position="attributes">
+            <attribute name="t-att-data-hide">
+                request.website.is_public_user()
+            </attribute>
+        </xpath>
+    </template>
+
+    <template id="website_sale_wishlist_price_hide" inherit_id="website_sale_wishlist.product_wishlist">
+        <xpath expr="//tr//td[3]" position="attributes">
+            <attribute name="t-if">
+                not request.website.is_public_user()
+            </attribute>
+        </xpath>
+    </template>
+
+<!--    <template id="as_quick_view_detail_price_hide_website_sale" inherit_id="atharva_theme_base.as_quick_view">-->
+<!--        <xpath expr="//p[hasclass('css_not_available_msg')]" position="after">-->
+<!--            <div class="text-primary" t-if="request.website.is_public_user()">-->
+<!--                LogIn To See Prices-->
+<!--            </div>-->
+<!--        </xpath>-->
+<!--        <xpath expr="//a[@id='qk_add_to_cart']" position="replace">-->
+<!--            <a t-if="not request.website.is_public_user()" role="button" id="qk_add_to_cart" t-att-disabled="'disabled' if (not product.sudo().allow_out_of_stock_order and product.sudo().qty_available &lt; 1) else None"-->
+<!--               t-attf-class="btn btn-primary as-btn qk_check_product #{'disabled out_of_stock' if (not product.sudo().allow_out_of_stock_order and product.sudo().qty_available &lt; 1) else ''}" href="#"><i class="fa fa-shopping-cart mr-2"/><span>ADD TO CART</span></a>-->
+<!--        </xpath>-->
+<!--        <xpath expr="//div[hasclass('css_quantity')]" position="replace">-->
+<!--            <div t-if="not request.website.is_public_user()" class="css_quantity input-group d-inline-flex mr-2 my-1 align-middle" contenteditable="false">-->
+<!--                <div class="input-group-prepend">-->
+<!--                    <a t-attf-href="#" t-att-disabled="'disabled' if (not product.sudo().allow_out_of_stock_order and product.sudo().qty_available &lt; 1) else None"-->
+<!--                       t-attf-class="btn btn-primary js_add_cart_json #{'disabled out_of_stock' if (not product.sudo().allow_out_of_stock_order and product.sudo().qty_available &lt; 1) else ''}" aria-label="Remove one" title="Remove one">-->
+<!--                        <i class="fa fa-minus"></i>-->
+<!--                    </a>-->
+<!--                </div>-->
+<!--                <input type="text" t-att-disabled="'disabled' if (not product.sudo().allow_out_of_stock_order and product.sudo().qty_available &lt; 1) else None"-->
+<!--                       t-attf-class="form-control quantity #{'disabled out_of_stock' if (not product.sudo().allow_out_of_stock_order and product.sudo().qty_available &lt; 1) else ''}" data-min="1" name="add_qty" t-att-value="add_qty or 1"/>-->
+<!--                <div class="input-group-append">-->
+<!--                    <a t-attf-href="#" t-att-disabled="'disabled' if (not product.sudo().allow_out_of_stock_order and product.sudo().qty_available &lt; 1) else None"-->
+<!--                       t-attf-class="btn btn-primary float_left js_add_cart_json #{'disabled out_of_stock' if (not product.sudo().allow_out_of_stock_order and product.sudo().qty_available &lt; 1) else ''}" aria-label="Add one" title="Add one">-->
+<!--                        <i class="fa fa-plus"></i>-->
+<!--                    </a>-->
+<!--                </div>-->
+<!--            </div>-->
+<!--        </xpath>-->
+<!--    </template>-->
+
+    <template id="website_sale.products_description" inherit_id="website_sale.products_item" active="False" customize_show="True" name="Product Description">
+        <xpath expr="//*[hasclass('product_price')]" position="after">
+            <div class="oe_subdescription" t-if="not request.website.is_public_user()" contenteditable="false">
+                <div itemprop="description" t-field="product.description_sale"/>
+            </div>
+        </xpath>
+    </template>
+
+     <template id="sh_products_item_inherit_qty" inherit_id="website_sale.products_item" active="False" customize_show="True" name="Select Cart Quantity">
+        <xpath expr="//h6" position="after">
+            <span t-if="not request.website.is_public_user()"
+                  class="css_quantity input-group mb8 mt8 align-items-center" contenteditable="false">
+                <div class="input-group-prepend">
+                    <a t-attf-href="#" class="btn btn-primary js_add_cart_json" aria-label="Remove one" title="Remove one" style="padding: 0px 5px; height: 23px;">
+                        <i class="fa fa-minus"></i>
+                    </a>
+                </div>
+               <input type="text" class="form-control quantity"
+	            	id="input_qty_list"
+                      style="height: 100%;"
+	            	t-att-data-min="1"
+	            	t-att-data-setqty="1"
+	            	name="add_qty"
+	            	t-att-value="1"/>
+                <div class="input-group-append">
+                    <a t-attf-href="#" class="btn btn-primary float_left js_add_cart_json" aria-label="Add one" title="Add one" style="padding: 0px 5px; height: 23px;">
+                        <i class="fa fa-plus"></i>
+                    </a>
+                </div>
+                <span>
+                    <t t-if="len(product.product_variant_ids) == 1">
+                        <button type="button" role="button" t-att-disabled="'disabled' if (not product.sudo().allow_out_of_stock_order and product.sudo().qty_available &lt; 1) else None"
+                                t-attf-class="btn btn-primary sh_add_cart_list #{'disabled out_of_stock' if (not product.sudo().allow_out_of_stock_order and product.sudo().qty_available &lt; 1) else ''}" title="Shopping cart" t-att-data-product-product-id="product.product_variant_ids[0].id if product.product_variant_ids else '0'">
+                            Add
+                        </button>
+                    </t>
+                    <t t-if="len(product.product_variant_ids) &gt; 1">
+                        <button href="#" role="button" t-att-disabled="'disabled' if (not product.sudo().allow_out_of_stock_order and product.sudo().qty_available &lt; 1) else None"
+                                t-attf-class="btn btn-secondary quick_add_pop_view_list quick-view-a not_product_page a-submit sh_add_cart_list #{'disabled out_of_stock' if (not product.sudo().allow_out_of_stock_order and product.sudo().qty_available &lt; 0) else ''}" aria-label="Shopping cart" title="Shopping cart"
+                                t-att-data-product-product-id="product.product_variant_ids[0].id if product.product_variant_ids else '0'" t-att-data-id="product.id">
+                            Add
+                        </button>
+                    </t>
+                </span>
+            </span>
+            <div class="text-primary" t-if="request.website.is_public_user()">
+                LogIn To See Prices
+            </div>
+        </xpath>
+    </template>
+
+</odoo>
