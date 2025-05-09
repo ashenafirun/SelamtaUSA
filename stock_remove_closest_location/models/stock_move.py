@@ -19,5 +19,5 @@ class StockMove(models.Model):
 class StockMoveLine(models.Model):
     _inherit = "stock.move.line"
 
-    removal_sequence = fields.Integer(related="location_id.removal_sequence", store=True)
-    removal_sequence_display_name = fields.Char(related="location_id.display_name", store=True)
+    removal_sequence = fields.Integer(string="Removal Sequence",related="location_id.removal_sequence", store=True)
+    removal_sequence_display_name = fields.Char(string="Removal Sequence Display Name",related="location_id.display_name", store=True)
