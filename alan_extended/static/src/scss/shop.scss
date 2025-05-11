@@ -1,0 +1,9 @@
+.oe_subdescription{
+    display:none;
+}
+
+.oe_product:hover{
+    .oe_subdescription{
+        display:block;
+    }
+}

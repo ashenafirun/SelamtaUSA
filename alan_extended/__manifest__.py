@@ -11,5 +11,10 @@
         'views/product_popup_inherit.xml',
         'views/product_template_view.xml',
     ],
+    'assets': {
+        'web.assets_frontend': [
+            'alan_extended/static/src/scss/shop.scss',
+        ],
+    },
     'license': 'LGPL-3',
 }
