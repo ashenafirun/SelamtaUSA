@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Inherit Form View to Modify it -->
+        <record id="pos_merge_product_category_form_view_inherit" model="ir.ui.view">
+            <field name="name">product.category.form.view.inherit</field>
+            <field name="model">product.category</field>
+            <field name="inherit_id" ref="product.product_category_form_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='parent_id']" position="after">
+                    <field name="pos_readonly_flag" invisible="1"/>
+                    <field name="create_pos_categ" invisible="1"/>
+                    <field name="avail_in_pos" readonly="pos_readonly_flag == True" invisible="create_pos_categ == False"/>
+<!--                           attrs="{'readonly': [('pos_readonly_flag', '=', True)], 'invisible': [('create_pos_categ', '=', False)]}"/>-->
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

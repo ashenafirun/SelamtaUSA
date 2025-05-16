@@ -1,0 +1,27 @@
+<odoo>
+    <record id="view_invoice_merge" model="ir.ui.view">
+        <field name="name">Merger Partner Invoice</field>
+        <field name="model">invoice.merge</field>
+        <field name="arch" type="xml">
+            <form string="Merge Partner Invoice">
+                <group name="options">
+                    <field name="types" widget="radio"/>
+                    <field name="invoice_type" invisible='1'/>
+                    <field name="keep_references" invisible="1"/>
+                    <field name="currency_id" invisible="1"/>
+                    <field name="order_to_merge" invisible="1"/>
+                    <field name="invoice_id" domain="[('id','in',order_to_merge)]" invisible="types in ['new','exist']" required="types in ['exist_1','exist_2']"/>
+<!--                           attrs="{'invisible': [('types', 'in', ['new','exist'])],'required': [('types', 'in', ['exist_1','exist_2'])]}"/>-->
+                    <field name="account_id" invisible="1"/>
+                </group>
+                <footer>
+                    <button name="merge_invoices" string="Merge Invoices"
+                            type="object" class="oe_highlight"/>
+                    or
+                    <button string="Cancel" class="oe_link"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="purchase_tree_view_inherit" model="ir.ui.view">
+        <field name="name">purchase.order.list.inherit</field>
+        <field name="model">purchase.order</field>
+        <field name="priority" eval="8"/>
+        <field name="inherit_id" ref="purchase.purchase_order_tree"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//field[@name='invoice_status']" position="replace">
+                <field name="invoice_status"/>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!--Wizard For Sale Order-->
+    <record id="view_order_merge_form_new_1" model="ir.ui.view">
+        <field name="model">order.merge</field>
+        <field name="arch" type="xml">
+            <form string="Merge orders">
+                <span style="font-size:20px; color:black;">You can only merge draft orders.</span>
+                <group>
+                    <group>
+                        <field name="type"/>
+                        <field name="order" domain="[('id','in',order_to_merge)]" invisible="type in ['new','exist']" required="type in ['exist_1','exist_2']"/>
+<!--                               attrs="{'invisible': [('type', 'in', ['new','exist'])],'required': [('type', 'in', ['exist_1','exist_2'])]}"/>-->
+                    </group>
+                </group>
+                <separator string="Sale Orders"/>
+                <field name="order_to_merge" readonly="1" nolabel="1"/>
+                <footer>
+                    <button name="merge" type="object" string="Merge" class="oe_highlight" invisible="order_to_merge == [(6, False, [])]"/>
+<!--                            attrs="{'invisible': [('order_to_merge', '=', [(6, False, [])])]}"/>-->
+                    or
+                    <button string="Cancel" class="oe_link" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+
+    <!--Wizard For Purchase Order-->
+    <record id="view_purchase_order_merge_form_new_2" model="ir.ui.view">
+        <field name="model">purchase.order.merge</field>
+        <field name="arch" type="xml">
+            <form string="Merge orders">
+                <span style="font-size:20px; color:black;">You can only merge draft orders.</span>
+                <group>
+                    <group>
+                        <field name="type"/>
+                        <field name="purchase_order" domain="[('id','in',purchase_order_to_merge_ids)]" invisible="type in ['new','exist']" required="type in ['exist_1','exist_2']"/>
+<!--                               attrs="{'invisible': [('type', 'in', ['new','exist'])],'required': [('type', 'in', ['exist_1','exist_2'])]}"/>-->
+                    </group>
+                </group>
+                <separator string="Purchase Orders"/>
+                <field name="purchase_order_to_merge_ids" readonly="1" nolabel="1"/>
+                <footer>
+                    <button name="merge_purchase" type="object" string="Merge" class="oe_highlight" invisible="purchase_order_to_merge_ids == [(6, False, [])]"/>
+<!--                            attrs="{'invisible': [('purchase_order_to_merge_ids', '=', [(6, False, [])])]}"/>-->
+                    or
+                    <button string="Cancel" class="oe_link" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

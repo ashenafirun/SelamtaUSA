@@ -1,0 +1,8 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_order_merge,access.order.merge,model_order_merge,base.group_user,1,1,1,1
+access_purchase_order_merge,access.purchase.order.merge,model_purchase_order_merge,base.group_user,1,1,1,1
+access_merge_picking,access.merge.picking,model_merge_picking,base.group_user,1,1,1,1
+access_invoice_merge,access.invoice.merge,model_invoice_merge,base.group_user,1,1,1,1
+access_merge_internal_picking,access.merge.internal.picking,model_merge_internal_picking,base.group_user,1,1,1,1
+access_product_category_changes,product.category.changes,model_product_category_changes,bi_advance_all_in_one_merge_orders.group_sync_cat_product,1,1,1,1
+access_merge_category_wizard,access_merge_category_wizard,bi_advance_all_in_one_merge_orders.model_merge_category_wizard,,1,1,1,1

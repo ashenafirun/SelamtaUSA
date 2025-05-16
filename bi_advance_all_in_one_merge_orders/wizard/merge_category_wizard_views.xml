@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_merge_category_wizard_form_view" model="ir.ui.view">
+            <field name="name">view_merge_category_wizard_form_view</field>
+            <field name="model">merge.category.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Merge Category">
+                    <sheet>
+                        <group>
+                            <group string="Select Operations">
+                                <field name="operation_type" widget="radio" />
+                                <field name="avail_in_pos" invisible="operation_type == 'create_all'"/>
+<!--                                       attrs="{'invisible': [('operation_type', '=', 'create_all')]}" />-->
+                            </group>
+                        </group>
+                        <notebook>
+                            <page name="category" invisble="operation_type != create_all">
+<!--                                  attrs="{'invisible': [('operation_type', '!=', 'create_all')]}">-->
+                                <field name="category_ids" nolabel="1" options="{'no_create': True}" />
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <footer>
+                        <button name="update_changes" string="Save" type="object" class="btn-primary" />
+                        <button string="Cancel" class="btn-secondary" special="cancel" />
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_merge_category_wizard" model="ir.actions.act_window">
+            <field name="name">Sync Category</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">merge.category.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+
+        <menuitem id="menu_merge_pos_category"
+            name="Sync POS category"
+            sequence="15"
+            action="action_merge_category_wizard"
+            parent="point_of_sale.menu_point_config_product" />
+    </data>
+</odoo>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_product_category_change_form_view" model="ir.ui.view">
+            <field name="name">view_product_category_change_form</field>
+            <field name="model">product.category.changes</field>
+            <field name="arch" type="xml">
+                <form string="Invoice Sales Order">
+                    <group string="Select Operations">
+                        <field name="action_details" widget="radio" />
+                    </group>
+                    <notebook>
+                        <page name="category" >
+                            <field name="category_ids" nolabel="1" options="{'no_create': True}" />
+                        </page>
+                    </notebook>
+                    <footer>
+                        <button name="update_changes" string="Save" type="object" class="btn-primary" />
+                        <button string="Cancel" class="btn-secondary" special="cancel" />
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_product_category_changes" model="ir.actions.act_window">
+            <field name="name">sync eCommerce category</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">product.category.changes</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+
+        <menuitem id="menu_sync_category_"
+            name="sync eCommerce category"
+            sequence="30"
+            action="action_product_category_changes"
+            groups="bi_advance_all_in_one_merge_orders.group_sync_cat_product"
+            parent="website_sale.menu_orders" />
+    </data>
+</odoo>
