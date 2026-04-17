@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- List view for Overstock Report - Excess Stock -->
+    <record id="view_forecast_overstock_wizard_list_excess" model="ir.ui.view">
+        <field name="name">forecast.overstock.wizard.list.excess</field>
+        <field name="model">forecast.overstock.wizard</field>
+        <field name="arch" type="xml">
+            <list string="Overstock Report - Excess Stock" decoration-danger="excess_stock > 0">
+                <field name="product" string="Product"/>
+                <field name="warehouse" string="Warehouse"/>
+                <field name="net_stock" string="Net Stock" sum="Total"/>
+                <field name="forecast_qty" string="Forecast Qty" sum="Total"/>
+                <field name="safety_stock" string="Safety Stock" sum="Total"/>
+                <field name="target_stock" string="Target Stock" sum="Total"/>
+                <field name="excess_stock" string="Excess Stock" sum="Total" decoration-danger="excess_stock > 0"/>
+                <field name="status" string="Status" widget="badge" decoration-danger="status=='Overstock'"
+                       decoration-success="status=='Normal'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- List view for Overstock Report - Days of Inventory -->
+    <record id="view_forecast_overstock_wizard_list_days" model="ir.ui.view">
+        <field name="name">forecast.overstock.wizard.list.days</field>
+        <field name="model">forecast.overstock.wizard</field>
+        <field name="arch" type="xml">
+            <list string="Overstock Report - Days of Inventory" decoration-danger="days_of_inventory > target_days">
+                <field name="product" string="Product"/>
+                <field name="warehouse" string="Warehouse"/>
+                <field name="net_stock" string="Net Stock" sum="Total"/>
+                <field name="avg_daily_demand" string="Avg Daily Demand" sum="Avg"/>
+                <field name="days_of_inventory" string="Days of Inventory" sum="Avg" decoration-danger="days_of_inventory > target_days"/>
+                <field name="excess_days" string="Excess Days" sum="Total" decoration-danger="excess_days > 0"/>
+                <field name="target_days" string="Target Days"/>
+                <field name="status" string="Status" widget="badge" decoration-danger="status=='Overstock'"
+                       decoration-success="status=='Normal'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Action for Overstock Report - Default view (Excess Stock) -->
+    <record id="action_overstock_report_list" model="ir.actions.act_window">
+        <field name="name">Overstock Report</field>
+        <field name="res_model">forecast.overstock.wizard</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_forecast_overstock_wizard_list_excess"/>
+        <field name="target">current</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No overstock data found</p>
+            <p>Products with excess stock appear here when stock exceeds target levels.</p>
+        </field>
+    </record>
+
+    <!-- Button to switch to Days of Inventory view -->
+    <record id="action_overstock_report_days_view" model="ir.actions.act_window">
+        <field name="name">Days of Inventory View</field>
+        <field name="res_model">forecast.overstock.wizard</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_forecast_overstock_wizard_list_days"/>
+        <field name="target">current</field>
+        <field name="binding_model_id" ref="forecasting_auto_replenishment.model_forecast_overstock_wizard"/>
+        <field name="binding_type">action</field>
+    </record>
+
+    <!-- Button to switch to Excess Stock view -->
+    <record id="action_overstock_report_excess_view" model="ir.actions.act_window">
+        <field name="name">Excess Stock View</field>
+        <field name="res_model">forecast.overstock.wizard</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_forecast_overstock_wizard_list_excess"/>
+        <field name="target">current</field>
+        <field name="binding_model_id" ref="forecasting_auto_replenishment.model_forecast_overstock_wizard"/>
+        <field name="binding_type">action</field>
+    </record>
+
+    <!-- Button to generate PDF from list view -->
+    <record id="action_overstock_report_pdf" model="ir.actions.act_window">
+        <field name="name">Print PDF</field>
+        <field name="res_model">forecast.overstock.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="forecasting_auto_replenishment.model_forecast_overstock_wizard"/>
+        <field name="binding_type">action</field>
+    </record>
+
+    <menuitem id="menu_overstock_report"
+                  name="Overstock Report"
+                  parent="forecasting_auto_replenishment.menu_forecast_reports_root"
+                  action="action_overstock_report_list"
+                  sequence="2"/>
+
+</odoo>

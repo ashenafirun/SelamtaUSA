@@ -1,0 +1,11 @@
+<templates>
+    <t t-name="forecasting_auto_replenishment.OverstockButtons" t-inherit="web.ListView.Buttons" t-inherit-mode="primary">
+        <xpath expr="." position="inside">
+            <button type="button"
+                    class="btn btn-primary ms-2"
+                    t-on-click="() => this.onPrintPdf()">
+                Print PDF
+            </button>
+        </xpath>
+    </t>
+</templates>
