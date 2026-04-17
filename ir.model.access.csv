@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <!-- LIST VIEW -->
+    <record id="view_forecast_line_list" model="ir.ui.view">
+        <field name="name">forecast.line.list</field>
+        <field name="model">forecast.line</field>
+        <field name="arch" type="xml">
+            <list create="false" decoration-danger="shortage_qty" decoration-success="not shortage_qty" default_group_by="stock_status">
+                <field name="rule_id" string="Rule" optional="show" width="10%"/>
+                <field name="warehouse_id" string="Warehouse" optional="show" width="10%"/>
+
+                <!-- Sales & Demand -->
+                <field name="product_id" string="Product" optional="show" width="8%"/>
+                <field name="sold_qty" string="Sold" optional="hide" width="8%"/>
+                <field name="avg_daily_demand" string="Avg Daily" optional="show" width="8%"/>
+
+                <!-- Stock Status -->
+                <field name="current_stock" string="On Hand" optional="hide" width="8%"/>
+                <field name="incoming_qty" string="Incoming" optional="hide" width="4%"/>
+                <field name="reserved_qty" string="Reserved" optional="hide" width="4%"/>
+                <field name="net_stock" string="Net Stock" optional="show" width="8%"/>
+                <field name="forecast_qty" string="Forecast" optional="show" width="8%"/>
+                <field name="shortage_qty" string="Shortage" optional="show" width="8%"/>
+                <field name="action_summary" string="Action" optional="show" width="8%"/>
+
+                <!-- Replenishment -->
+                <field name="vendor_id" string="Vendor" optional="hide" width="8%"/>
+
+            </list>
+        </field>
+    </record>
+
+    <!-- FORM VIEW -->
+    <record id="view_forecast_line_form" model="ir.ui.view">
+        <field name="name">forecast.line.form</field>
+        <field name="model">forecast.line</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_create_transfer" type="object" string="Run Transfer" invisible="transfer_state == 'processed'"/>
+                </header>
+                <sheet>
+                    <field name="transfer_state" invisible="1"/>
+                    <widget name="web_ribbon" title="Unprocessed" bg_color="bg-success"
+                            invisible="transfer_state == 'processed'"/>
+                    <widget name="web_ribbon" title="Processed" bg_color="bg-danger"
+                            invisible="transfer_state == 'unprocessed'"/>
+                    <div class="oe_title">
+                        <label for="product_id" string="Product"/>
+                        <h1>
+                            <field name="product_id" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group string="GENERAL INFORMATION">
+                        <group>
+                            <field name="rule_id" readonly="1"/>
+                            <field name="warehouse_id" readonly="1"/>
+                            <field name="sold_qty" readonly="1"/>
+                            <field name="action_type" readonly="1"/>
+                            <field name="action_summary" readonly="1"/>
+
+                        </group>
+                        <group>
+                            <label for="period_from" string="Forecast Period"/>
+                            <div class="d-flex align-items-baseline">
+                                <field name="period_from" readonly="1" class="oe_inline w-auto me-2"/>
+                                <i class="fa fa-long-arrow-right text-muted me-2" title="Arrow"/>
+                                <field name="period_to" readonly="1" class="oe_inline w-auto"/>
+                            </div>
+                            <field name="forecast_qty" readonly="1" decoration-bf="1"/>
+                            <field name="shortage_qty" readonly="1"/>
+                            <field name="forecast_calculation" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <group>
+                        <group string="STOCK ANALYSIS">
+                            <group>
+                            <field name="avg_daily_demand" readonly="1"/>
+                                <field name="safety_stock" readonly="1"/>
+                                 <field name="current_stock" readonly="1"/>
+                                <field name="net_stock" readonly="1" decoration-bf="1"/>
+                            </group>
+                            <group>
+                                <field name="lead_time_days" readonly="1" />
+                                <field name="lead_time_demand" readonly="1" />
+                                <field name="order_cycle_days" readonly="1"/>
+                                <field name="order_cycle_demand" readonly="1"/>
+                            </group>
+                        </group>
+
+                        <group string="ORDER PROCESSING">
+
+                            <field name="vendor_domain_ids" invisible="1"/>
+                            <field name="vendor_id" domain="[('id', 'in', vendor_domain_ids)]"
+                                   options="{'no_create': True}"/>
+
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- KANBAN VIEW -->
+    <record id="view_forecast_line_kanban" model="ir.ui.view">
+        <field name="name">forecast.line.kanban</field>
+        <field name="model">forecast.line</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_mobile" default_group_by="stock_status" create="false">
+                <field name="product_id"/>
+                <field name="period_from"/>
+                <field name="period_to"/>
+                <field name="forecast_qty"/>
+                <field name="net_stock"/>
+                <field name="shortage_qty"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="oe_kanban_global_click border border-secondary shadow-sm p-3 mb-2 bg-white">
+                            <!-- Header: Product and Status -->
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <strong class="text-truncate" style="max-width: 70%; font-size: 14px;">
+                                    <field name="product_id"/>
+                                </strong>
+                            </div>
+
+                            <!-- Two Column Layout for Forecast Info -->
+                            <div class="row mb-3">
+                                <div class="col-6">
+                                    <div class="text-muted small">Forecast Period</div>
+                                    <strong>
+                                        <field name="period_from"/>
+                                        →
+                                        <field name="period_to"/>
+                                    </strong>
+                                </div>
+                                <div class="col-6 text-right">
+                                    <div class="text-muted small">Forecast Qty</div>
+                                    <strong class="text-primary">
+                                        <field name="forecast_qty"/>
+                                        units
+                                    </strong>
+                                </div>
+                            </div>
+
+                            <!-- Separator Line with proper margins -->
+                            <hr class="my-2" style="margin-left: 0; margin-right: 0;"/>
+
+                            <!-- Two Column Layout for Stock Info -->
+                            <div class="row mt-2">
+                                <div class="col-6">
+                                    <div class="text-muted small">Net Stock</div>
+                                    <strong t-att-class="record.net_stock.raw_value &lt; record.forecast_qty.raw_value ? 'text-danger' : 'text-success'">
+                                        <field name="net_stock"/>
+                                        units
+                                    </strong>
+                                </div>
+                                <div class="col-6 text-right">
+                                    <div class="text-muted small">Shortage</div>
+                                    <strong t-att-class="record.shortage_qty.raw_value > 0 ? 'text-danger' : 'text-muted'">
+                                        <field name="shortage_qty"/>
+                                        units
+                                    </strong>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Server Action for creating transfers from list view -->
+    <record id="server_action_create_transfer" model="ir.actions.server">
+        <field name="name">Run Transfer</field>
+        <field name="model_id" ref="model_forecast_line"/>
+        <field name="binding_model_id" ref="model_forecast_line"/>
+        <field name="state">code</field>
+        <field name="code">
+for record in records:
+    record.action_create_transfer()
+        </field>
+    </record>
+    
+    <record id="action_product_forecast_line" model="ir.actions.act_window">
+        <field name="name">Forecast Lines</field>
+        <field name="res_model">forecast.line</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="context">{'group_by': ['stock_status', 'transfer_state']}</field>
+    </record>
+
+    <menuitem id="menu_forecast_lines"
+              name="Product Forecast"
+              parent="forecasting_auto_replenishment.menu_forecast_root"
+              action="action_product_forecast_line"
+              sequence="2"/>
+
+</odoo>
