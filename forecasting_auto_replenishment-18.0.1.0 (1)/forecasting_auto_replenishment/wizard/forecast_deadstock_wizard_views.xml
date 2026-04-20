@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <data>
+        <record id="view_deadstock_wizard_from" model="ir.ui.view">
+            <field name="name">forecast.deadstock.wizard.form</field>
+            <field name="model">forecast.deadstock.wizard</field>
+            <field name="arch" type="xml">
+                <form>
+                    <group>
+                        <field name="inactive_days"/>
+                    </group>
+                    <footer>
+                        <button string="Generate Report"
+                                type="object"
+                                class="btn-primary"
+                                name="action_generate_deadstock_report"/>
+                        <button string="Cancel"
+                                class="btn-secondary"
+                                special="cancel"/>
+
+                    </footer>
+                </form>
+            </field>
+        </record>
+        <record id="action_deadstock_wizard" model="ir.actions.act_window">
+            <field name="name"> Generate Deadstock Report</field>
+            <field name="res_model">forecast.deadstock.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="binding_model_id" ref="forecasting_auto_replenishment.model_forecast_line"/>
+            <field name="binding_type">action</field>
+        </record>
+
+
+
+    </data>
+</odoo>

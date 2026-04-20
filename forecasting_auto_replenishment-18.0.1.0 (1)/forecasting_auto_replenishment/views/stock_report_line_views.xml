@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+
+        <!-- ================================================================
+             OVERSTOCK REPORT VIEWS
+        ================================================================ -->
+
+        <!-- List view: Excess Stock -->
+        <record id="view_overstock_report_line_list_excess" model="ir.ui.view">
+            <field name="name">overstock.report.line.list.excess</field>
+            <field name="model">overstock.report.line</field>
+            <field name="arch" type="xml">
+                <list string="Overstock — Excess Stock"
+                      create="false" edit="false" delete="false"
+                      decoration-danger="status == 'overstock'"
+                      decoration-success="status == 'normal'"
+                      js_class="overstock_print_list">
+
+                    <field name="product_id" string="Product"/>
+                    <field name="warehouse_id" string="Warehouse"/>
+                    <field name="net_stock" string="Net Stock" sum="Total"/>
+                    <field name="forecast_qty" string="Forecast Qty" sum="Total"/>
+                    <field name="safety_stock" string="Safety Stock" sum="Total"/>
+                    <field name="target_stock" string="Target Stock" sum="Total"/>
+                    <field name="excess_stock" string="Excess Stock" sum="Total"
+                           decoration-danger="excess_stock > 0"/>
+                    <field name="status" string="Status" widget="badge"
+                           decoration-danger="status == 'overstock'"
+                           decoration-success="status == 'normal'"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- List view: Days of Inventory -->
+        <record id="view_overstock_report_line_list_days" model="ir.ui.view">
+            <field name="name">overstock.report.line.list.days</field>
+            <field name="model">overstock.report.line</field>
+            <field name="arch" type="xml">
+                <list string="Overstock — Days of Inventory"
+                      create="false" edit="false" delete="false"
+                      decoration-danger="days_of_inventory > target_days"
+                      decoration-success="days_of_inventory &lt;= target_days"
+                      js_class="overstock_print_list">
+
+                    <field name="product_id" string="Product"/>
+                    <field name="warehouse_id" string="Warehouse"/>
+                    <field name="net_stock" string="Net Stock" sum="Total"/>
+                    <field name="avg_daily_demand" string="Avg Daily Demand"/>
+                    <field name="days_of_inventory" string="Days of Inventory"
+                           decoration-danger="days_of_inventory > target_days"/>
+                    <field name="target_days" string="Target Days"/>
+                    <field name="excess_days" string="Excess Days" sum="Total"
+                           decoration-danger="excess_days > 0"/>
+                    <field name="status" string="Status" widget="badge"
+                           decoration-danger="status == 'overstock'"
+                           decoration-success="status == 'normal'"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Server action: recompute + open Excess Stock view -->
+        <record id="action_open_overstock_excess" model="ir.actions.server">
+            <field name="name">Overstock — Excess Stock</field>
+            <field name="model_id" ref="model_overstock_report_line"/>
+            <field name="state">code</field>
+            <field name="code">
+action = model.action_open_excess_stock()
+action['context'] = dict(action.get('context', {}), print_method='action_print_excess_stock_pdf')
+            </field>
+        </record>
+
+        <!-- Server action: recompute + open Days of Inventory view -->
+        <record id="action_open_overstock_days" model="ir.actions.server">
+            <field name="name">Overstock — Days of Inventory</field>
+            <field name="model_id" ref="model_overstock_report_line"/>
+            <field name="state">code</field>
+            <field name="code">
+action = model.action_open_days_of_inventory()
+action['context'] = dict(action.get('context', {}), print_method='action_print_days_of_inventory_pdf')
+            </field>
+        </record>
+
+        <!-- PDF report actions (bound to model, triggered from Python) -->
+        <record id="action_report_overstock_excess_new" model="ir.actions.report">
+            <field name="name">Overstock Report — Excess Stock</field>
+            <field name="model">overstock.report.line</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">forecasting_auto_replenishment.report_overstock_excess_new</field>
+        </record>
+
+        <record id="action_report_overstock_days_new" model="ir.actions.report">
+            <field name="name">Overstock Report — Days of Inventory</field>
+            <field name="model">overstock.report.line</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">forecasting_auto_replenishment.report_overstock_days_new</field>
+        </record>
+
+
+        <!-- ================================================================
+             DEADSTOCK REPORT VIEWS
+        ================================================================ -->
+
+        <!-- List view -->
+        <record id="view_deadstock_report_line_list" model="ir.ui.view">
+            <field name="name">deadstock.report.line.list</field>
+            <field name="model">deadstock.report.line</field>
+            <field name="arch" type="xml">
+                <list string="Deadstock Report"
+                      create="false" edit="false" delete="false"
+                      decoration-danger="status == 'deadstock'"
+                      decoration-warning="status == 'very_slow'"
+                      decoration-info="status == 'slow'"
+                      decoration-muted="status == 'active'"
+                      js_class="overstock_print_list">
+
+                    <field name="product_id" string="Product"/>
+                    <field name="warehouse_id" string="Warehouse"/>
+                    <field name="current_stock" string="Current Stock" sum="Total"/>
+                    <field name="last_movement" string="Last Movement"/>
+                    <field name="days_since_movement" string="Days Since Movement"/>
+                    <field name="status" string="Status" widget="badge"
+                           decoration-danger="status == 'deadstock'"
+                           decoration-warning="status == 'very_slow'"
+                           decoration-info="status == 'slow'"
+                           decoration-success="status == 'active'"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Server action: recompute + open Deadstock view -->
+        <record id="action_open_deadstock" model="ir.actions.server">
+            <field name="name">Deadstock Report</field>
+            <field name="model_id" ref="model_deadstock_report_line"/>
+            <field name="state">code</field>
+            <field name="code">
+action = model.action_open_deadstock()
+action['context'] = dict(action.get('context', {}), print_method='action_print_deadstock_pdf')
+            </field>
+        </record>
+
+        <!-- PDF report action (bound to model, triggered from Python) -->
+        <record id="action_report_deadstock_new" model="ir.actions.report">
+            <field name="name">Deadstock Report</field>
+            <field name="model">deadstock.report.line</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">forecasting_auto_replenishment.report_deadstock_new</field>
+        </record>
+
+        <!-- ================================================================
+             FAST MOVING REPORT VIEWS
+        ================================================================ -->
+
+        <record id="view_fastmoving_report_line_list" model="ir.ui.view">
+            <field name="name">fastmoving.report.line.list</field>
+            <field name="model">fastmoving.report.line</field>
+            <field name="arch" type="xml">
+                <list string="Fast Moving Report"
+                      create="false" edit="false" delete="false"
+                      decoration-success="status == 'fast'"
+                      decoration-info="status == 'medium'"
+                      decoration-muted="status == 'slow'"
+                      js_class="overstock_print_list">
+
+                    <field name="product_id" width="20%"/>
+                    <field name="warehouse_id" width="20%"/>
+                    <field name="monthly_movement" width="20%"/>
+                    <field name="daily_velocity" width="20%"/>
+                    <field name="status" widget="badge" width="20%"
+                           decoration-success="status == 'fast'"
+                           decoration-info="status == 'medium'"
+                           decoration-muted="status == 'slow'"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="action_open_fast_moving" model="ir.actions.server">
+            <field name="name">Fast Moving Report</field>
+            <field name="model_id" ref="model_fastmoving_report_line"/>
+            <field name="state">code</field>
+            <field name="code">
+action = model.action_open_fast_moving()
+action['context'] = dict(action.get('context', {}), print_method='action_print_fastmoving_pdf')
+            </field>
+        </record>
+
+        <!-- PDF report action (bound to model, triggered from Python) -->
+        <record id="action_report_fastmoving_new" model="ir.actions.report">
+            <field name="name">Fast Moving Product Report</field>
+            <field name="model">fastmoving.report.line</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">forecasting_auto_replenishment.report_fastmoving_new</field>
+        </record>
+
+        <!-- ================================================================
+             MENU STRUCTURE
+        ================================================================ -->
+
+        <menuitem id="menu_forecast_reports_root"
+                  name="Reports"
+                  parent="forecasting_auto_replenishment.menu_forecast_root"
+                  sequence="4"/>
+
+        <!-- Deadstock: single submenu -->
+        <menuitem id="menu_deadstock_report_line"
+                  name="Deadstock"
+                  parent="menu_forecast_reports_root"
+                  action="action_open_deadstock"
+                  sequence="1"/>
+
+        <!-- Fast Moving: single submenu -->
+        <menuitem id="menu_fastmoving_report"
+                  name="Fast Moving"
+                  parent="menu_forecast_reports_root"
+                  action="action_open_fast_moving"
+                  sequence="2"/>
+
+        <!-- Overstock: parent submenu -->
+        <menuitem id="menu_overstock_root"
+                  name="Overstock"
+                  parent="menu_forecast_reports_root"
+                  sequence="3"/>
+
+        <!-- Overstock: Excess Stock child -->
+        <menuitem id="menu_overstock_excess"
+                  name="Excess Stock"
+                  parent="menu_overstock_root"
+                  action="action_open_overstock_excess"
+                  sequence="1"/>
+
+        <!-- Overstock: Days of Inventory child -->
+        <menuitem id="menu_overstock_days"
+                  name="Days of Inventory"
+                  parent="menu_overstock_root"
+                  action="action_open_overstock_days"
+                  sequence="2"/>
+
+    </data>
+</odoo>

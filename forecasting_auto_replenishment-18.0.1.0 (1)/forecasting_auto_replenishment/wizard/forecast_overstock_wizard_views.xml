@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <record id="view_overstock_wizard_form" model="ir.ui.view">
+            <field name="name">forecast.overstock.wizard.form</field>
+            <field name="model">forecast.overstock.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Overstock Report">
+                    <group>
+                        <field name="method"/>
+                        <field name="target_days"
+                               invisible="method != 'days_of_inventory'"
+                               required="method == 'days_of_inventory'"/>
+                    </group>
+                    <footer>
+                        <button string="Generate Report"
+                                type="object"
+                                name="action_generate_overstock_report"
+                                class="btn-primary"/>
+                        <button string="Cancel"
+                                class="btn-secondary"
+                                special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_overstock_wizard" model="ir.actions.act_window">
+            <field name="name"> Generate Overstock Report</field>
+            <field name="res_model">forecast.overstock.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="binding_model_id" ref="forecasting_auto_replenishment.model_forecast_line"/>
+            <field name="binding_type">action</field>
+        </record>
+
+    </data>
+</odoo>
