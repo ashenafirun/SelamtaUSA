@@ -1,8 +1,0 @@
-<odoo>
-
-     <template id="product_out_of_stock_ribbon" inherit_id="website_sale.products_item" active="False" customize_show="True" name="Out Of Stock Ribbon">
-          <xpath expr="//div[hasclass('o_wsale_product_information')]" position="after">
-               <span t-if="not product.sudo().allow_out_of_stock_order and product.sudo().qty_available &lt; 1" class="o_ribbon bg-danger o_ribbon_left">Out Of Stock</span>
-          </xpath>
-     </template>
-</odoo>
