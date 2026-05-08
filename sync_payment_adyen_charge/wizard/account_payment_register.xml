@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_account_payment_register_form_inherit_fees" model="ir.ui.view">
+        <field name="name">account.payment.register.form.inherit.fees</field>
+        <field name="model">account.payment.register</field>
+        <field name="inherit_id" ref="account.view_account_payment_register_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='payment_method_line_id']" position="after">
+                <field name="provider_code" invisible="1"/>
+                <field name="fees_active" invisible="1" />
+            </xpath>
+            <xpath expr="//field[@name='payment_date']" position="before">
+                <field name="card_fees"
+                    invisible = "provider_code != 'adyen' or not fees_active" />
+            </xpath>
+        </field>
+    </record>
+</odoo>
