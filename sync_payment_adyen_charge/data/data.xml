@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <record id="product_product_payment_fees" model="product.product">
+        <field name="name">Payment Fees</field>
+        <field name="default_code">PAY_FEES</field>
+        <field name="type">service</field>
+        <field name="categ_id" ref="product.product_category_all"/>
+        <field name="sale_ok" eval="False"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="list_price">0.0</field>
+        <field name="invoice_policy">order</field>
+    </record>
+
+</odoo>
