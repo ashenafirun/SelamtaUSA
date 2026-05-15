@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="portal_my_home_overdue__multi_invoice_inherit" name="Portal layout: overdue invoices" inherit_id="account_payment.portal_my_home_overdue_invoice" priority="30">
+        <xpath expr="//a[@href='/my/invoices/overdue']" position="replace">
+            <button t-if="page_name == 'invoice' and not invoice and filterby != 'bills'" alt="Pay Now" class="btn btn-md btn-primary pull-left" id="go_payment">
+                <i class="fa fa-arrow-circle-right"/> Go For Payment
+            </button>
+        </xpath>
+    </template>
+    <template id="invoice_list_page" inherit_id="account.portal_my_invoices">
+        <xpath expr="//thead" position="before">
+            <t t-set="inv_state" t-value="True if any(item['invoice'].state == 'posted' for item in invoices) else False"/>
+        </xpath>
+        <xpath expr="//thead/tr/th[1]" position="before">
+            <th id="my_invoices">
+                <span class="oe_checkbox">
+                    <input type="checkbox" class="payall"/>
+                </span>
+            </th>
+        </xpath>
+        <xpath expr="//tbody/t/tr/td[1]" position="before">
+            <td>
+                <t t-if="invoice.move_type == 'out_invoice'">
+                    <span class="oe_checkbox" t-if="invoice.state == 'posted' and invoice.amount_residual > 0">
+                        <input type="checkbox" t-att-data-id="invoice.id" t-att-data-amount="invoice.amount_residual" t-att-data-currency_id="invoice.currency_id.id" class="pay"/>
+                    </span>
+                </t>
+            </td>
+        </xpath>
+    </template>
+
+    <template id="payment_tokens_list_inhertied" inherit_id="payment.form">
+        <xpath expr="//div[@id='o_payment_form_options']" position="after">
+            <input id="invoice_id" type="hidden" name="invoice_id" t-att-value="invoice_ids"/>
+        </xpath>
+    </template>
+
+</odoo>
