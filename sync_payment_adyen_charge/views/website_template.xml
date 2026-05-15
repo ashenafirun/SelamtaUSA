@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+	<template id="website_sale_total_with_fee" inherit_id="website_sale.total">
+        <xpath expr="//tr[@id='order_total']" position="after">
+
+            <t t-set="provider_sudo"
+               t-value="request.env['payment.provider'].sudo().search([
+                   ('code', '=', 'adyen'),
+                   ('company_id', '=', website_sale_order.company_id.id)
+               ], limit=1)"/>
+
+            <t t-set="pm_sudo"
+               t-value="request.env['payment.method'].sudo().search([
+                   ('code', '=', 'card'),
+                   ('provider_ids', 'in', provider_sudo.ids)
+               ], limit=1) if provider_sudo else False"/>
+
+            <t t-if="tx_sudo and tx_sudo.state == 'done' and tx_sudo.fees">
+                <t t-set="adyen_fee" t-value="tx_sudo.fees"/>
+            </t>
+            <t t-else="">
+                <t t-set="adyen_fee"
+                   t-value="(
+                       provider_sudo.compute_fees(
+                           pm_sudo,
+                           website_sale_order.amount_total,
+                           currency=website_sale_order.currency_id,
+                           partner_id=website_sale_order.partner_id.id
+                       ) or 0.0
+                   ) if provider_sudo and pm_sudo else 0.0"/>
+            </t>
+
+            <t t-set="partner_country" t-value="website_sale_order.partner_id.country_id"/>
+            <t t-set="company_country" t-value="website_sale_order.company_id.country_id"/>
+            <t t-set="is_domestic"
+               t-value="partner_country and company_country and partner_country.id == company_country.id"/>
+
+            <t t-set="order_total" t-value="website_sale_order.amount_total"/>
+            <t t-set="used_credit" t-value="payment_option == 2 and available_credit_to_use or 0.0"/>
+
+            <!-- Credit to be used – shown "Use Credit Limit" checkbox is checked -->
+            <tr id="order_credit_to_use"
+                style="display:none;"
+                t-att-data-available-credit="available_credit_to_use or 0.0"
+                t-att-data-currency-symbol="website_sale_order.currency_id.symbol"
+                t-att-data-currency-position="website_sale_order.currency_id.position">
+                <td colspan="2" class="border-0 ps-0 pt-0 pb-2">
+                    <strong>Credit to be used</strong>
+                </td>
+                <td class="text-end border-0 pe-0 pt-0 pb-2">
+                    <strong>
+                        <span id="credit_to_use_amount"
+                              class="monetary_field text-end p-0">
+                        </span>
+                    </strong>
+                </td>
+            </tr>
+
+            <t t-if="adyen_fee > 0">
+                   <tr id="order_total_adyen_fee_label"
+                         t-if="payment_option != 3"
+                        style="display:none;"
+                        t-att-data-adyen-fee="adyen_fee"
+                        t-att-data-fee-fixed="provider_sudo.fees_dom_fixed if is_domestic else provider_sudo.fees_int_fixed"
+                        t-att-data-fee-var="provider_sudo.fees_dom_var if is_domestic else provider_sudo.fees_int_var"
+                        t-att-data-grand-total="order_total + adyen_fee"
+                    >
+                    <td colspan="2" class="border-0 ps-0 pt-0 pb-2">
+                        <strong>
+                            <t t-if="is_domestic">Adyen Domestic Fees</t>
+                            <t t-else="">Adyen International Fees</t>
+                        </strong>
+                    </td>
+                    <td class="text-end border-0 pe-0 pt-0 pb-2">
+                        <strong>
+                            <span t-esc="adyen_fee"
+                                  class="monetary_field"
+                                  t-options="{'widget': 'monetary', 'display_currency': website_sale_order.currency_id}"/>
+                        </strong>
+                    </td>
+                </tr>
+
+                <tr id="order_total_grand_total"
+                     t-if="payment_option != 3"
+                    style="display:none;">
+                    <td colspan="2" class="border-0 ps-0 pt-0 pb-2">
+                        <strong>Grand Total</strong>
+                    </td>
+                    <td class="text-end border-0 pe-0 pt-0 pb-2">
+                        <strong>
+                            <span id="adyen_grand_total_amount"
+                                  t-esc="order_total + adyen_fee"
+                                  class="monetary_field text-end p-0"
+                                  t-options="{'widget': 'monetary', 'display_currency': website_sale_order.currency_id}"/>
+                        </strong>
+                    </td>
+                </tr>
+            </t>
+
+        </xpath>
+    </template>
+
+	<template id="payment_summary_status_inherit" inherit_id="payment.payment_status">
+        <xpath expr="//t[@t-call='portal.frontend_layout']/div[1]/div[hasclass('container')]/div[1]/div[1]/div[2]/div/t[@t-call='payment.summary_item'][1]/t[3]" position="replace">
+            <t t-set="value" t-value="tx.amount + tx.fees"/>
+        </xpath>
+    </template>
+</odoo>
