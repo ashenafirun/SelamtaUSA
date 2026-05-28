@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="assets_barcode" inherit_id="stock_barcode.assets">
+        <xpath expr="." position="inside">
+            <script type="module" src="/split_packaging/static/src/barcode_picking_model_patch.js"/>
+        </xpath>
+    </template>
+</odoo>
