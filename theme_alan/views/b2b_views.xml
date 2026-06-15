@@ -116,8 +116,11 @@
             <attribute name="t-if" add=" not(request.env.user._is_public() and website.active_b2b_mode)" separator=" and "/>
         </xpath>
     </template>
-    <template id="theme_alan_stick_cart" name="Theme Alan Stick Cart" inherit_id="theme_alan.as_product_stick_cart">
+   <template id="theme_alan_stick_cart" name="Theme Alan Stick Cart" inherit_id="theme_alan.as_product_stick_cart">
         <xpath expr="//div[contains(@t-attf-class, 'as_product_price')]" position="attributes">
+            <attribute name="t-if"> not(request.env.user._is_public() and website.active_b2b_mode)</attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('as_add_cart')]" position="attributes">
             <attribute name="t-if"> not(request.env.user._is_public() and website.active_b2b_mode)</attribute>
         </xpath>
     </template>
