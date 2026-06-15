@@ -81,12 +81,15 @@
         _onChangeAddQuantity: function (ev) {
             ev.preventDefault();
             var $link = $(ev.currentTarget);
-            var data = $link.closest('input[name="add_qty"]').val();
-            var default_value = $link.closest('input[name="add_qty"]').data('setqty');
+            var $input = $link.closest('input[name="add_qty"]');
+            var data = $input.val();
+            var default_value = $input.data('setqty');
             if(parseInt(data) < parseInt(default_value)){
-                var set_data = default_value;
-                $link.closest('input[name="add_qty"]').val(set_data);
-
+                $input.val(default_value);
+                $('.sh-min-qty-toast').remove();
+                var $toast = $('<div class="sh-min-qty-toast alert alert-warning alert-dismissible fade show" role="alert" style="position:fixed;bottom:20px;right:20px;z-index:9999;min-width:320px;box-shadow:0 4px 12px rgba(0,0,0,0.15);"><i class="fa fa-exclamation-triangle me-2"></i> Minimum order quantity for this product is <strong>' + default_value + ' units</strong>. Your quantity has been updated.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>');
+                $('body').append($toast);
+                setTimeout(function(){ $toast.fadeOut(500, function(){ $(this).remove(); }); }, 4000);
             }
             this._super.apply(this, arguments);
             return false;
