@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Hide "Untaxed Amount" row when there's no tax breakdown.
+         Covers Invoice + SO + PO automatically, since sale.document_tax_totals
+         and purchase.document_tax_totals are both primary copies of this
+         same base template. -->
+    <template id="document_tax_totals_hide_untaxed"
+              inherit_id="account.document_tax_totals">
+        <xpath expr="//tr[hasclass('o_subtotal')]" position="attributes">
+            <attribute name="t-if">subtotal['tax_groups']</attribute>
+        </xpath>
+    </template>
+
+    <!-- Hide "Taxes" column - Invoice -->
+    <template id="invoice_hide_taxes_column"
+              inherit_id="account.report_invoice_document">
+        <xpath expr="//th[@name='th_taxes']" position="replace"/>
+        <xpath expr="//td[@name='td_taxes']" position="replace"/>
+    </template>
+
+    <!-- Hide "Taxes" column - Sales Order / Quotation -->
+    <template id="saleorder_hide_taxes_column"
+              inherit_id="sale.report_saleorder_document">
+        <xpath expr="//th[@name='th_taxes']" position="replace"/>
+        <xpath expr="//td[@name='td_taxes']" position="replace"/>
+    </template>
+
+    <!-- Hide "Taxes" column - Purchase Order.
+         Note: PO template doesn't give this <td> a name attribute like
+         Invoice/SO do, so this targets it by position (5th td: product,
+         qty, price, discount, taxes). Stable on Odoo 18, but re-check
+         this one specifically if you ever upgrade major versions. -->
+    <template id="purchaseorder_hide_taxes_column"
+              inherit_id="purchase.report_purchaseorder_document">
+        <xpath expr="//th[@name='th_taxes']" position="replace"/>
+        <xpath expr="//t[@t-if='not line.display_type']/td[5]" position="replace"/>
+    </template>
+
+</odoo>
