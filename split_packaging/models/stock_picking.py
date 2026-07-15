@@ -25,15 +25,20 @@ class StockMove(models.Model):
                 continue
 
             product = move.product_id
-            packaging = (
-                product.packaging_ids[:1]
-                or product.product_tmpl_id.packaging_ids[:1]
-            )
+            packagings = (
+                product.packaging_ids
+                or product.product_tmpl_id.packaging_ids
+            ).filtered(lambda p: p.qty and p.qty > 0)
 
-            if not packaging or not packaging.qty or packaging.qty <= 0:
+            if not packagings:
                 continue
 
-            pkg_qty = packaging.qty
+            # Try every packaging size on this product, largest first, so a
+            # line gets split using whichever sizes actually divide it.
+            # This fixes the old behavior of only ever using packaging_ids[:1],
+            # which broke scanning whenever an order used more than one
+            # packaging for the same product.
+            pkg_sizes = sorted(set(packagings.mapped('qty')), reverse=True)
             uom_rounding = move.product_uom.rounding
 
             reserved_lines = move.move_line_ids.filtered(
@@ -45,25 +50,47 @@ class StockMove(models.Model):
             if not reserved_lines:
                 continue
 
+            # Skip lines that are already sized to one of the known
+            # packaging quantities - nothing further to split.
             if all(
-                float_compare(l.quantity, pkg_qty, precision_rounding=uom_rounding) <= 0
+                any(
+                    float_compare(l.quantity, sz, precision_rounding=uom_rounding) == 0
+                    for sz in pkg_sizes
+                )
                 for l in reserved_lines
             ) and len(reserved_lines) > 1:
                 continue
 
             for line in reserved_lines:
                 line_qty = line.quantity
-                if float_compare(line_qty, pkg_qty, precision_rounding=uom_rounding) <= 0:
+                if any(
+                    float_compare(line_qty, sz, precision_rounding=uom_rounding) == 0
+                    for sz in pkg_sizes
+                ):
+                    continue
+                if float_compare(line_qty, min(pkg_sizes), precision_rounding=uom_rounding) <= 0:
                     continue
 
-                num_full = math.floor(float_round(line_qty / pkg_qty, precision_digits=6))
-                remainder = float_round(
-                    line_qty - (num_full * pkg_qty), precision_rounding=uom_rounding
-                )
-                has_remainder = float_compare(remainder, 0, precision_rounding=uom_rounding) > 0
-                total_pkgs = num_full + (1 if has_remainder else 0)
+                # Greedily break line_qty into chunks using the available
+                # packaging sizes (largest first), with any true leftover
+                # kept as its own remainder chunk.
+                remaining = line_qty
+                chunks = []
+                for sz in pkg_sizes:
+                    if float_compare(remaining, sz, precision_rounding=uom_rounding) <= 0:
+                        continue
+                    count = math.floor(float_round(remaining / sz, precision_digits=6))
+                    if count <= 0:
+                        continue
+                    chunks.extend([sz] * count)
+                    remaining = float_round(
+                        remaining - (count * sz), precision_rounding=uom_rounding
+                    )
 
-                if total_pkgs <= 1:
+                if float_compare(remaining, 0, precision_rounding=uom_rounding) > 0:
+                    chunks.append(remaining)
+
+                if len(chunks) <= 1:
                     continue
 
                 base_line_vals = {
@@ -80,17 +107,17 @@ class StockMove(models.Model):
                     'result_package_id': False,
                 }
 
-                line.sudo().write({'quantity': pkg_qty})
+                line.sudo().write({'quantity': chunks[0]})
 
-                for i in range(1, total_pkgs):
-                    qty = pkg_qty if i < num_full else remainder
+                for qty in chunks[1:]:
                     if float_compare(qty, 0, precision_rounding=uom_rounding) <= 0:
                         continue
                     new_line = MoveLine.sudo().create(dict(base_line_vals))
                     new_line.sudo().write({'quantity': qty})
 
                 _logger.info(
-                    "SPLIT-PKG: %s → %s lines", product.name, total_pkgs
+                    "SPLIT-PKG: %s → %s lines (sizes used: %s)",
+                    product.name, len(chunks), pkg_sizes
                 )
 
 
