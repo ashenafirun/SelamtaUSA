@@ -136,41 +136,18 @@ class StockPicking(models.Model):
         if 'mark_lot_lines_picked' in vals:
             picked_value = vals['mark_lot_lines_picked']
             for picking in self:
-                # Find lot-tracked move lines and set qty_done accordingly
-                # In Odoo 18, "Picked" checkbox = move_line_ids where qty_done > 0
-                # The Picked column on the move level checks if all lines have qty_done set
-                # We set qty_done = quantity (reserved qty) to mark as picked
+                # Find lot-tracked move lines and set their 'picked' flag.
+                # Odoo 17+ has a dedicated 'picked' boolean field on
+                # stock.move.line specifically so a line can be marked as
+                # picked WITHOUT setting qty_done - that keeps the reserved
+                # quantity available for the Barcode app to bind to a
+                # subsequently-scanned package/box. Previously this wrote
+                # qty_done = quantity instead, which marked the line as
+                # fully finished and left nothing "available" for the app
+                # to assign a new box scan to.
                 lot_lines = picking.move_line_ids.filtered(
                     lambda l: l.product_id.tracking in ('lot', 'serial')
                     and l.state not in ('done', 'cancel')
                 )
-                if picked_value:
-                    # Mark as picked: set qty_done = reserved quantity
-                    for line in lot_lines:
-                        if line.quantity > 0 and line.qty_done == 0:
-                            line.sudo().write({'qty_done': line.quantity})
-                else:
-                    # Unmark: reset qty_done to 0
-                    for line in lot_lines:
-                        line.sudo().write({'qty_done': 0})
-
-        return res
-
-    def action_toggle_lot_picked(self):
-        """Toggle Mark Lot Products Picked on/off."""
-        self.ensure_one()
-        self.write({'mark_lot_lines_picked': not self.mark_lot_lines_picked})
-
-    def action_mark_lot_lines_picked_barcode(self):
-        """Called from barcode app button. Toggles picked state for lot lines."""
-        self.ensure_one()
-        lot_lines = self.move_line_ids.filtered(
-            lambda l: l.product_id.tracking in ('lot', 'serial')
-            and l.state not in ('done', 'cancel')
-        )
-        if not lot_lines:
-            return False
-        all_picked = all(l.qty_done > 0 for l in lot_lines)
-        new_val = not all_picked
-        self.write({'mark_lot_lines_picked': new_val})
-        return new_val
+                for line in lot_lines:
+                    line.sudo().write({'picked':
