@@ -150,4 +150,25 @@ class StockPicking(models.Model):
                     and l.state not in ('done', 'cancel')
                 )
                 for line in lot_lines:
-                    line.sudo().write({'picked':
+                    line.sudo().write({'picked': bool(picked_value)})
+
+        return res
+
+    def action_toggle_lot_picked(self):
+        """Toggle Mark Lot Products Picked on/off."""
+        self.ensure_one()
+        self.write({'mark_lot_lines_picked': not self.mark_lot_lines_picked})
+
+    def action_mark_lot_lines_picked_barcode(self):
+        """Called from barcode app button. Toggles picked state for lot lines."""
+        self.ensure_one()
+        lot_lines = self.move_line_ids.filtered(
+            lambda l: l.product_id.tracking in ('lot', 'serial')
+            and l.state not in ('done', 'cancel')
+        )
+        if not lot_lines:
+            return False
+        all_picked = all(l.picked for l in lot_lines)
+        new_val = not all_picked
+        self.write({'mark_lot_lines_picked': new_val})
+        return new_val
