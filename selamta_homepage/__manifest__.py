@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta Homepage',
-    'version': '18.0.1.1.1',
+    'version': '18.0.1.2.0',
     'category': 'Website/Website',
     'summary': 'Wholesale homepage and footer for selamtausa.com',
     'description': """
 Replaces the website homepage body and footer with the Selamta wholesale design:
 hero with account call-to-action, shop-by-category tiles, how ordering works,
-live best sellers, hand-picked new arrivals, brands we carry, and a darker,
+best sellers and new arrivals (automatic or hand-picked), brands we carry, and a darker,
 accessible footer with a corrected copyright line.
     """,
     'author': 'Selamta LLC',
