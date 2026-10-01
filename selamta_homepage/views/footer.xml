@@ -10,8 +10,8 @@
             <div id="footer" class="oe_structure oe_structure_solo sel-footer" t-ignore="true" t-if="not no_footer">
                 <section class="sel-footer-main">
                     <div class="container">
-                        <div class="sel-footer-grid">
-                            <div class="sel-footer-brand">
+                        <div class="row sel-footer-grid">
+                            <div class="col-12 col-lg-5 sel-footer-brand">
                                 <span class="sel-footer-logo"><img src="/web/image/website/1/logo" width="76" height="56" alt="Selamta Import + Distribute"/></span>
                                 <p>Your trusted wholesale partner for authentic Ethiopian imports. Supplying quality you can trust, service you can count on.</p>
                                 <div class="sel-footer-social">
@@ -19,7 +19,7 @@
                                     <a href="https://www.instagram.com/selamtausa/?hl=en" target="_blank" rel="noopener" aria-label="Selamta on Instagram"><i class="fa fa-instagram" role="img" aria-hidden="true"/></a>
                                 </div>
                             </div>
-                            <div class="sel-footer-col">
+                            <div class="col-6 col-lg-2 sel-footer-col">
                                 <h5>Company</h5>
                                 <ul class="list-unstyled">
                                     <li><a href="/about-us-1">About us</a></li>
@@ -28,7 +28,7 @@
                                     <li><a href="/my">My account</a></li>
                                 </ul>
                             </div>
-                            <div class="sel-footer-col">
+                            <div class="col-6 col-lg-2 sel-footer-col">
                                 <h5>Help</h5>
                                 <ul class="list-unstyled">
                                     <li><a href="/shipping-returns">Shipping &amp; Returns</a></li>
@@ -36,7 +36,7 @@
                                     <li><a href="/privacy-policy">Privacy Policy</a></li>
                                 </ul>
                             </div>
-                            <div class="sel-footer-col">
+                            <div class="col-12 col-sm-6 col-lg-3 sel-footer-col">
                                 <h5>Visit or call</h5>
                                 <ul class="list-unstyled">
                                     <li>5335 Dividend Dr #C<br/>Decatur, GA 30035</li>

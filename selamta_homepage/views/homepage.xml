@@ -3,250 +3,351 @@
 
     <!--
         Selamta wholesale homepage.
-        Replaces the body (#wrap) of website.homepage. Odoo copies this inheriting view
-        onto the website-specific homepage automatically when the module is installed.
-        Text blocks sit in oe_structure areas so they stay editable in the website builder;
-        product lists are rendered live from the catalog and sales data.
+
+        The page body is one editable area (oe_structure_selamta_home) made of ordinary
+        website-builder blocks: every section can be edited, moved up/down, duplicated or
+        deleted with Edit on the website, and new blocks can be dropped in between.
+
+        The area starts empty here. On install/upgrade, website._selamta_home_ensure_content()
+        renders `home_default_content` below into static HTML and stores it as the area's
+        content for each website, exactly like the website builder does when you click Save.
+        After someone edits and saves the page in the builder, that content is theirs and
+        module upgrades leave it alone.
     -->
     <template id="homepage" inherit_id="website.homepage" name="Selamta Homepage" priority="99">
         <xpath expr="//div[@id='wrap']" position="replace">
             <t t-set="website_meta_description" t-value="'Selamta LLC is a direct importer and wholesale distributor of authentic Ethiopian foods: teff, spices, coffee and ceremony goods, delivered to businesses across the US.'"/>
-            <t t-set="sel_categories" t-value="website._selamta_categories()"/>
-            <t t-set="sel_best_sellers" t-value="website._selamta_best_sellers(6)"/>
-            <t t-set="sel_new_arrivals" t-value="website._selamta_new_arrivals(6)"/>
-            <t t-set="sel_brands" t-value="website._selamta_brands()"/>
-            <t t-set="sel_is_public" t-value="website.env.user._is_public()"/>
             <div id="wrap" class="sel-home">
-
-                <!-- Hero -->
-                <section class="sel-hero">
-                    <div class="container">
-                        <div class="sel-hero-grid">
-                            <div class="oe_structure" id="oe_structure_selamta_hero_text">
-                                <div class="sel-hero-text">
-                                    <p class="sel-eyebrow">
-                                        <i class="fa fa-map-marker" role="img" aria-hidden="true"/>
-                                        Direct importer · Decatur, Georgia
-                                    </p>
-                                    <h1 class="sel-hero-title">Authentic Ethiopian foods, wholesale.</h1>
-                                    <p class="sel-hero-lead">Teff, spices, coffee and ceremony goods — imported direct and delivered to businesses across the US.</p>
-                                    <div class="sel-hero-actions">
-                                        <a href="/new-customer-registration" class="sel-btn sel-btn-yellow">Open a wholesale account <i class="fa fa-arrow-right" role="img" aria-hidden="true"/></a>
-                                        <a href="/web/login" class="sel-btn sel-btn-outline-light">Sign in to order</a>
-                                    </div>
-                                    <div class="sel-hero-stats">
-                                        <div><span class="sel-stat-num">500+</span><span class="sel-stat-label">products in stock</span></div>
-                                        <div><span class="sel-stat-num">10</span><span class="sel-stat-label">product categories</span></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- Hero photos: editable in the website builder (Edit, click a photo, Replace). -->
-                            <div class="oe_structure" id="oe_structure_selamta_hero_photos">
-                                <div class="sel-hero-collage">
-                                    <div class="sel-collage-tile sel-collage-wide">
-                                        <img src="/web/image/product.template/1439/image_1024" alt="Ethiopian coffee ceremony set" loading="eager"/>
-                                    </div>
-                                    <div class="sel-collage-tile">
-                                        <img src="/web/image/product.template/1724/image_1024" alt="Almi black teff flour" loading="eager"/>
-                                    </div>
-                                    <div class="sel-collage-tile">
-                                        <img src="/web/image/product.template/1510/image_1024" alt="Berbere red pepper spice" loading="eager"/>
-                                    </div>
-                                    <div class="sel-collage-tile">
-                                        <img src="/web/image/product.template/1608/image_1024" alt="Kolo roasted barley snack" loading="eager"/>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Why Selamta -->
-                <div class="oe_structure" id="oe_structure_selamta_why">
-                    <section class="sel-section sel-bg-white sel-why">
-                        <div class="container">
-                            <div class="sel-why-grid">
-                                <div class="sel-why-card">
-                                    <span class="sel-icon"><i class="fa fa-globe" role="img" aria-hidden="true"/></span>
-                                    <h3>Direct importer</h3>
-                                    <p>Shipped from Ethiopia through the Port of Savannah to our Decatur warehouse.</p>
-                                </div>
-                                <div class="sel-why-card">
-                                    <span class="sel-icon"><i class="fa fa-th-large" role="img" aria-hidden="true"/></span>
-                                    <h3>500+ products, one order</h3>
-                                    <p>Teff, spices, coffee, tea, snacks, ceramics and ceremony goods together.</p>
-                                </div>
-                                <div class="sel-why-card">
-                                    <span class="sel-icon"><i class="fa fa-truck" role="img" aria-hidden="true"/></span>
-                                    <h3>Delivery across the US</h3>
-                                    <p>LTL freight delivery to businesses nationwide.</p>
-                                </div>
-                                <div class="sel-why-card">
-                                    <span class="sel-icon"><i class="fa fa-tag" role="img" aria-hidden="true"/></span>
-                                    <h3>Wholesale pricing</h3>
-                                    <p>Approved business accounts see their prices after signing in.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-                </div>
-
-                <!-- Shop by category -->
-                <section class="sel-section sel-bg-cream" t-if="sel_categories">
-                    <div class="container">
-                        <div class="sel-section-head">
-                            <div>
-                                <h2>Shop by category</h2>
-                                <p>Everything your shelves need, from one supplier.</p>
-                            </div>
-                            <a href="/shop" class="sel-link">View all products <i class="fa fa-arrow-right" role="img" aria-hidden="true"/></a>
-                        </div>
-                        <div class="sel-card-grid sel-card-grid-cat">
-                            <t t-foreach="sel_categories" t-as="cat">
-                                <a t-att-href="cat['url']" class="sel-card sel-cat-card">
-                                    <span class="sel-card-img"><img t-att-src="cat['image']" alt="" loading="lazy"/></span>
-                                    <span class="sel-card-title" t-out="cat['label']"/>
-                                    <span class="sel-card-sub" t-if="cat['subtitle']" t-out="cat['subtitle']"/>
-                                </a>
-                            </t>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- How ordering works -->
-                <div class="oe_structure" id="oe_structure_selamta_how">
-                    <section class="sel-section sel-bg-white sel-how">
-                        <div class="container">
-                            <div class="sel-section-head sel-center">
-                                <div>
-                                    <h2>How wholesale ordering works</h2>
-                                    <p>Prices are shown to approved business customers after sign-in.</p>
-                                </div>
-                            </div>
-                            <div class="sel-how-grid">
-                                <div class="sel-how-card">
-                                    <span class="sel-step">1</span>
-                                    <h3>Apply for an account</h3>
-                                    <p>Tell us about your business on the short registration form.</p>
-                                </div>
-                                <div class="sel-how-card">
-                                    <span class="sel-step">2</span>
-                                    <h3>Get approved</h3>
-                                    <p>We verify your business and set up your pricing — usually within 2 business days.</p>
-                                </div>
-                                <div class="sel-how-card">
-                                    <span class="sel-step">3</span>
-                                    <h3>Place your order</h3>
-                                    <p>Sign in to see your prices and place your order online.</p>
-                                </div>
-                            </div>
-                            <div class="sel-center sel-mt">
-                                <a href="/new-customer-registration" class="sel-btn sel-btn-green">Start your application</a>
-                            </div>
-                        </div>
-                    </section>
-                </div>
-
-                <!-- Best sellers (live: most sold over the last 12 months) -->
-                <section class="sel-section sel-bg-cream" t-if="sel_best_sellers">
-                    <div class="container">
-                        <div class="sel-section-head">
-                            <div>
-                                <h2>Best sellers</h2>
-                                <p>The products our wholesale customers reorder most.</p>
-                            </div>
-                            <a href="/shop" class="sel-link">Shop all <i class="fa fa-arrow-right" role="img" aria-hidden="true"/></a>
-                        </div>
-                        <div class="sel-card-grid sel-card-grid-product">
-                            <t t-foreach="sel_best_sellers" t-as="card">
-                                <t t-call="selamta_homepage.product_card"/>
-                            </t>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- New arrivals: the products listed under Website > eCommerce > Products > Homepage New Arrivals,
-                     in that order; the newest published products when that list is empty -->
-                <section class="sel-section sel-bg-white" t-if="sel_new_arrivals">
-                    <div class="container">
-                        <div class="sel-section-head">
-                            <div>
-                                <h2>New arrivals</h2>
-                                <p>The latest additions to our catalog.</p>
-                            </div>
-                            <a href="/shop?order=create_date+desc" class="sel-link">See what's new <i class="fa fa-arrow-right" role="img" aria-hidden="true"/></a>
-                        </div>
-                        <div class="sel-card-grid sel-card-grid-product">
-                            <t t-foreach="sel_new_arrivals" t-as="card">
-                                <t t-set="sel_badge" t-value="'New'"/>
-                                <t t-call="selamta_homepage.product_card"/>
-                            </t>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Brands we carry: Website > eCommerce > Products > Product Brands (drag to reorder) -->
-                <section class="sel-section sel-bg-cream" t-if="sel_brands">
-                    <div class="container">
-                        <div class="sel-section-head">
-                            <div>
-                                <h2>Brands we carry</h2>
-                                <p>Ethiopian favorites and imported staples, all in one order.</p>
-                            </div>
-                        </div>
-                        <ul class="sel-brand-grid list-unstyled">
-                            <t t-foreach="sel_brands" t-as="brand">
-                                <li>
-                                    <a t-att-href="brand['url']">
-                                        <img t-if="brand['logo']" t-att-src="brand['logo']" t-att-alt="brand['name']" loading="lazy"/>
-                                        <span t-else="" t-out="brand['name']"/>
-                                    </a>
-                                </li>
-                            </t>
-                        </ul>
-                    </div>
-                </section>
-
-                <!-- Call to action -->
-                <div class="oe_structure" id="oe_structure_selamta_cta">
-                    <section class="sel-cta">
-                        <div class="container">
-                            <div class="sel-cta-inner">
-                                <div>
-                                    <h2>Stock authentic Ethiopian products in your store.</h2>
-                                    <p>Open a wholesale account today, or call us and we'll set you up.</p>
-                                </div>
-                                <div class="sel-cta-actions">
-                                    <a href="/new-customer-registration" class="sel-btn sel-btn-dark">Open a wholesale account</a>
-                                    <a href="tel:+14047504162" class="sel-btn sel-btn-outline-dark">Call (404) 750-4162</a>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-                </div>
-
+                <div class="oe_structure oe_empty" id="oe_structure_selamta_home"/>
             </div>
         </xpath>
+    </template>
+
+    <!--
+        Default blocks of the homepage. Rendered once to static HTML by
+        website._selamta_home_default_html(); never rendered directly on a page.
+        Expects: sel_categories, sel_best_filter_id, sel_new_filter_id,
+        sel_brand_filter_id (or False) and sel_brand_links.
+    -->
+    <template id="home_default_content" name="Selamta Homepage: default blocks">
+
+        <!-- Hero -->
+        <section class="s_selamta_hero pt64 pb72" data-name="Hero">
+            <div class="container">
+                <div class="row align-items-center">
+                    <div class="col-lg-6 sel-hero-text">
+                        <p class="sel-eyebrow"><i class="fa fa-map-marker" role="img" aria-hidden="true"/> Direct importer · Decatur, Georgia</p>
+                        <h1 class="sel-hero-title">Authentic Ethiopian foods, wholesale.</h1>
+                        <p class="sel-hero-lead">Teff, spices, coffee and ceremony goods — imported direct and delivered to businesses across the US.</p>
+                        <p class="sel-hero-actions">
+                            <a href="/new-customer-registration" class="btn btn-lg sel-btn sel-btn-yellow">Open a wholesale account <i class="fa fa-arrow-right" role="img" aria-hidden="true"/></a>
+                            <a href="/web/login" class="btn btn-lg sel-btn sel-btn-outline-light">Sign in to order</a>
+                        </p>
+                        <div class="row sel-hero-stats">
+                            <div class="col-auto"><p class="sel-stat-num">500+</p><p class="sel-stat-label">products in stock</p></div>
+                            <div class="col-auto"><p class="sel-stat-num">10</p><p class="sel-stat-label">product categories</p></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6 sel-hero-photos">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <div class="sel-collage-tile sel-collage-wide">
+                                    <img src="/web/image/product.template/1439/image_1024" alt="Ethiopian coffee ceremony set" class="img img-fluid" loading="eager"/>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="sel-collage-tile">
+                                    <img src="/web/image/product.template/1724/image_1024" alt="Almi black teff flour" class="img img-fluid" loading="eager"/>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="sel-collage-tile">
+                                    <img src="/web/image/product.template/1510/image_1024" alt="Berbere red pepper spice" class="img img-fluid" loading="eager"/>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="sel-collage-tile">
+                                    <img src="/web/image/product.template/1608/image_1024" alt="Kolo roasted barley snack" class="img img-fluid" loading="eager"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Why Selamta -->
+        <section class="s_selamta_why pt56 pb56" data-name="Why Selamta">
+            <div class="container">
+                <div class="row g-3">
+                    <div class="col-6 col-lg-3">
+                        <div class="sel-why-card">
+                            <p class="sel-icon"><i class="fa fa-globe" role="img" aria-hidden="true"/></p>
+                            <h3>Direct importer</h3>
+                            <p>Shipped from Ethiopia through the Port of Savannah to our Decatur warehouse.</p>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="sel-why-card">
+                            <p class="sel-icon"><i class="fa fa-th-large" role="img" aria-hidden="true"/></p>
+                            <h3>500+ products, one order</h3>
+                            <p>Teff, spices, coffee, tea, snacks, ceramics and ceremony goods together.</p>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="sel-why-card">
+                            <p class="sel-icon"><i class="fa fa-truck" role="img" aria-hidden="true"/></p>
+                            <h3>Delivery across the US</h3>
+                            <p>LTL freight delivery to businesses nationwide.</p>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="sel-why-card">
+                            <p class="sel-icon"><i class="fa fa-tag" role="img" aria-hidden="true"/></p>
+                            <h3>Wholesale pricing</h3>
+                            <p>Approved business accounts see their prices after signing in.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Shop by category: one card per top-level category (edit, add or remove cards freely) -->
+        <section class="s_selamta_categories pt64 pb64" data-name="Shop by category" t-if="sel_categories">
+            <div class="container">
+                <div class="row align-items-end sel-section-head">
+                    <div class="col-md-8">
+                        <h2>Shop by category</h2>
+                        <p>Everything your shelves need, from one supplier.</p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <a href="/shop" class="sel-link">View all products <i class="fa fa-arrow-right" role="img" aria-hidden="true"/></a>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <t t-foreach="sel_categories" t-as="cat">
+                        <div class="col-6 col-md-4 sel-col-lg-5th">
+                            <a t-att-href="cat['url']" class="sel-card sel-cat-card">
+                                <span class="sel-card-img"><img t-att-src="cat['image']" t-att-alt="cat['label']" class="img img-fluid" loading="lazy"/></span>
+                                <span class="sel-card-title" t-out="cat['label']"/>
+                                <span class="sel-card-sub" t-if="cat['subtitle']" t-out="cat['subtitle']"/>
+                            </a>
+                        </div>
+                    </t>
+                </div>
+            </div>
+        </section>
+
+        <!-- How ordering works -->
+        <section class="s_selamta_how pt64 pb64" data-name="How ordering works">
+            <div class="container">
+                <div class="row sel-section-head">
+                    <div class="col-12 text-center">
+                        <h2>How wholesale ordering works</h2>
+                        <p>Prices are shown to approved business customers after sign-in.</p>
+                    </div>
+                </div>
+                <div class="row g-4">
+                    <div class="col-lg-4">
+                        <div class="sel-how-card">
+                            <p class="sel-step">1</p>
+                            <h3>Apply for an account</h3>
+                            <p>Tell us about your business on the short registration form.</p>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="sel-how-card">
+                            <p class="sel-step">2</p>
+                            <h3>Get approved</h3>
+                            <p>We verify your business and set up your pricing — usually within 2 business days.</p>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="sel-how-card">
+                            <p class="sel-step">3</p>
+                            <h3>Place your order</h3>
+                            <p>Sign in to see your prices and place your order online.</p>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-center sel-mt">
+                    <a href="/new-customer-registration" class="btn btn-lg sel-btn sel-btn-green">Start your application</a>
+                </p>
+            </div>
+        </section>
+
+        <!-- Best sellers: Odoo "Products" block reading Website > eCommerce > Products > Homepage Best Sellers -->
+        <t t-call="selamta_homepage.home_products_block">
+            <t t-set="block_name" t-value="'Best sellers'"/>
+            <t t-set="block_filter_id" t-value="sel_best_filter_id"/>
+            <t t-set="block_title" t-value="'Best sellers'"/>
+            <t t-set="block_lead" t-value="'The products our wholesale customers reorder most.'"/>
+            <t t-set="block_link" t-value="'/shop'"/>
+            <t t-set="block_link_label" t-value="'Shop all'"/>
+            <t t-set="block_custom_data" t-value="'{}'"/>
+            <t t-set="block_bg" t-value="'sel-bg-cream'"/>
+        </t>
+
+        <!-- New arrivals: Odoo "Products" block reading Website > eCommerce > Products > Homepage New Arrivals -->
+        <t t-call="selamta_homepage.home_products_block">
+            <t t-set="block_name" t-value="'New arrivals'"/>
+            <t t-set="block_filter_id" t-value="sel_new_filter_id"/>
+            <t t-set="block_title" t-value="'New arrivals'"/>
+            <t t-set="block_lead" t-value="'The latest additions to our catalog.'"/>
+            <t t-set="block_link" t-value="'/shop?order=create_date+desc'"/>
+            <t t-set="block_link_label" t-value="'See what\'s new'"/>
+            <t t-set="block_custom_data" t-value="'{&quot;sel_badge&quot;: &quot;New&quot;}'"/>
+            <t t-set="block_bg" t-value="'sel-bg-white'"/>
+        </t>
+
+        <!-- Brands we carry: Odoo "Dynamic Content" block reading Website > eCommerce > Products > Product Brands -->
+        <section t-if="sel_brand_filter_id" data-snippet="s_dynamic_snippet" data-name="Brands we carry"
+                 class="s_dynamic_snippet s_dynamic s_dynamic_empty pt64 pb64 sel-brands sel-bg-cream s_as_product_brand_selamta_logos"
+                 t-att-data-filter-id="sel_brand_filter_id"
+                 data-template-key="selamta_homepage.dynamic_filter_template_as_product_brand_selamta_logos"
+                 data-number-of-records="16" data-number-of-elements="6" data-number-of-elements-small-devices="2"
+                 data-column-classes="col-4 col-md-3 col-lg-2" data-extra-classes="g-2 g-md-3" data-custom-template-data="{}">
+            <div class="container">
+                <div class="row s_nb_column_fixed">
+                    <section class="s_dynamic_snippet_title oe_unremovable oe_unmovable d-flex flex-column flex-md-row justify-content-between mb-lg-0 pb-3 pb-md-0">
+                        <div>
+                            <h2>Brands we carry</h2>
+                            <p class="lead">Ethiopian favorites and imported staples, all in one order.</p>
+                        </div>
+                        <div/>
+                    </section>
+                    <section class="s_dynamic_snippet_content oe_unremovable oe_unmovable o_not_editable col">
+                        <div class="css_non_editable_mode_hidden">
+                            <div class="missing_option_warning alert alert-info fade show d-none d-print-none rounded-0">
+                                Your Dynamic Snippet will be displayed here... This message is displayed because you did not provide both a filter and a template to use.<br/>
+                            </div>
+                        </div>
+                        <div class="dynamic_snippet_template"/>
+                    </section>
+                </div>
+            </div>
+        </section>
+        <!-- Without the theme's brand list: a plain list of brand names (edit freely) -->
+        <section t-if="not sel_brand_filter_id and sel_brand_links" class="s_selamta_brands pt64 pb64 sel-bg-cream" data-name="Brands we carry">
+            <div class="container">
+                <div class="row sel-section-head">
+                    <div class="col-12">
+                        <h2>Brands we carry</h2>
+                        <p>Ethiopian favorites and imported staples, all in one order.</p>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <t t-foreach="sel_brand_links" t-as="brand">
+                        <div class="col-4 col-md-3 col-lg-2">
+                            <a class="sel-brand" t-att-href="brand['url']" t-out="brand['name']"/>
+                        </div>
+                    </t>
+                </div>
+            </div>
+        </section>
+
+        <!-- Call to action -->
+        <section class="s_selamta_cta pt56 pb56" data-name="Call to action">
+            <div class="container">
+                <div class="row align-items-center g-4">
+                    <div class="col-lg-7">
+                        <h2>Stock authentic Ethiopian products in your store.</h2>
+                        <p>Open a wholesale account today, or call us and we'll set you up.</p>
+                    </div>
+                    <div class="col-lg-5 text-lg-end">
+                        <p class="sel-cta-actions">
+                            <a href="/new-customer-registration" class="btn btn-lg sel-btn sel-btn-dark">Open a wholesale account</a>
+                            <a href="tel:+14047504162" class="btn btn-lg sel-btn sel-btn-outline-dark">Call (404) 750-4162</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </template>
+
+    <!-- One Odoo "Products" block (s_dynamic_snippet_products) set up with the Selamta card. -->
+    <template id="home_products_block" name="Selamta Homepage: products block">
+        <section data-snippet="s_dynamic_snippet_products" t-att-data-name="block_name"
+                 t-attf-class="s_dynamic_snippet_products s_dynamic s_dynamic_empty pt64 pb64 sel-products #{block_bg} s_product_product_selamta_card"
+                 t-att-data-filter-id="block_filter_id"
+                 data-template-key="selamta_homepage.dynamic_filter_template_product_product_selamta_card"
+                 data-product-category-id="all" data-number-of-records="6"
+                 data-number-of-elements="6" data-number-of-elements-small-devices="2" data-row-per-slide="3"
+                 data-carousel-interval="5000" data-arrow-position="bottom"
+                 t-att-data-custom-template-data="block_custom_data">
+            <div class="container">
+                <div class="row s_nb_column_fixed">
+                    <section class="s_dynamic_snippet_title oe_unremovable oe_unmovable d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-lg-0 pb-3 pb-md-0">
+                        <div>
+                            <h2 t-out="block_title"/>
+                            <p class="lead" t-out="block_lead"/>
+                        </div>
+                        <div>
+                            <a title="See all" class="s_dynamic_snippet_main_page_url sel-link" t-att-href="block_link"><t t-out="block_link_label"/> <i class="fa fa-arrow-right ms-1" role="img" aria-hidden="true"/></a>
+                        </div>
+                    </section>
+                    <section class="s_dynamic_snippet_content oe_unremovable oe_unmovable o_not_editable col">
+                        <div class="css_non_editable_mode_hidden">
+                            <div class="missing_option_warning alert alert-info fade show d-none d-print-none rounded-0">
+                                Your Dynamic Snippet will be displayed here... This message is displayed because you did not provide both a filter and a template to use.<br/>
+                            </div>
+                        </div>
+                        <div class="dynamic_snippet_template"/>
+                    </section>
+                </div>
+            </div>
+        </section>
+    </template>
+
+    <!--
+        Card template for Odoo's "Products" block (choose "Selamta wholesale card" under
+        Template in the block options). Visitors who are not signed in see "Sign in for price";
+        signed-in customers see their price.
+    -->
+    <template id="dynamic_filter_template_product_product_selamta_card" name="Selamta wholesale card">
+        <t t-foreach="records" t-as="data" data-number-of-elements="6" data-number-of-elements-sm="2" data-row-per-slide="3"
+           data-arrow-position="bottom" data-thumb="/selamta_homepage/static/src/img/selamta_card_thumb.svg">
+            <t t-set="card" t-value="website._selamta_dynamic_product_card(data, is_sample)"/>
+            <t t-set="sel_is_public" t-value="website.env.user._is_public()"/>
+            <t t-call="selamta_homepage.product_card"/>
+        </t>
     </template>
 
     <!-- One product card. Expects `card` (dict from website._selamta_product_card),
          optional `sel_badge`, and `sel_is_public`. -->
     <template id="product_card" name="Selamta Homepage Product Card">
-        <div class="sel-card sel-product-card">
+        <div class="sel-card sel-product-card w-100">
             <span class="sel-badge" t-if="sel_badge" t-out="sel_badge"/>
             <a t-att-href="card['url']" class="sel-card-img"><img t-att-src="card['image']" t-att-alt="card['name']" loading="lazy"/></a>
             <a t-att-href="card['url']" class="sel-card-title" t-out="card['name']"/>
             <t t-if="sel_is_public">
-                <a t-att-href="card['login_url']" class="sel-btn sel-btn-outline-green sel-btn-sm">Sign in for price</a>
+                <a t-att-href="card['login_url']" class="btn sel-btn sel-btn-outline-green sel-btn-sm">Sign in for price</a>
             </t>
             <t t-elif="card['price']">
                 <span class="sel-price" t-out="card['price']"/>
-                <a t-att-href="card['url']" class="sel-btn sel-btn-green sel-btn-sm">View product</a>
+                <a t-att-href="card['url']" class="btn sel-btn sel-btn-green sel-btn-sm">View product</a>
             </t>
             <t t-else="">
-                <a t-att-href="card['url']" class="sel-btn sel-btn-outline-green sel-btn-sm">View product</a>
+                <a t-att-href="card['url']" class="btn sel-btn sel-btn-outline-green sel-btn-sm">View product</a>
             </t>
         </div>
+    </template>
+
+    <!--
+        Brand template for Odoo's "Dynamic Content" block with the filter
+        "Product Brands (homepage)". Shows the logo when the brand has one, otherwise its name.
+    -->
+    <template id="dynamic_filter_template_as_product_brand_selamta_logos" name="Selamta brand tiles">
+        <t t-foreach="records" t-as="data" data-number-of-elements="6" data-number-of-elements-sm="3"
+           data-column-classes="col-4 col-md-3 col-lg-2" data-extra-classes="g-2 g-md-3"
+           data-thumb="/selamta_homepage/static/src/img/selamta_brand_thumb.svg">
+            <t t-set="brand" t-value="website._selamta_dynamic_brand_card(data, is_sample)"/>
+            <a class="sel-brand" t-att-href="brand['url']">
+                <img t-if="brand['logo']" t-att-src="brand['logo']" t-att-alt="brand['name']" loading="lazy"/>
+                <span t-else="" t-out="brand['name']"/>
+            </a>
+        </t>
     </template>
 
 </odoo>
