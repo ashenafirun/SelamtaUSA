@@ -8,11 +8,6 @@ from odoo.osv import expression
 
 _logger = logging.getLogger(__name__)
 
-# Product photos used in the hero collage (product.template ids on selamtausa.com):
-# 23 PCS Coffee Set (Large Telet), Almi black teff 25 LB, Berbere 1 KG, Kolo Almi 1 KG.
-# Missing or unpublished ids are skipped and the gap is filled from best sellers.
-HERO_PRODUCT_IDS = [1439, 1724, 1510, 1608]
-
 # Homepage label, short description and preferred photo (product.template id)
 # for each top-level eCommerce category, keyed by the category name in lower case.
 # Categories are shown in this order; any other category with products comes after.
@@ -129,22 +124,6 @@ class Website(models.Model):
 
     def _selamta_new_arrivals(self, limit=6):
         return [self._selamta_product_card(p) for p in self._selamta_section_products('new_arrivals', limit)]
-
-    def _selamta_hero_images(self):
-        self.ensure_one()
-        Product = self.env['product.template']
-        products = Product.search(
-            expression.AND([self._selamta_product_domain(), [('id', 'in', HERO_PRODUCT_IDS)]])
-        )
-        by_id = {p.id: p for p in products}
-        chosen = [by_id[pid] for pid in HERO_PRODUCT_IDS if pid in by_id]
-        if len(chosen) < 4:
-            extra_ids = [c['id'] for c in self._selamta_best_sellers(8) if c['id'] not in by_id]
-            chosen += list(Product.browse(extra_ids[:4 - len(chosen)]))
-        return [{
-            'name': (p.name or '').strip(),
-            'image': '/web/image/product.template/%d/image_1024' % p.id,
-        } for p in chosen]
 
     def _selamta_categories(self):
         self.ensure_one()
