@@ -1,3 +1,0 @@
-id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_selamta_homepage_item_user,selamta.homepage.item user,model_selamta_homepage_item,base.group_user,1,0,0,0
-access_selamta_homepage_item_designer,selamta.homepage.item designer,model_selamta_homepage_item,website.group_website_designer,1,1,1,1
