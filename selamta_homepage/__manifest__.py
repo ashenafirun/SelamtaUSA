@@ -1,21 +1,24 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta Homepage',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.1.0',
     'category': 'Website/Website',
     'summary': 'Wholesale homepage and footer for selamtausa.com',
     'description': """
 Replaces the website homepage body and footer with the Selamta wholesale design:
 hero with account call-to-action, shop-by-category tiles, how ordering works,
-live best sellers and new arrivals, brands we carry, and a darker,
+live best sellers, hand-picked new arrivals, brands we carry, and a darker,
 accessible footer with a corrected copyright line.
     """,
     'author': 'Selamta LLC',
     'license': 'LGPL-3',
     'depends': ['website_sale'],
     'data': [
+        'security/ir.model.access.csv',
         'views/homepage.xml',
         'views/footer.xml',
+        'views/homepage_item_views.xml',
+        'data/brand_data.xml',
     ],
     'assets': {
         'web.assets_frontend': [

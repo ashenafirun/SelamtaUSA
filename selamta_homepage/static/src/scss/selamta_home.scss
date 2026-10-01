@@ -494,6 +494,12 @@ $sel-on-green-muted: #CFE3D3;
                 border-color: $sel-green;
                 color: $sel-green;
             }
+
+            img {
+                max-height: 44px;
+                max-width: 100%;
+                object-fit: contain;
+            }
         }
     }
 

@@ -3,7 +3,7 @@ import logging
 from datetime import timedelta
 from urllib.parse import quote
 
-from odoo import fields, models, tools
+from odoo import api, fields, models, tools
 from odoo.osv import expression
 
 _logger = logging.getLogger(__name__)
@@ -98,8 +98,23 @@ class Website(models.Model):
         return [self._selamta_product_card(p) for p in ordered]
 
     def _selamta_new_arrivals(self, limit=6):
+        """Products picked under Website > eCommerce > Products > Homepage New Arrivals,
+        in their drag-and-drop order. When nothing is picked (or none of the picked
+        products is published), fall back to the newest published products."""
         self.ensure_one()
-        products = self.env['product.template'].search(
+        Product = self.env['product.template']
+        picked_ids = self.env['selamta.homepage.item'].sudo().search(
+            [('section', '=', 'new_arrivals')],
+        ).mapped('product_tmpl_id').ids
+        if picked_ids:
+            visible = Product.search(
+                expression.AND([self._selamta_product_domain(), [('id', 'in', picked_ids)]])
+            )
+            by_id = {p.id: p for p in visible}
+            ordered = [by_id[pid] for pid in picked_ids if pid in by_id][:limit]
+            if ordered:
+                return [self._selamta_product_card(p) for p in ordered]
+        products = Product.search(
             self._selamta_product_domain(), order='create_date desc, id desc', limit=limit,
         )
         return [self._selamta_product_card(p) for p in products]
@@ -157,4 +172,37 @@ class Website(models.Model):
         return tiles
 
     def _selamta_brands(self):
-        return [{'name': name, 'url': '/shop?search=%s' % quote(name)} for name in BRANDS]
+        """Brands from Website > eCommerce > Products > Product Brands (theme_alan),
+        in their drag-and-drop order. A brand with a logo shows the logo. The link opens
+        the shop filtered by that brand when products are assigned to it, otherwise a
+        shop search for the brand name. Without the theme's brand list, use BRANDS."""
+        self.ensure_one()
+        if 'as.product.brand' not in self.env:
+            return [{'name': name, 'url': '/shop?search=%s' % quote(name), 'logo': False} for name in BRANDS]
+        Product = self.env['product.template']
+        has_brand_field = 'product_brand_id' in Product._fields
+        product_domain = self._selamta_product_domain()
+        brands = self.env['as.product.brand'].sudo().search(self.website_domain())
+        result = []
+        for brand in brands:
+            url = '/shop?search=%s' % quote(brand.name or '')
+            if has_brand_field and Product.search_count(
+                    expression.AND([product_domain, [('product_brand_id', '=', brand.id)]]), limit=1):
+                url = '/shop?brand=%d' % brand.id
+            result.append({
+                'name': brand.name,
+                'url': url,
+                'logo': '/web/image/as.product.brand/%d/image_256' % brand.id if brand.image_128 else False,
+            })
+        return result
+
+    @api.model
+    def _selamta_seed_brands(self):
+        """Create the starter brand list once, only if the theme's brand list is empty,
+        so it can then be reordered, edited or archived from Odoo."""
+        if 'as.product.brand' not in self.env:
+            return
+        Brand = self.env['as.product.brand'].sudo().with_context(active_test=False)
+        if Brand.search_count([]):
+            return
+        Brand.create([{'name': name, 'sequence': (index + 1) * 10} for index, name in enumerate(BRANDS)])

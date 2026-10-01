@@ -10,7 +10,7 @@
     -->
     <template id="homepage" inherit_id="website.homepage" name="Selamta Homepage" priority="99">
         <xpath expr="//div[@id='wrap']" position="replace">
-            <t t-set="website_meta_description" t-value="'Selamta LLC is a direct importer and wholesale distributor of authentic Ethiopian foods: teff, spices, coffee and ceremony goods, delivered by the box to businesses across the US.'"/>
+            <t t-set="website_meta_description" t-value="'Selamta LLC is a direct importer and wholesale distributor of authentic Ethiopian foods: teff, spices, coffee and ceremony goods, delivered to businesses across the US.'"/>
             <t t-set="sel_hero_images" t-value="website._selamta_hero_images()"/>
             <t t-set="sel_categories" t-value="website._selamta_categories()"/>
             <t t-set="sel_best_sellers" t-value="website._selamta_best_sellers(6)"/>
@@ -30,7 +30,7 @@
                                         Direct importer · Decatur, Georgia
                                     </p>
                                     <h1 class="sel-hero-title">Authentic Ethiopian foods, wholesale.</h1>
-                                    <p class="sel-hero-lead">Teff, spices, coffee and ceremony goods — imported direct and delivered by the box to businesses across the US.</p>
+                                    <p class="sel-hero-lead">Teff, spices, coffee and ceremony goods — imported direct and delivered to businesses across the US.</p>
                                     <div class="sel-hero-actions">
                                         <a href="/new-customer-registration" class="sel-btn sel-btn-yellow">Open a wholesale account <i class="fa fa-arrow-right" role="img" aria-hidden="true"/></a>
                                         <a href="/web/login" class="sel-btn sel-btn-outline-light">Sign in to order</a>
@@ -73,9 +73,9 @@
                                     <p>LTL freight delivery to businesses nationwide.</p>
                                 </div>
                                 <div class="sel-why-card">
-                                    <span class="sel-icon"><i class="fa fa-cube" role="img" aria-hidden="true"/></span>
-                                    <h3>Sold by the box</h3>
-                                    <p>Wholesale pricing for approved business accounts.</p>
+                                    <span class="sel-icon"><i class="fa fa-tag" role="img" aria-hidden="true"/></span>
+                                    <h3>Wholesale pricing</h3>
+                                    <p>Approved business accounts see their prices after signing in.</p>
                                 </div>
                             </div>
                         </div>
@@ -127,8 +127,8 @@
                                 </div>
                                 <div class="sel-how-card">
                                     <span class="sel-step">3</span>
-                                    <h3>Order by the box</h3>
-                                    <p>Sign in to see your prices and build your order — quantities by the box.</p>
+                                    <h3>Place your order</h3>
+                                    <p>Sign in to see your prices and place your order online.</p>
                                 </div>
                             </div>
                             <div class="sel-center sel-mt">
@@ -156,7 +156,8 @@
                     </div>
                 </section>
 
-                <!-- New arrivals (live: newest published products) -->
+                <!-- New arrivals: the products listed under Website > eCommerce > Products > Homepage New Arrivals,
+                     in that order; the newest published products when that list is empty -->
                 <section class="sel-section sel-bg-white" t-if="sel_new_arrivals">
                     <div class="container">
                         <div class="sel-section-head">
@@ -175,7 +176,7 @@
                     </div>
                 </section>
 
-                <!-- Brands we carry -->
+                <!-- Brands we carry: Website > eCommerce > Products > Product Brands (drag to reorder) -->
                 <section class="sel-section sel-bg-cream" t-if="sel_brands">
                     <div class="container">
                         <div class="sel-section-head">
@@ -186,7 +187,12 @@
                         </div>
                         <ul class="sel-brand-grid list-unstyled">
                             <t t-foreach="sel_brands" t-as="brand">
-                                <li><a t-att-href="brand['url']" t-out="brand['name']"/></li>
+                                <li>
+                                    <a t-att-href="brand['url']">
+                                        <img t-if="brand['logo']" t-att-src="brand['logo']" t-att-alt="brand['name']" loading="lazy"/>
+                                        <span t-else="" t-out="brand['name']"/>
+                                    </a>
+                                </li>
                             </t>
                         </ul>
                     </div>
