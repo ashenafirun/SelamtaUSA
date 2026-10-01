@@ -1,12 +1,24 @@
 # -*- coding: utf-8 -*-
+import hashlib
 import logging
 from datetime import timedelta
 from urllib.parse import quote
+
+from lxml import etree, html as lxml_html
 
 from odoo import api, fields, models, tools
 from odoo.osv import expression
 
 _logger = logging.getLogger(__name__)
+
+# The homepage body is one website-builder area; its blocks are stored in a
+# website-specific extension view, like the builder does when you click Save.
+HOME_STRUCTURE_ID = 'oe_structure_selamta_home'
+# Editable areas of the 1.1-1.4 layout, which no longer exist on the page.
+OLD_STRUCTURE_IDS = [
+    'oe_structure_selamta_hero_text', 'oe_structure_selamta_hero_photos',
+    'oe_structure_selamta_why', 'oe_structure_selamta_how', 'oe_structure_selamta_cta',
+]
 
 # Homepage label, short description and preferred photo (product.template id)
 # for each top-level eCommerce category, keyed by the category name in lower case.
@@ -119,11 +131,17 @@ class Website(models.Model):
         self.ensure_one()
         return self._selamta_picked_products(section, limit) or self._selamta_auto_products(section, limit)
 
-    def _selamta_best_sellers(self, limit=6):
-        return [self._selamta_product_card(p) for p in self._selamta_section_products('best_sellers', limit)]
-
-    def _selamta_new_arrivals(self, limit=6):
-        return [self._selamta_product_card(p) for p in self._selamta_section_products('new_arrivals', limit)]
+    def _selamta_dynamic_product_card(self, data, is_sample=False):
+        """Card dict for one record of Odoo's Products block (selamta card template)."""
+        self.ensure_one()
+        if is_sample:
+            return {
+                'id': 0, 'name': data.get('display_name') or 'Sample product', 'url': '#',
+                'image': data.get('image_512') or '/web/image', 'login_url': '#', 'price': False,
+            }
+        record = data['_record']
+        template = record.product_tmpl_id if record._name == 'product.product' else record
+        return self._selamta_product_card(template)
 
     def _selamta_categories(self):
         self.ensure_one()
@@ -161,30 +179,143 @@ class Website(models.Model):
         tiles.sort(key=lambda tile: tile['sort'])
         return tiles
 
-    def _selamta_brands(self):
-        """Brands from Website > eCommerce > Products > Product Brands (theme_alan),
-        in their drag-and-drop order. A brand with a logo shows the logo. The link opens
-        the shop filtered by that brand when products are assigned to it, otherwise a
-        shop search for the brand name. Without the theme's brand list, use BRANDS."""
+    def _selamta_brand_records(self):
+        """Brands of Website > eCommerce > Products > Product Brands (theme_alan),
+        in their drag-and-drop order, or None without the theme's brand list."""
         self.ensure_one()
         if 'as.product.brand' not in self.env:
-            return [{'name': name, 'url': '/shop?search=%s' % quote(name), 'logo': False} for name in BRANDS]
+            return None
+        return self.env['as.product.brand'].sudo().search(self.website_domain())
+
+    def _selamta_brand_card(self, brand):
+        """A brand with a logo shows the logo. The link opens the shop filtered by that
+        brand when products are assigned to it, otherwise a shop search for its name."""
+        self.ensure_one()
         Product = self.env['product.template']
-        has_brand_field = 'product_brand_id' in Product._fields
-        product_domain = self._selamta_product_domain()
-        brands = self.env['as.product.brand'].sudo().search(self.website_domain())
-        result = []
-        for brand in brands:
-            url = '/shop?search=%s' % quote(brand.name or '')
-            if has_brand_field and Product.search_count(
-                    expression.AND([product_domain, [('product_brand_id', '=', brand.id)]]), limit=1):
-                url = '/shop?brand=%d' % brand.id
-            result.append({
-                'name': brand.name,
-                'url': url,
-                'logo': '/web/image/as.product.brand/%d/image_256' % brand.id if brand.image_128 else False,
-            })
-        return result
+        url = '/shop?search=%s' % quote(brand.name or '')
+        if 'product_brand_id' in Product._fields and Product.search_count(
+                expression.AND([self._selamta_product_domain(), [('product_brand_id', '=', brand.id)]]), limit=1):
+            url = '/shop?brand=%d' % brand.id
+        return {
+            'name': brand.name,
+            'url': url,
+            'logo': '/web/image/as.product.brand/%d/image_256' % brand.id if brand.image_128 else False,
+        }
+
+    def _selamta_dynamic_brand_card(self, data, is_sample=False):
+        """Card dict for one record of the brands Dynamic Content block."""
+        self.ensure_one()
+        if is_sample:
+            return {'name': data.get('name') or 'Brand', 'url': '#', 'logo': False}
+        return self._selamta_brand_card(data['_record'])
+
+    @api.model
+    def _selamta_ensure_brand_filter(self):
+        """Filter "Product Brands (homepage)" for Odoo's Dynamic Content block. Created in
+        code because the brand model comes from theme_alan, which this module does not
+        depend on. Returns the filter, or an empty recordset without the brand model."""
+        SnippetFilter = self.env['website.snippet.filter'].sudo()
+        if 'as.product.brand' not in self.env:
+            return SnippetFilter
+        snippet_filter = self.env.ref('selamta_homepage.dynamic_filter_brands', raise_if_not_found=False)
+        if snippet_filter:
+            return snippet_filter.sudo()
+        action = self.env['ir.actions.server'].sudo().create({
+            'name': 'Selamta: Product Brands',
+            'model_id': self.env['ir.model']._get_id('as.product.brand'),
+            'state': 'code',
+            'code': "response = model.env['website.snippet.filter']._selamta_get_brands()",
+        })
+        snippet_filter = SnippetFilter.create({
+            'name': 'Product Brands (homepage)',
+            'action_server_id': action.id,
+            'field_names': 'name,image_256',
+            'limit': 16,
+        })
+        # noupdate so module upgrades do not delete them as obsolete records
+        self.env['ir.model.data'].sudo().create([
+            {'module': 'selamta_homepage', 'name': 'snippet_action_brands', 'model': 'ir.actions.server',
+             'res_id': action.id, 'noupdate': True},
+            {'module': 'selamta_homepage', 'name': 'dynamic_filter_brands', 'model': 'website.snippet.filter',
+             'res_id': snippet_filter.id, 'noupdate': True},
+        ])
+        return snippet_filter
+
+    # ------------------------------------------------------------------
+    # Homepage blocks (website builder content)
+    # ------------------------------------------------------------------
+
+    def _selamta_home_default_html(self):
+        """The default homepage blocks for this website, rendered to static HTML."""
+        self.ensure_one()
+        website = self.with_context(website_id=self.id)
+        brand_filter = website._selamta_ensure_brand_filter()
+        values = {
+            'sel_categories': website._selamta_categories(),
+            'sel_best_filter_id': self.env.ref('selamta_homepage.dynamic_filter_best_sellers').id,
+            'sel_new_filter_id': self.env.ref('selamta_homepage.dynamic_filter_new_arrivals').id,
+            'sel_brand_filter_id': brand_filter.id or False,
+            'sel_brand_links': [{'name': name, 'url': '/shop?search=%s' % quote(name)} for name in BRANDS],
+        }
+        return self.env['ir.qweb'].with_context(website_id=self.id, inherit_branding=False)._render(
+            'selamta_homepage.home_default_content', values)
+
+    def _selamta_home_content_arch(self):
+        """Extension arch filling the homepage area with the default blocks, in the same
+        shape the website builder saves (xpath replace of the oe_structure)."""
+        self.ensure_one()
+        fragment = lxml_html.fragment_fromstring(str(self._selamta_home_default_html()), create_parent='div')
+        arch = etree.Element('data')
+        xpath = etree.SubElement(arch, 'xpath', {
+            'expr': "//*[hasclass('oe_structure')][@id='%s']" % HOME_STRUCTURE_ID,
+            'position': 'replace',
+        })
+        structure = etree.SubElement(xpath, 'div', {'class': 'oe_structure', 'id': HOME_STRUCTURE_ID})
+        structure.text = fragment.text
+        for child in fragment:
+            structure.append(child)
+        return etree.tostring(arch, encoding='unicode')
+
+    @api.model
+    def _selamta_arch_hash(self, arch):
+        return hashlib.sha1((arch or '').encode('utf-8')).hexdigest()
+
+    @api.model
+    def _selamta_home_ensure_content(self):
+        """Install/upgrade: give every website the default homepage blocks, unless the
+        page was already edited and saved in the website builder (then it is left alone)."""
+        View = self.env['ir.ui.view'].sudo()
+        Params = self.env['ir.config_parameter'].sudo()
+        generic = self.env.ref('selamta_homepage.homepage').sudo()
+        content_key = '%s_%s' % (generic.key, HOME_STRUCTURE_ID)
+        View.with_context(active_test=False).search([
+            ('key', 'in', ['%s_%s' % (generic.key, sid) for sid in OLD_STRUCTURE_IDS]),
+        ]).unlink()
+        for website in self.sudo().search([]):
+            parent = View.search([('key', '=', generic.key), ('website_id', '=', website.id)], limit=1)
+            if parent and HOME_STRUCTURE_ID not in (parent.arch_db or ''):
+                # website copy still holding the old layout (saved in the builder before 1.5)
+                parent.with_context(no_cow=True).write({'arch_db': generic.arch_db})
+            parent = parent or generic
+            content_view = View.search([('key', '=', content_key), ('website_id', '=', website.id)], limit=1)
+            param = 'selamta_homepage.home_content_hash.%d' % website.id
+            if content_view and Params.get_param(param) != self._selamta_arch_hash(content_view.arch_db):
+                continue  # edited in the website builder: keep the customer's page
+            arch = website._selamta_home_content_arch()
+            if content_view:
+                content_view.write({'arch': arch, 'inherit_id': parent.id})
+            else:
+                content_view = View.create({
+                    'name': '%s (%s)' % (generic.name, HOME_STRUCTURE_ID),
+                    'key': content_key,
+                    'type': 'qweb',
+                    'mode': 'extension',
+                    'inherit_id': parent.id,
+                    'website_id': website.id,
+                    'arch': arch,
+                })
+            content_view.invalidate_recordset(['arch_db'])
+            Params.set_param(param, self._selamta_arch_hash(content_view.arch_db))
 
     @api.model
     def _selamta_seed_brands(self):
