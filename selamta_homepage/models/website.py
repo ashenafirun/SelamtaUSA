@@ -101,35 +101,34 @@ class Website(models.Model):
         by_id = {p.id: p for p in visible}
         return self.env['product.template'].concat(*[by_id[pid] for pid in picked_ids if pid in by_id][:limit])
 
-    def _selamta_best_sellers(self, limit=6):
-        """Hand-picked best sellers when that list has products, otherwise the products
-        sold in the largest quantities over the last 12 months."""
+    def _selamta_auto_products(self, section, limit=6):
+        """What a homepage section shows when its hand-picked list is empty:
+        best sellers = most sold over the last 12 months, new arrivals = newest products."""
         self.ensure_one()
-        picked = self._selamta_picked_products('best_sellers', limit)
-        if picked:
-            return [self._selamta_product_card(p) for p in picked]
-        ranked_ids = list(self._selamta_best_seller_ids(fields.Date.context_today(self)))
-        if not ranked_ids:
-            return []
-        products = self.env['product.template'].search(
-            expression.AND([self._selamta_product_domain(), [('id', 'in', ranked_ids)]])
-        )
-        by_id = {p.id: p for p in products}
-        ordered = [by_id[pid] for pid in ranked_ids if pid in by_id][:limit]
-        return [self._selamta_product_card(p) for p in ordered]
-
-    def _selamta_new_arrivals(self, limit=6):
-        """Products picked under Website > eCommerce > Products > Homepage New Arrivals,
-        in their drag-and-drop order. When nothing is picked (or none of the picked
-        products is published), fall back to the newest published products."""
-        self.ensure_one()
-        picked = self._selamta_picked_products('new_arrivals', limit)
-        if picked:
-            return [self._selamta_product_card(p) for p in picked]
-        products = self.env['product.template'].search(
+        Product = self.env['product.template']
+        if section == 'best_sellers':
+            ranked_ids = list(self._selamta_best_seller_ids(fields.Date.context_today(self)))
+            if not ranked_ids:
+                return Product
+            products = Product.search(
+                expression.AND([self._selamta_product_domain(), [('id', 'in', ranked_ids)]])
+            )
+            by_id = {p.id: p for p in products}
+            return Product.concat(*[by_id[pid] for pid in ranked_ids if pid in by_id][:limit])
+        return Product.search(
             self._selamta_product_domain(), order='create_date desc, id desc', limit=limit,
         )
-        return [self._selamta_product_card(p) for p in products]
+
+    def _selamta_section_products(self, section, limit=6):
+        """The hand-picked list when it has published products, otherwise the automatic one."""
+        self.ensure_one()
+        return self._selamta_picked_products(section, limit) or self._selamta_auto_products(section, limit)
+
+    def _selamta_best_sellers(self, limit=6):
+        return [self._selamta_product_card(p) for p in self._selamta_section_products('best_sellers', limit)]
+
+    def _selamta_new_arrivals(self, limit=6):
+        return [self._selamta_product_card(p) for p in self._selamta_section_products('new_arrivals', limit)]
 
     def _selamta_hero_images(self):
         self.ensure_one()
