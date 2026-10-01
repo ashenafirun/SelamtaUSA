@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Filters offered in Odoo's "Products" block (Filter option), so any Products block
+        can show the hand-picked Homepage Best Sellers / Homepage New Arrivals lists.
+    -->
+    <record id="snippet_action_best_sellers" model="ir.actions.server">
+        <field name="name">Selamta: Homepage Best Sellers</field>
+        <field name="model_id" ref="product.model_product_product"/>
+        <field name="state">code</field>
+        <field name="code">
+DynamicFilter = model.env['website.snippet.filter']
+response = DynamicFilter._get_products('selamta_best_sellers')
+        </field>
+    </record>
+    <record id="snippet_action_new_arrivals" model="ir.actions.server">
+        <field name="name">Selamta: Homepage New Arrivals</field>
+        <field name="model_id" ref="product.model_product_product"/>
+        <field name="state">code</field>
+        <field name="code">
+DynamicFilter = model.env['website.snippet.filter']
+response = DynamicFilter._get_products('selamta_new_arrivals')
+        </field>
+    </record>
+
+    <record id="dynamic_filter_best_sellers" model="website.snippet.filter">
+        <field name="name">Homepage Best Sellers</field>
+        <field name="action_server_id" ref="snippet_action_best_sellers"/>
+        <field name="field_names">display_name,description_sale,image_512</field>
+        <field name="limit" eval="16"/>
+    </record>
+    <record id="dynamic_filter_new_arrivals" model="website.snippet.filter">
+        <field name="name">Homepage New Arrivals</field>
+        <field name="action_server_id" ref="snippet_action_new_arrivals"/>
+        <field name="field_names">display_name,description_sale,image_512</field>
+        <field name="limit" eval="16"/>
+    </record>
+</odoo>
