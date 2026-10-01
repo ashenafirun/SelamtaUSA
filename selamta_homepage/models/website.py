@@ -85,8 +85,29 @@ class Website(models.Model):
         )
         return tuple(tmpl.id for tmpl, _qty in groups)
 
-    def _selamta_best_sellers(self, limit=6):
+    def _selamta_picked_products(self, section, limit=6):
+        """Published products picked for a homepage section under
+        Website > eCommerce > Products (Homepage Best Sellers / Homepage New Arrivals),
+        in their drag-and-drop order. Empty when nothing usable is picked."""
         self.ensure_one()
+        picked_ids = self.env['selamta.homepage.item'].sudo().search(
+            [('section', '=', section)],
+        ).mapped('product_tmpl_id').ids
+        if not picked_ids:
+            return self.env['product.template']
+        visible = self.env['product.template'].search(
+            expression.AND([self._selamta_product_domain(), [('id', 'in', picked_ids)]])
+        )
+        by_id = {p.id: p for p in visible}
+        return self.env['product.template'].concat(*[by_id[pid] for pid in picked_ids if pid in by_id][:limit])
+
+    def _selamta_best_sellers(self, limit=6):
+        """Hand-picked best sellers when that list has products, otherwise the products
+        sold in the largest quantities over the last 12 months."""
+        self.ensure_one()
+        picked = self._selamta_picked_products('best_sellers', limit)
+        if picked:
+            return [self._selamta_product_card(p) for p in picked]
         ranked_ids = list(self._selamta_best_seller_ids(fields.Date.context_today(self)))
         if not ranked_ids:
             return []
@@ -102,19 +123,10 @@ class Website(models.Model):
         in their drag-and-drop order. When nothing is picked (or none of the picked
         products is published), fall back to the newest published products."""
         self.ensure_one()
-        Product = self.env['product.template']
-        picked_ids = self.env['selamta.homepage.item'].sudo().search(
-            [('section', '=', 'new_arrivals')],
-        ).mapped('product_tmpl_id').ids
-        if picked_ids:
-            visible = Product.search(
-                expression.AND([self._selamta_product_domain(), [('id', 'in', picked_ids)]])
-            )
-            by_id = {p.id: p for p in visible}
-            ordered = [by_id[pid] for pid in picked_ids if pid in by_id][:limit]
-            if ordered:
-                return [self._selamta_product_card(p) for p in ordered]
-        products = Product.search(
+        picked = self._selamta_picked_products('new_arrivals', limit)
+        if picked:
+            return [self._selamta_product_card(p) for p in picked]
+        products = self.env['product.template'].search(
             self._selamta_product_domain(), order='create_date desc, id desc', limit=limit,
         )
         return [self._selamta_product_card(p) for p in products]

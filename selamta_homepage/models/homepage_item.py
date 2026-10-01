@@ -10,7 +10,7 @@ class SelamtaHomepageItem(models.Model):
 
     sequence = fields.Integer(default=10)
     section = fields.Selection(
-        [('new_arrivals', 'New arrivals')],
+        [('best_sellers', 'Best sellers'), ('new_arrivals', 'New arrivals')],
         required=True, default='new_arrivals',
     )
     product_tmpl_id = fields.Many2one(
