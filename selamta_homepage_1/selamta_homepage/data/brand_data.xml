@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Creates the starter brand list in the theme's Product Brands, only when that list is empty. -->
+    <function model="website" name="_selamta_seed_brands"/>
+</odoo>
