@@ -11,7 +11,6 @@
     <template id="homepage" inherit_id="website.homepage" name="Selamta Homepage" priority="99">
         <xpath expr="//div[@id='wrap']" position="replace">
             <t t-set="website_meta_description" t-value="'Selamta LLC is a direct importer and wholesale distributor of authentic Ethiopian foods: teff, spices, coffee and ceremony goods, delivered to businesses across the US.'"/>
-            <t t-set="sel_hero_images" t-value="website._selamta_hero_images()"/>
             <t t-set="sel_categories" t-value="website._selamta_categories()"/>
             <t t-set="sel_best_sellers" t-value="website._selamta_best_sellers(6)"/>
             <t t-set="sel_new_arrivals" t-value="website._selamta_new_arrivals(6)"/>
@@ -41,12 +40,22 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="sel-hero-collage" t-if="sel_hero_images">
-                                <t t-foreach="sel_hero_images" t-as="img">
-                                    <div t-attf-class="sel-collage-tile #{'sel-collage-wide' if img_first else ''}">
-                                        <img t-att-src="img['image']" t-att-alt="img['name']" loading="eager"/>
+                            <!-- Hero photos: editable in the website builder (Edit, click a photo, Replace). -->
+                            <div class="oe_structure" id="oe_structure_selamta_hero_photos">
+                                <div class="sel-hero-collage">
+                                    <div class="sel-collage-tile sel-collage-wide">
+                                        <img src="/web/image/product.template/1439/image_1024" alt="Ethiopian coffee ceremony set" loading="eager"/>
                                     </div>
-                                </t>
+                                    <div class="sel-collage-tile">
+                                        <img src="/web/image/product.template/1724/image_1024" alt="Almi black teff flour" loading="eager"/>
+                                    </div>
+                                    <div class="sel-collage-tile">
+                                        <img src="/web/image/product.template/1510/image_1024" alt="Berbere red pepper spice" loading="eager"/>
+                                    </div>
+                                    <div class="sel-collage-tile">
+                                        <img src="/web/image/product.template/1608/image_1024" alt="Kolo roasted barley snack" loading="eager"/>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
