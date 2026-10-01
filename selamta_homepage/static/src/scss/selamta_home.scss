@@ -12,7 +12,41 @@ $sel-mint: #E8F5E3;
 $sel-on-green: #E4F0E6;
 $sel-on-green-muted: #CFE3D3;
 
+@mixin sel-btn-colors($bg, $fg, $border, $hover-bg, $hover-fg, $hover-border) {
+    background-color: $bg;
+    color: $fg;
+    border-color: $border;
+
+    &:hover, &:focus, &:active {
+        background-color: $hover-bg;
+        color: $hover-fg;
+        border-color: $hover-border;
+    }
+}
+
 // ---------------------------------------------------------------- Homepage
+// The homepage is made of website-builder blocks. Section backgrounds use :where()
+// (zero specificity) so a background or color picked in the builder always wins.
+:where(.sel-home) {
+    :where(.s_selamta_hero) {
+        background-color: $sel-green;
+        color: #fff;
+    }
+
+    :where(.s_selamta_why, .s_selamta_how, .sel-bg-white) {
+        background-color: #fff;
+    }
+
+    :where(.s_selamta_categories, .s_selamta_brands, .sel-bg-cream) {
+        background-color: $sel-cream;
+    }
+
+    :where(.s_selamta_cta) {
+        background-color: $sel-yellow;
+        color: $sel-ink;
+    }
+}
+
 .sel-home {
     color: $sel-ink;
 
@@ -30,7 +64,7 @@ $sel-on-green-muted: #CFE3D3;
         max-width: 1240px;
     }
 
-    // Buttons ---------------------------------------------------------
+    // Buttons (also real Bootstrap .btn, so the builder treats them as buttons)
     .sel-btn {
         display: inline-flex;
         align-items: center;
@@ -44,6 +78,7 @@ $sel-on-green-muted: #CFE3D3;
         font-weight: 600;
         line-height: 1.2;
         text-decoration: none;
+        box-shadow: none;
         transition: background-color .15s ease, color .15s ease, border-color .15s ease;
     }
 
@@ -55,66 +90,12 @@ $sel-on-green-muted: #CFE3D3;
         width: 100%;
     }
 
-    .sel-btn-yellow {
-        background: $sel-yellow;
-        color: $sel-ink;
-
-        &:hover, &:focus {
-            background: darken($sel-yellow, 8%);
-            color: $sel-ink;
-        }
-    }
-
-    .sel-btn-outline-light {
-        border-color: #fff;
-        color: #fff;
-
-        &:hover, &:focus {
-            background: #fff;
-            color: $sel-green;
-        }
-    }
-
-    .sel-btn-green {
-        background: $sel-green;
-        color: #fff;
-
-        &:hover, &:focus {
-            background: $sel-green-dark;
-            color: #fff;
-        }
-    }
-
-    .sel-btn-outline-green {
-        border-color: $sel-green;
-        border-width: 1.5px;
-        color: $sel-green;
-
-        &:hover, &:focus {
-            background: $sel-green;
-            color: #fff;
-        }
-    }
-
-    .sel-btn-dark {
-        background: $sel-ink;
-        color: #fff;
-
-        &:hover, &:focus {
-            background: #000;
-            color: #fff;
-        }
-    }
-
-    .sel-btn-outline-dark {
-        border-color: $sel-ink;
-        color: $sel-ink;
-
-        &:hover, &:focus {
-            background: $sel-ink;
-            color: #fff;
-        }
-    }
+    .sel-btn-yellow { @include sel-btn-colors($sel-yellow, $sel-ink, $sel-yellow, darken($sel-yellow, 8%), $sel-ink, darken($sel-yellow, 8%)); }
+    .sel-btn-outline-light { @include sel-btn-colors(transparent, #fff, #fff, #fff, $sel-green, #fff); }
+    .sel-btn-green { @include sel-btn-colors($sel-green, #fff, $sel-green, $sel-green-dark, #fff, $sel-green-dark); }
+    .sel-btn-outline-green { @include sel-btn-colors(transparent, $sel-green, $sel-green, $sel-green, #fff, $sel-green); border-width: 1.5px; }
+    .sel-btn-dark { @include sel-btn-colors($sel-ink, #fff, $sel-ink, #000, #fff, #000); }
+    .sel-btn-outline-dark { @include sel-btn-colors(transparent, $sel-ink, $sel-ink, $sel-ink, #fff, $sel-ink); }
 
     .sel-link {
         display: inline-flex;
@@ -132,18 +113,41 @@ $sel-on-green-muted: #CFE3D3;
         }
     }
 
-    // Hero ------------------------------------------------------------
-    .sel-hero {
-        background: $sel-green;
-        color: #fff;
-        padding: 72px 0 80px;
+    // Section headings (static blocks and the title of Products / Dynamic Content blocks)
+    .sel-section-head {
+        margin-bottom: 32px;
+        row-gap: 12px;
     }
 
-    .sel-hero-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 56px;
-        align-items: center;
+    .sel-section-head,
+    .s_dynamic_snippet_title {
+        h2 {
+            margin: 0 0 8px;
+            font-size: clamp(1.75rem, 2.6vw, 2.4rem);
+        }
+
+        p {
+            font-size: 1.07rem;
+            color: $sel-body;
+        }
+    }
+
+    .s_dynamic_snippet_title {
+        margin-bottom: 28px;
+        gap: 12px;
+
+        .lead {
+            font-weight: 400;
+        }
+    }
+
+    .sel-mt {
+        margin-top: 36px;
+    }
+
+    // Hero ------------------------------------------------------------
+    .s_selamta_hero .row {
+        row-gap: 40px;
     }
 
     .sel-hero-text {
@@ -165,7 +169,6 @@ $sel-on-green-muted: #CFE3D3;
 
     .sel-hero-title {
         margin: 0;
-        color: #fff;
         font-size: clamp(2.4rem, 4.4vw, 3.75rem);
         line-height: 1.04;
         letter-spacing: -0.02em;
@@ -186,13 +189,14 @@ $sel-on-green-muted: #CFE3D3;
     }
 
     .sel-hero-stats {
-        display: flex;
-        gap: 40px;
+        --gutter-x: 40px;
+        column-gap: 40px;
+        margin: 6px 0 0;
         padding-top: 20px;
-        margin-top: 6px;
         border-top: 1px solid rgba(255, 255, 255, .25);
 
         > div {
+            padding: 0;
             display: flex;
             flex-direction: column;
             gap: 2px;
@@ -208,12 +212,6 @@ $sel-on-green-muted: #CFE3D3;
     .sel-stat-label {
         font-size: .95rem;
         color: $sel-on-green-muted;
-    }
-
-    .sel-hero-collage {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 14px;
     }
 
     .sel-collage-tile {
@@ -234,7 +232,6 @@ $sel-on-green-muted: #CFE3D3;
     }
 
     .sel-collage-wide {
-        grid-column: span 3;
         height: 270px;
         padding: 0;
 
@@ -247,59 +244,9 @@ $sel-on-green-muted: #CFE3D3;
         }
     }
 
-    // Sections --------------------------------------------------------
-    .sel-section {
-        padding: 72px 0;
-    }
-
-    .sel-bg-white {
-        background: #fff;
-    }
-
-    .sel-bg-cream {
-        background: $sel-cream;
-    }
-
-    .sel-section-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-end;
-        gap: 24px;
-        margin-bottom: 32px;
-
-        h2 {
-            margin: 0 0 8px;
-            font-size: clamp(1.75rem, 2.6vw, 2.4rem);
-        }
-
-        p {
-            font-size: 1.07rem;
-            color: $sel-body;
-        }
-    }
-
-    .sel-center {
-        justify-content: center;
-        text-align: center;
-    }
-
-    .sel-mt {
-        display: flex;
-        margin-top: 36px;
-    }
-
-    // Why Selamta
-    .sel-why {
-        padding: 56px 0;
-    }
-
-    .sel-why-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 20px;
-    }
-
+    // Why Selamta -----------------------------------------------------
     .sel-why-card {
+        height: 100%;
         display: flex;
         flex-direction: column;
         gap: 10px;
@@ -324,29 +271,29 @@ $sel-on-green-muted: #CFE3D3;
         height: 48px;
         border-radius: 12px;
         background: $sel-mint;
-        color: $sel-green;
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 1.35rem;
+        color: $sel-green;
     }
 
-    // Cards -----------------------------------------------------------
-    .sel-card-grid {
-        display: grid;
-        gap: 18px;
+    .sel-why-card p.sel-icon {
+        font-size: 1.35rem;
+        color: $sel-green;
     }
 
-    .sel-card-grid-cat {
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    }
-
-    .sel-card-grid-product {
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    // Cards (categories and products) ---------------------------------
+    @include media-breakpoint-up(lg) {
+        .sel-col-lg-5th {
+            flex: 0 0 auto;
+            width: 20%;
+        }
     }
 
     .sel-card {
         position: relative;
+        height: 100%;
         display: flex;
         flex-direction: column;
         gap: 10px;
@@ -428,14 +375,28 @@ $sel-on-green-muted: #CFE3D3;
         border-radius: 999px;
     }
 
-    // How ordering works
-    .sel-how-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 24px;
+    // Products blocks: arrows sit under the cards (only shown when there is more than one slide)
+    .sel-products .s_dynamic_snippet_arrow_bottom {
+        justify-content: center !important;
+        gap: 16px;
+        padding-top: 16px !important;
+
+        .carousel-control-prev,
+        .carousel-control-next {
+            position: static;
+            opacity: 1;
+        }
+
+        .oi {
+            background-color: $sel-green !important;
+            color: #fff;
+            margin: 0 !important;
+        }
     }
 
+    // How ordering works ----------------------------------------------
     .sel-how-card {
+        height: 100%;
         display: flex;
         flex-direction: column;
         gap: 12px;
@@ -453,79 +414,64 @@ $sel-on-green-muted: #CFE3D3;
             line-height: 1.55;
             color: $sel-body;
         }
-    }
 
-    .sel-step {
-        width: 52px;
-        height: 52px;
-        border-radius: 999px;
-        background: $sel-green;
-        color: #fff;
-        font-size: 1.35rem;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    // Brands
-    .sel-brand-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-        gap: 12px;
-        margin: 0;
-
-        a {
+        p.sel-step {
+            width: 52px;
+            height: 52px;
+            border-radius: 999px;
+            background: $sel-green;
+            color: #fff;
+            font-size: 1.35rem;
+            font-weight: 600;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 60px;
-            padding: 12px;
-            text-align: center;
-            background: #fff;
-            border: 1px solid #E6E2D8;
-            border-radius: 12px;
-            color: #2F3B34;
-            font-size: 1.1rem;
-            font-weight: 600;
-            text-decoration: none;
-
-            &:hover, &:focus {
-                border-color: $sel-green;
-                color: $sel-green;
-            }
-
-            img {
-                max-height: 44px;
-                max-width: 100%;
-                object-fit: contain;
-            }
         }
     }
 
-    // Call to action
-    .sel-cta {
-        background: $sel-yellow;
-        color: $sel-ink;
-        padding: 56px 0;
+    // Brands ------------------------------------------------------------
+    .sel-brand {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        min-height: 64px;
+        padding: 12px;
+        text-align: center;
+        background: #fff;
+        border: 1px solid #E6E2D8;
+        border-radius: 12px;
+        color: #2F3B34;
+        font-size: 1.1rem;
+        font-weight: 600;
+        text-decoration: none;
 
+        &:hover, &:focus {
+            border-color: $sel-green;
+            color: $sel-green;
+        }
+
+        img {
+            max-height: 44px;
+            max-width: 100%;
+            object-fit: contain;
+        }
+    }
+
+    .sel-brands .s_dynamic_snippet_row > div {
+        display: flex;
+    }
+
+    // Call to action ----------------------------------------------------
+    .s_selamta_cta {
         h2 {
             margin: 0 0 8px;
             font-size: clamp(1.6rem, 2.5vw, 2.25rem);
-            color: $sel-ink;
         }
 
         p {
             font-size: 1.12rem;
-            color: #3A3320;
         }
-    }
-
-    .sel-cta-inner {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        align-items: center;
-        gap: 32px;
     }
 
     .sel-cta-actions {
@@ -533,27 +479,10 @@ $sel-on-green-muted: #CFE3D3;
         flex-wrap: wrap;
         gap: 14px;
     }
-}
 
-// Tablet
-@include media-breakpoint-down(lg) {
-    .sel-home {
-        .sel-hero-grid {
-            grid-template-columns: minmax(0, 1fr);
-            gap: 40px;
-        }
-
-        .sel-why-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-
-        .sel-how-grid {
-            grid-template-columns: minmax(0, 1fr);
-        }
-
-        .sel-cta-inner {
-            grid-template-columns: minmax(0, 1fr);
-            gap: 20px;
+    @include media-breakpoint-up(lg) {
+        .sel-cta-actions {
+            justify-content: flex-end;
         }
     }
 }
@@ -561,8 +490,10 @@ $sel-on-green-muted: #CFE3D3;
 // Phone
 @include media-breakpoint-down(sm) {
     .sel-home {
-        .sel-hero {
-            padding: 36px 0 40px;
+        // Builder spacing classes used by the default blocks: tighter on phones
+        @each $size in (56, 64, 72, 80) {
+            .pt#{$size} { padding-top: 40px !important; }
+            .pb#{$size} { padding-bottom: 40px !important; }
         }
 
         .sel-hero-lead {
@@ -574,7 +505,7 @@ $sel-on-green-muted: #CFE3D3;
         }
 
         .sel-hero-stats {
-            gap: 28px;
+            column-gap: 28px;
         }
 
         .sel-collage-tile {
@@ -588,20 +519,13 @@ $sel-on-green-muted: #CFE3D3;
             padding: 0;
         }
 
-        .sel-section {
-            padding: 40px 0;
-        }
-
-        .sel-section-head {
+        .sel-section-head,
+        .s_dynamic_snippet_title {
             margin-bottom: 20px;
 
             p {
                 display: none;
             }
-        }
-
-        .sel-why-grid {
-            gap: 12px;
         }
 
         .sel-why-card {
@@ -614,12 +538,10 @@ $sel-on-green-muted: #CFE3D3;
             p {
                 font-size: .875rem;
             }
-        }
 
-        .sel-card-grid-cat,
-        .sel-card-grid-product {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 12px;
+            p.sel-icon {
+                font-size: 1.2rem;
+            }
         }
 
         .sel-card {
@@ -639,14 +561,17 @@ $sel-on-green-muted: #CFE3D3;
             padding: 20px;
         }
 
-        .sel-brand-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 8px;
+        .sel-brand {
+            min-height: 52px;
+            padding: 8px 4px;
+            font-size: .85rem;
+            line-height: 1.2;
+        }
 
-            a {
-                min-height: 48px;
-                font-size: 1rem;
-            }
+        .sel-btn-sm {
+            padding: 8px 6px;
+            font-size: .85rem;
+            white-space: nowrap;
         }
 
         .sel-cta-actions,
@@ -667,9 +592,7 @@ footer#bottom.o_footer {
     }
 
     .sel-footer-grid {
-        display: grid;
-        grid-template-columns: 2fr 1fr 1fr 1fr;
-        gap: 32px;
+        row-gap: 32px;
     }
 
     .sel-footer-brand p {
@@ -756,16 +679,6 @@ footer#bottom.o_footer {
     }
 }
 
-@include media-breakpoint-down(lg) {
-    footer#bottom.o_footer .sel-footer-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-
-        .sel-footer-brand {
-            grid-column: span 2;
-        }
-    }
-}
-
 @include media-breakpoint-down(sm) {
     footer#bottom.o_footer {
         .sel-footer-main {
@@ -773,7 +686,7 @@ footer#bottom.o_footer {
         }
 
         .sel-footer-grid {
-            gap: 24px;
+            row-gap: 24px;
         }
     }
 }
