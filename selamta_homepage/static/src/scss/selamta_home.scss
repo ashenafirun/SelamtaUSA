@@ -1,0 +1,779 @@
+// Selamta wholesale homepage + footer
+// Palette (contrast-checked): white on green 8.3:1, ink on yellow 9.2:1.
+$sel-green: #145A2A;
+$sel-green-dark: #0F4D24;
+$sel-yellow: #FFC220;
+$sel-ink: #1D2A22;
+$sel-body: #4A5550;
+$sel-muted: #5E6A63;
+$sel-cream: #F7F5EF;
+$sel-line: #ECE8DE;
+$sel-mint: #E8F5E3;
+$sel-on-green: #E4F0E6;
+$sel-on-green-muted: #CFE3D3;
+
+// ---------------------------------------------------------------- Homepage
+.sel-home {
+    color: $sel-ink;
+
+    h1, h2, h3 {
+        color: inherit;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+    }
+
+    p {
+        margin: 0;
+    }
+
+    .container {
+        max-width: 1240px;
+    }
+
+    // Buttons ---------------------------------------------------------
+    .sel-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        min-height: 48px;
+        padding: 12px 24px;
+        border-radius: 12px;
+        border: 2px solid transparent;
+        font-size: 1.05rem;
+        font-weight: 600;
+        line-height: 1.2;
+        text-decoration: none;
+        transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+    }
+
+    .sel-btn-sm {
+        min-height: 44px;
+        padding: 9px 12px;
+        font-size: .95rem;
+        border-radius: 10px;
+        width: 100%;
+    }
+
+    .sel-btn-yellow {
+        background: $sel-yellow;
+        color: $sel-ink;
+
+        &:hover, &:focus {
+            background: darken($sel-yellow, 8%);
+            color: $sel-ink;
+        }
+    }
+
+    .sel-btn-outline-light {
+        border-color: #fff;
+        color: #fff;
+
+        &:hover, &:focus {
+            background: #fff;
+            color: $sel-green;
+        }
+    }
+
+    .sel-btn-green {
+        background: $sel-green;
+        color: #fff;
+
+        &:hover, &:focus {
+            background: $sel-green-dark;
+            color: #fff;
+        }
+    }
+
+    .sel-btn-outline-green {
+        border-color: $sel-green;
+        border-width: 1.5px;
+        color: $sel-green;
+
+        &:hover, &:focus {
+            background: $sel-green;
+            color: #fff;
+        }
+    }
+
+    .sel-btn-dark {
+        background: $sel-ink;
+        color: #fff;
+
+        &:hover, &:focus {
+            background: #000;
+            color: #fff;
+        }
+    }
+
+    .sel-btn-outline-dark {
+        border-color: $sel-ink;
+        color: $sel-ink;
+
+        &:hover, &:focus {
+            background: $sel-ink;
+            color: #fff;
+        }
+    }
+
+    .sel-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: $sel-green;
+        font-weight: 600;
+        font-size: 1.05rem;
+        text-decoration: none;
+        white-space: nowrap;
+
+        &:hover {
+            color: $sel-green-dark;
+            text-decoration: underline;
+        }
+    }
+
+    // Hero ------------------------------------------------------------
+    .sel-hero {
+        background: $sel-green;
+        color: #fff;
+        padding: 72px 0 80px;
+    }
+
+    .sel-hero-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 56px;
+        align-items: center;
+    }
+
+    .sel-hero-text {
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+    }
+
+    .sel-eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: $sel-yellow;
+        font-weight: 600;
+        font-size: .95rem;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+
+    .sel-hero-title {
+        margin: 0;
+        color: #fff;
+        font-size: clamp(2.4rem, 4.4vw, 3.75rem);
+        line-height: 1.04;
+        letter-spacing: -0.02em;
+    }
+
+    .sel-hero-lead {
+        font-size: 1.25rem;
+        line-height: 1.5;
+        color: $sel-on-green;
+        max-width: 34rem;
+    }
+
+    .sel-hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        padding-top: 6px;
+    }
+
+    .sel-hero-stats {
+        display: flex;
+        gap: 40px;
+        padding-top: 20px;
+        margin-top: 6px;
+        border-top: 1px solid rgba(255, 255, 255, .25);
+
+        > div {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+    }
+
+    .sel-stat-num {
+        font-size: 1.9rem;
+        font-weight: 600;
+        color: #fff;
+    }
+
+    .sel-stat-label {
+        font-size: .95rem;
+        color: $sel-on-green-muted;
+    }
+
+    .sel-hero-collage {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .sel-collage-tile {
+        height: 200px;
+        border-radius: 18px;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 14px;
+        overflow: hidden;
+
+        img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+    }
+
+    .sel-collage-wide {
+        grid-column: span 3;
+        height: 270px;
+        padding: 0;
+
+        img {
+            width: 100%;
+            height: 100%;
+            max-width: none;
+            max-height: none;
+            object-fit: cover;
+        }
+    }
+
+    // Sections --------------------------------------------------------
+    .sel-section {
+        padding: 72px 0;
+    }
+
+    .sel-bg-white {
+        background: #fff;
+    }
+
+    .sel-bg-cream {
+        background: $sel-cream;
+    }
+
+    .sel-section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 24px;
+        margin-bottom: 32px;
+
+        h2 {
+            margin: 0 0 8px;
+            font-size: clamp(1.75rem, 2.6vw, 2.4rem);
+        }
+
+        p {
+            font-size: 1.07rem;
+            color: $sel-body;
+        }
+    }
+
+    .sel-center {
+        justify-content: center;
+        text-align: center;
+    }
+
+    .sel-mt {
+        display: flex;
+        margin-top: 36px;
+    }
+
+    // Why Selamta
+    .sel-why {
+        padding: 56px 0;
+    }
+
+    .sel-why-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 20px;
+    }
+
+    .sel-why-card {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 24px;
+        border: 1px solid $sel-line;
+        border-radius: 16px;
+
+        h3 {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
+        p {
+            font-size: 1rem;
+            line-height: 1.5;
+            color: $sel-body;
+        }
+    }
+
+    .sel-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: $sel-mint;
+        color: $sel-green;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.35rem;
+    }
+
+    // Cards -----------------------------------------------------------
+    .sel-card-grid {
+        display: grid;
+        gap: 18px;
+    }
+
+    .sel-card-grid-cat {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+
+    .sel-card-grid-product {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    }
+
+    .sel-card {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 16px;
+        background: #fff;
+        border: 1px solid $sel-line;
+        border-radius: 16px;
+        color: $sel-ink;
+        text-decoration: none;
+    }
+
+    a.sel-card:hover, a.sel-card:focus {
+        border-color: $sel-green;
+        color: $sel-ink;
+        box-shadow: 0 6px 18px rgba(20, 90, 42, .10);
+    }
+
+    .sel-card-img {
+        height: 160px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        img {
+            max-height: 100%;
+            max-width: 100%;
+            object-fit: contain;
+        }
+    }
+
+    .sel-product-card .sel-card-img {
+        height: 170px;
+    }
+
+    .sel-card-title {
+        font-weight: 600;
+        font-size: 1.05rem;
+        line-height: 1.3;
+        color: $sel-ink;
+        text-decoration: none;
+    }
+
+    .sel-product-card .sel-card-title {
+        min-height: 2.6em;
+        font-size: 1rem;
+
+        &:hover {
+            color: $sel-green;
+        }
+    }
+
+    .sel-card-sub {
+        font-size: .9rem;
+        color: $sel-muted;
+    }
+
+    .sel-price {
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: $sel-ink;
+    }
+
+    .sel-product-card .sel-btn {
+        margin-top: auto;
+    }
+
+    .sel-badge {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        z-index: 1;
+        background: $sel-yellow;
+        color: $sel-ink;
+        font-size: .75rem;
+        font-weight: 700;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        padding: 4px 10px;
+        border-radius: 999px;
+    }
+
+    // How ordering works
+    .sel-how-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 24px;
+    }
+
+    .sel-how-card {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 32px;
+        background: $sel-cream;
+        border-radius: 18px;
+
+        h3 {
+            margin: 0;
+            font-size: 1.35rem;
+        }
+
+        p {
+            font-size: 1rem;
+            line-height: 1.55;
+            color: $sel-body;
+        }
+    }
+
+    .sel-step {
+        width: 52px;
+        height: 52px;
+        border-radius: 999px;
+        background: $sel-green;
+        color: #fff;
+        font-size: 1.35rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    // Brands
+    .sel-brand-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 12px;
+        margin: 0;
+
+        a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 60px;
+            padding: 12px;
+            text-align: center;
+            background: #fff;
+            border: 1px solid #E6E2D8;
+            border-radius: 12px;
+            color: #2F3B34;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-decoration: none;
+
+            &:hover, &:focus {
+                border-color: $sel-green;
+                color: $sel-green;
+            }
+
+            img {
+                max-height: 44px;
+                max-width: 100%;
+                object-fit: contain;
+            }
+        }
+    }
+
+    // Call to action
+    .sel-cta {
+        background: $sel-yellow;
+        color: $sel-ink;
+        padding: 56px 0;
+
+        h2 {
+            margin: 0 0 8px;
+            font-size: clamp(1.6rem, 2.5vw, 2.25rem);
+            color: $sel-ink;
+        }
+
+        p {
+            font-size: 1.12rem;
+            color: #3A3320;
+        }
+    }
+
+    .sel-cta-inner {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 32px;
+    }
+
+    .sel-cta-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+    }
+}
+
+// Tablet
+@include media-breakpoint-down(lg) {
+    .sel-home {
+        .sel-hero-grid {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 40px;
+        }
+
+        .sel-why-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .sel-how-grid {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .sel-cta-inner {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 20px;
+        }
+    }
+}
+
+// Phone
+@include media-breakpoint-down(sm) {
+    .sel-home {
+        .sel-hero {
+            padding: 36px 0 40px;
+        }
+
+        .sel-hero-lead {
+            font-size: 1.07rem;
+        }
+
+        .sel-hero-actions .sel-btn {
+            width: 100%;
+        }
+
+        .sel-hero-stats {
+            gap: 28px;
+        }
+
+        .sel-collage-tile {
+            height: 120px;
+            padding: 8px;
+            border-radius: 14px;
+        }
+
+        .sel-collage-wide {
+            height: 190px;
+            padding: 0;
+        }
+
+        .sel-section {
+            padding: 40px 0;
+        }
+
+        .sel-section-head {
+            margin-bottom: 20px;
+
+            p {
+                display: none;
+            }
+        }
+
+        .sel-why-grid {
+            gap: 12px;
+        }
+
+        .sel-why-card {
+            padding: 16px;
+
+            h3 {
+                font-size: 1rem;
+            }
+
+            p {
+                font-size: .875rem;
+            }
+        }
+
+        .sel-card-grid-cat,
+        .sel-card-grid-product {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .sel-card {
+            padding: 12px;
+        }
+
+        .sel-card-img,
+        .sel-product-card .sel-card-img {
+            height: 120px;
+        }
+
+        .sel-card-sub {
+            display: none;
+        }
+
+        .sel-how-card {
+            padding: 20px;
+        }
+
+        .sel-brand-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+
+            a {
+                min-height: 48px;
+                font-size: 1rem;
+            }
+        }
+
+        .sel-cta-actions,
+        .sel-cta-actions .sel-btn {
+            width: 100%;
+        }
+    }
+}
+
+// ---------------------------------------------------------------- Footer
+footer#bottom.o_footer {
+    background-color: $sel-green !important;
+    background-image: none !important;
+    color: #fff !important;
+
+    .sel-footer-main {
+        padding: 64px 0 48px;
+    }
+
+    .sel-footer-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr;
+        gap: 32px;
+    }
+
+    .sel-footer-brand p {
+        margin: 18px 0;
+        font-size: 1.05rem;
+        line-height: 1.55;
+        color: $sel-on-green;
+        max-width: 26rem;
+    }
+
+    .sel-footer-logo {
+        display: inline-block;
+        background: #fff;
+        border-radius: 14px;
+        padding: 8px 14px;
+
+        img {
+            height: 56px;
+            width: auto;
+            min-width: 56px;
+            object-fit: contain;
+            display: block;
+        }
+    }
+
+    .sel-footer-social {
+        display: flex;
+        gap: 12px;
+
+        a {
+            width: 44px;
+            height: 44px;
+            border-radius: 999px;
+            background: #fff;
+            color: $sel-green;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            text-decoration: none;
+
+            &:hover, &:focus {
+                background: $sel-yellow;
+                color: $sel-ink;
+            }
+        }
+    }
+
+    .sel-footer-col {
+        h5 {
+            margin: 0 0 14px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        li {
+            margin-bottom: 10px;
+            color: $sel-on-green;
+            line-height: 1.5;
+        }
+
+        a {
+            color: $sel-on-green;
+            text-decoration: none;
+
+            &:hover, &:focus {
+                color: #fff;
+                text-decoration: underline;
+            }
+        }
+    }
+
+    .o_footer_copyright {
+        background-color: $sel-green-dark !important;
+        color: $sel-on-green-muted !important;
+        border-top: 0 !important;
+
+        .text-muted,
+        span,
+        a {
+            color: $sel-on-green-muted !important;
+        }
+    }
+}
+
+@include media-breakpoint-down(lg) {
+    footer#bottom.o_footer .sel-footer-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+
+        .sel-footer-brand {
+            grid-column: span 2;
+        }
+    }
+}
+
+@include media-breakpoint-down(sm) {
+    footer#bottom.o_footer {
+        .sel-footer-main {
+            padding: 40px 0 32px;
+        }
+
+        .sel-footer-grid {
+            gap: 24px;
+        }
+    }
+}
