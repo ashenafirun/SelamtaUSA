@@ -7,6 +7,11 @@
         <field name="model">selamta.homepage.item</field>
         <field name="arch" type="xml">
             <list string="Homepage Products" editable="bottom">
+                <header>
+                    <button name="action_selamta_reset_automatic" type="object" string="Reset to automatic list"
+                            display="always" class="btn-secondary"
+                            confirm="Replace this list with the products chosen automatically (top sellers of the last 12 months, or your newest products)?"/>
+                </header>
                 <field name="sequence" widget="handle"/>
                 <field name="image_128" widget="image" options="{'size': [48, 48]}" readonly="1"/>
                 <field name="product_tmpl_id" options="{'no_create': True}"/>
