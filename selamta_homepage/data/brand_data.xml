@@ -2,4 +2,6 @@
 <odoo>
     <!-- Creates the starter brand list in the theme's Product Brands, only when that list is empty. -->
     <function model="website" name="_selamta_seed_brands"/>
+    <!-- Fills Homepage Best Sellers / New Arrivals once with what the homepage shows, so they don't start blank. -->
+    <function model="selamta.homepage.item" name="_selamta_seed_lists"/>
 </odoo>
