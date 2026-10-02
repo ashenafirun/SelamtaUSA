@@ -1,14 +1,17 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta Homepage',
-    'version': '18.0.1.4.0',
+    'version': '18.0.1.5.0',
     'category': 'Website/Website',
     'summary': 'Wholesale homepage and footer for selamtausa.com',
     'description': """
-Replaces the website homepage body and footer with the Selamta wholesale design:
-hero with account call-to-action, shop-by-category tiles, how ordering works,
-best sellers and new arrivals (automatic or hand-picked), brands we carry, and a darker,
-accessible footer with a corrected copyright line.
+Replaces the website homepage body and footer with the Selamta wholesale design.
+The homepage is made of ordinary website-builder blocks (hero, why Selamta, shop by
+category, how ordering works, best sellers, new arrivals, brands, call to action) that
+can be edited, moved, duplicated or deleted with Edit on the website. Best sellers and
+new arrivals are Odoo Products blocks reading the hand-picked homepage lists; brands are
+a Dynamic Content block reading Product Brands. Also a darker, accessible footer with a
+corrected copyright line.
     """,
     'author': 'Selamta LLC',
     'license': 'LGPL-3',
@@ -18,6 +21,7 @@ accessible footer with a corrected copyright line.
         'views/homepage.xml',
         'views/footer.xml',
         'views/homepage_item_views.xml',
+        'data/snippet_filter_data.xml',
         'data/brand_data.xml',
     ],
     'assets': {
