@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Homepage Best Sellers / New Arrivals: pick products and drag them into order. -->
+    <record id="selamta_homepage_item_view_list" model="ir.ui.view">
+        <field name="name">selamta.homepage.item.list</field>
+        <field name="model">selamta.homepage.item</field>
+        <field name="arch" type="xml">
+            <list string="Homepage Products" editable="bottom">
+                <header>
+                    <button name="action_selamta_reset_automatic" type="object" string="Reset to automatic list"
+                            display="always" class="btn-secondary"
+                            confirm="Replace this list with the products chosen automatically (top sellers of the last 12 months, or your newest products)?"/>
+                </header>
+                <field name="sequence" widget="handle"/>
+                <field name="image_128" widget="image" options="{'size': [48, 48]}" readonly="1"/>
+                <field name="product_tmpl_id" options="{'no_create': True}"/>
+                <field name="is_published" readonly="1"/>
+                <field name="section" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="selamta_homepage_item_action_new_arrivals" model="ir.actions.act_window">
+        <field name="name">Homepage New Arrivals</field>
+        <field name="res_model">selamta.homepage.item</field>
+        <field name="view_mode">list</field>
+        <field name="domain">[('section', '=', 'new_arrivals')]</field>
+        <field name="context">{'default_section': 'new_arrivals'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Pick the products for "New arrivals" on the homepage</p>
+            <p>Add products here and drag them into the order you want. The homepage's "New arrivals" block
+               shows the first published ones (6 by default: change "Fetched Elements" in the block options
+               with Edit on the website). While this list is empty, it shows your newest products automatically.</p>
+        </field>
+    </record>
+
+    <record id="selamta_homepage_item_action_best_sellers" model="ir.actions.act_window">
+        <field name="name">Homepage Best Sellers</field>
+        <field name="res_model">selamta.homepage.item</field>
+        <field name="view_mode">list</field>
+        <field name="domain">[('section', '=', 'best_sellers')]</field>
+        <field name="context">{'default_section': 'best_sellers'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Pick the products for "Best sellers" on the homepage</p>
+            <p>Add products here and drag them into the order you want. The homepage's "Best sellers" block
+               shows the first published ones (6 by default: change "Fetched Elements" in the block options
+               with Edit on the website). While this list is empty, it shows your top-selling products from the
+               last 12 months automatically.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_selamta_homepage_best_sellers"
+              name="Homepage Best Sellers"
+              parent="website_sale.menu_catalog"
+              action="selamta_homepage_item_action_best_sellers"
+              groups="website.group_website_designer"
+              sequence="7"/>
+
+    <menuitem id="menu_selamta_homepage_new_arrivals"
+              name="Homepage New Arrivals"
+              parent="website_sale.menu_catalog"
+              action="selamta_homepage_item_action_new_arrivals"
+              groups="website.group_website_designer"
+              sequence="8"/>
+
+</odoo>
