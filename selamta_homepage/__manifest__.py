@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta Homepage',
-    'version': '18.0.1.5.1',
+    'version': '18.0.1.5.2',
     'category': 'Website/Website',
     'summary': 'Wholesale homepage and footer for selamtausa.com',
     'description': """
