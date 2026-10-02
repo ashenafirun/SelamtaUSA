@@ -29,8 +29,9 @@
         <field name="context">{'default_section': 'new_arrivals'}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Pick the products for "New arrivals" on the homepage</p>
-            <p>Add products here and drag them into the order you want; the first 6 published ones are shown.
-               While this list is empty, the homepage shows your newest products automatically.</p>
+            <p>Add products here and drag them into the order you want. The homepage's "New arrivals" block
+               shows the first published ones (6 by default: change "Fetched Elements" in the block options
+               with Edit on the website). While this list is empty, it shows your newest products automatically.</p>
         </field>
     </record>
 
@@ -42,8 +43,10 @@
         <field name="context">{'default_section': 'best_sellers'}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Pick the products for "Best sellers" on the homepage</p>
-            <p>Add products here and drag them into the order you want; the first 6 published ones are shown.
-               While this list is empty, the homepage shows your top-selling products from the last 12 months automatically.</p>
+            <p>Add products here and drag them into the order you want. The homepage's "Best sellers" block
+               shows the first published ones (6 by default: change "Fetched Elements" in the block options
+               with Edit on the website). While this list is empty, it shows your top-selling products from the
+               last 12 months automatically.</p>
         </field>
     </record>
 
