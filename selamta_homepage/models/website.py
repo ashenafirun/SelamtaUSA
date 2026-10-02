@@ -287,6 +287,10 @@ class Website(models.Model):
         View = self.env['ir.ui.view'].sudo()
         Params = self.env['ir.config_parameter'].sudo()
         generic = self.env.ref('selamta_homepage.homepage').sudo()
+        if not (self.env.ref('selamta_homepage.dynamic_filter_best_sellers', raise_if_not_found=False)
+                and self.env.ref('selamta_homepage.dynamic_filter_new_arrivals', raise_if_not_found=False)):
+            _logger.warning('selamta_homepage: product filters not loaded yet, homepage blocks not generated')
+            return
         content_key = '%s_%s' % (generic.key, HOME_STRUCTURE_ID)
         View.with_context(active_test=False).search([
             ('key', 'in', ['%s_%s' % (generic.key, sid) for sid in OLD_STRUCTURE_IDS]),
