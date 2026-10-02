@@ -32,8 +32,8 @@ class WebsiteSnippetFilter(models.Model):
         return Variant.browse([variant.id for variant in variants if variant.id in allowed][:limit])
 
     # ------------------------------------------------------------------
-    # Brand filter for Odoo's "Dynamic Content" block (created by
-    # website._selamta_ensure_brand_filter when theme_alan's brands exist)
+    # Brand filter for Odoo's "Dynamic Content" block
+    # (dynamic_filter_brand_tiles in data/snippet_filter_data.xml)
     # ------------------------------------------------------------------
 
     @api.model
@@ -41,5 +41,7 @@ class WebsiteSnippetFilter(models.Model):
         """All brands of Product Brands in their drag-and-drop order. The block's
         'Fetched Elements' limit (max 16) is ignored on purpose so every brand shows."""
         dynamic_filter = self.env.context.get('dynamic_filter')
-        website = self.env['website'].get_current_website()
-        return dynamic_filter._filter_records_to_values(website._selamta_brand_records())
+        brands = self.env['website'].get_current_website()._selamta_brand_records()
+        if not dynamic_filter or brands is None:
+            return []
+        return dynamic_filter._filter_records_to_values(brands)

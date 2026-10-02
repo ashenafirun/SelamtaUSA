@@ -210,36 +210,14 @@ class Website(models.Model):
         return self._selamta_brand_card(data['_record'])
 
     @api.model
-    def _selamta_ensure_brand_filter(self):
-        """Filter "Product Brands (homepage)" for Odoo's Dynamic Content block. Created in
-        code because the brand model comes from theme_alan, which this module does not
-        depend on. Returns the filter, or an empty recordset without the brand model."""
-        SnippetFilter = self.env['website.snippet.filter'].sudo()
-        if 'as.product.brand' not in self.env:
-            return SnippetFilter
-        snippet_filter = self.env.ref('selamta_homepage.dynamic_filter_brands', raise_if_not_found=False)
-        if snippet_filter:
+    def _selamta_brand_filter(self):
+        """Filter "Product Brands (homepage)" when theme_alan's brand list is installed.
+        Checked in the database (ir.model) because during a module update the theme's
+        models may not be loaded yet."""
+        snippet_filter = self.env.ref('selamta_homepage.dynamic_filter_brand_tiles', raise_if_not_found=False)
+        if snippet_filter and self.env['ir.model'].sudo().search_count([('model', '=', 'as.product.brand')]):
             return snippet_filter.sudo()
-        action = self.env['ir.actions.server'].sudo().create({
-            'name': 'Selamta: Product Brands',
-            'model_id': self.env['ir.model']._get_id('as.product.brand'),
-            'state': 'code',
-            'code': "response = model.env['website.snippet.filter']._selamta_get_brands()",
-        })
-        snippet_filter = SnippetFilter.create({
-            'name': 'Product Brands (homepage)',
-            'action_server_id': action.id,
-            'field_names': 'name,image_256',
-            'limit': 16,
-        })
-        # noupdate so module upgrades do not delete them as obsolete records
-        self.env['ir.model.data'].sudo().create([
-            {'module': 'selamta_homepage', 'name': 'snippet_action_brands', 'model': 'ir.actions.server',
-             'res_id': action.id, 'noupdate': True},
-            {'module': 'selamta_homepage', 'name': 'dynamic_filter_brands', 'model': 'website.snippet.filter',
-             'res_id': snippet_filter.id, 'noupdate': True},
-        ])
-        return snippet_filter
+        return self.env['website.snippet.filter']
 
     # ------------------------------------------------------------------
     # Homepage blocks (website builder content)
@@ -249,7 +227,7 @@ class Website(models.Model):
         """The default homepage blocks for this website, rendered to static HTML."""
         self.ensure_one()
         website = self.with_context(website_id=self.id)
-        brand_filter = website._selamta_ensure_brand_filter()
+        brand_filter = website._selamta_brand_filter()
         values = {
             'sel_categories': website._selamta_categories(),
             'sel_best_filter_id': self.env.ref('selamta_homepage.dynamic_filter_best_sellers').id,
@@ -295,6 +273,11 @@ class Website(models.Model):
         View.with_context(active_test=False).search([
             ('key', 'in', ['%s_%s' % (generic.key, sid) for sid in OLD_STRUCTURE_IDS]),
         ]).unlink()
+        # brand filter of the first 1.5.0 build (on the theme's brand model), replaced by dynamic_filter_brand_tiles
+        for xmlid in ('selamta_homepage.dynamic_filter_brands', 'selamta_homepage.snippet_action_brands'):
+            record = self.env.ref(xmlid, raise_if_not_found=False)
+            if record:
+                record.sudo().unlink()
         for website in self.sudo().search([]):
             parent = View.search([('key', '=', generic.key), ('website_id', '=', website.id)], limit=1)
             if parent and HOME_STRUCTURE_ID not in (parent.arch_db or ''):
