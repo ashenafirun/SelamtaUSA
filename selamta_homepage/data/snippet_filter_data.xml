@@ -35,4 +35,25 @@ response = DynamicFilter._get_products('selamta_new_arrivals')
         <field name="field_names">display_name,description_sale,image_512</field>
         <field name="limit" eval="16"/>
     </record>
+
+    <!--
+        Filter for Odoo's "Dynamic Content" block: the brands of Website > eCommerce >
+        Products > Product Brands (theme_alan), in their drag-and-drop order. The server
+        action runs on `website` so this works without depending on the theme module;
+        the brands themselves are read when the page is shown.
+    -->
+    <record id="snippet_action_brand_tiles" model="ir.actions.server">
+        <field name="name">Selamta: Product Brands</field>
+        <field name="model_id" ref="website.model_website"/>
+        <field name="state">code</field>
+        <field name="code">
+response = model.env['website.snippet.filter']._selamta_get_brands()
+        </field>
+    </record>
+    <record id="dynamic_filter_brand_tiles" model="website.snippet.filter">
+        <field name="name">Product Brands (homepage)</field>
+        <field name="action_server_id" ref="snippet_action_brand_tiles"/>
+        <field name="field_names">name</field>
+        <field name="limit" eval="16"/>
+    </record>
 </odoo>
