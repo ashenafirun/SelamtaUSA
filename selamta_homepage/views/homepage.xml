@@ -201,10 +201,12 @@
         </t>
 
         <!-- Brands we carry: Odoo "Dynamic Content" block reading Website > eCommerce > Products > Product Brands -->
-        <section t-if="sel_brand_filter_id" data-snippet="s_dynamic_snippet" data-name="Brands we carry"
-                 class="s_dynamic_snippet s_dynamic s_dynamic_empty pt64 pb64 sel-brands sel-bg-cream s_as_product_brand_selamta_logos"
+        <!-- No data-snippet here: Odoo's generic Dynamic Content block is only in the Blocks
+             panel in debug mode, and a data-snippet missing from the panel shows as "outdated". -->
+        <section t-if="sel_brand_filter_id" data-name="Brands we carry"
+                 class="s_dynamic_snippet s_dynamic s_dynamic_empty pt64 pb64 sel-brands sel-bg-cream s_website_selamta_brands"
                  t-att-data-filter-id="sel_brand_filter_id"
-                 data-template-key="selamta_homepage.dynamic_filter_template_as_product_brand_selamta_logos"
+                 data-template-key="selamta_homepage.dynamic_filter_template_website_selamta_brands"
                  data-number-of-records="16" data-number-of-elements="6" data-number-of-elements-small-devices="2"
                  data-column-classes="col-4 col-md-3 col-lg-2" data-extra-classes="g-2 g-md-3" data-custom-template-data="{}">
             <div class="container">
@@ -338,7 +340,7 @@
         Brand template for Odoo's "Dynamic Content" block with the filter
         "Product Brands (homepage)". Shows the logo when the brand has one, otherwise its name.
     -->
-    <template id="dynamic_filter_template_as_product_brand_selamta_logos" name="Selamta brand tiles">
+    <template id="dynamic_filter_template_website_selamta_brands" name="Selamta brand tiles">
         <t t-foreach="records" t-as="data" data-number-of-elements="6" data-number-of-elements-sm="3"
            data-column-classes="col-4 col-md-3 col-lg-2" data-extra-classes="g-2 g-md-3"
            data-thumb="/selamta_homepage/static/src/img/selamta_brand_thumb.svg">
