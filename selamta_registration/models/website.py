@@ -12,6 +12,17 @@ REGISTRATION_URL = '/new-customer-registration'
 CONTENT_TEMPLATE = 'selamta_registration.registration_page_content'
 BACKUP_KEY = 'selamta_registration.backup_registration_page_%s'
 HASH_PARAM = 'selamta_registration.page_hash.%s'
+PATCH_PARAM = 'selamta_registration.page_patch_level.%s'
+# Form field blocks that changed after the first version: (level, [(old input name, new input name)]).
+# On a page edited in the builder, each level is applied once: those field blocks are
+# swapped for the new ones and every other edit on the page is kept.
+PAGE_PATCHES = [
+    (1, [('selamta_business_type', 'industry_id')]),
+    (2, [('selamta_receiving', 'selamta_receiving'),
+         ('selamta_receiving_hours', 'selamta_receiving_hours'),
+         ('selamta_delivery_address', 'selamta_delivery_address')]),
+]
+PATCH_LEVEL = PAGE_PATCHES[-1][0]
 # States offered in the form: the 50 states and DC (no territories / military).
 US_STATE_CODES = {
     'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'DC', 'FL', 'GA', 'HI', 'ID', 'IL',
@@ -105,6 +116,7 @@ class Website(models.Model):
                 'website_indexed': True,
             })
             ICP.set_param(param, _arch_hash(view.arch_db))
+            ICP.set_param(PATCH_PARAM % self.id, str(PATCH_LEVEL))
             _logger.info('selamta_registration: created %s on website %s', REGISTRATION_URL, self.id)
             return
 
@@ -125,25 +137,30 @@ class Website(models.Model):
             })
         view.write({'arch': self._selamta_registration_build_arch(view.arch_db, content)})
         ICP.set_param(param, _arch_hash(view.arch_db))
+        ICP.set_param(PATCH_PARAM % self.id, str(PATCH_LEVEL))
         _logger.info('selamta_registration: wrote new content to %s (view %s)', REGISTRATION_URL, view.id)
 
-    # Form fields renamed between versions: old input name -> new input name.
-    # On a page edited in the builder, only these field blocks are swapped for
-    # the new ones; everything else stays as edited.
-    RENAMED_FIELDS = {'selamta_business_type': 'industry_id'}
-
     def _selamta_registration_patch_fields(self, view, content_html):
+        """Edited page: swap in only the field blocks changed since the last patch level."""
+        ICP = self.env['ir.config_parameter'].sudo()
+        level = int(ICP.get_param(PATCH_PARAM % self.id) or 0)
+        todo = [pair for lvl, pairs in PAGE_PATCHES if lvl > level for pair in pairs]
+        if not todo:
+            return
+
         def field_block(root, input_name):
-            inputs = root.xpath(".//input[@name=$n] | .//select[@name=$n]", n=input_name)
+            inputs = root.xpath(
+                ".//input[@name=$n] | .//select[@name=$n] | .//textarea[@name=$n]", n=input_name)
             if not inputs:
                 return None
-            blocks = inputs[0].xpath("ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' s_website_form_field ')][1]")
+            blocks = inputs[0].xpath(
+                "ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' s_website_form_field ')][1]")
             return blocks[0] if blocks else None
 
         root = etree.fromstring(view.arch_db.encode('utf-8'))
         new_root = etree.fromstring(('<div>%s</div>' % content_html).encode('utf-8'))
         changed = []
-        for old_name, new_name in self.RENAMED_FIELDS.items():
+        for old_name, new_name in todo:
             old_block = field_block(root, old_name)
             new_block = field_block(new_root, new_name)
             if old_block is None or new_block is None:
@@ -157,6 +174,7 @@ class Website(models.Model):
             view.write({'arch': etree.tostring(root, encoding='unicode')})
             _logger.info('selamta_registration: updated form field(s) %s on the edited page %s',
                          ', '.join(changed), REGISTRATION_URL)
+        ICP.set_param(PATCH_PARAM % self.id, str(PATCH_LEVEL))
 
     def _selamta_registration_restore_page(self):
         """Uninstall: put the backed-up content back."""
@@ -169,4 +187,5 @@ class Website(models.Model):
             _logger.info('selamta_registration: restored %s from backup view %s', REGISTRATION_URL, backup.id)
         if backup:
             backup.unlink()
-        self.env['ir.config_parameter'].sudo().search([('key', '=', HASH_PARAM % self.id)]).unlink()
+        self.env['ir.config_parameter'].sudo().search(
+            [('key', 'in', [HASH_PARAM % self.id, PATCH_PARAM % self.id])]).unlink()

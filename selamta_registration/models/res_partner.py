@@ -46,15 +46,17 @@ class ResPartner(models.Model):
     selamta_application_contact_id = fields.Many2one(
         'res.partner', string='Applicant', compute='_compute_selamta_application_contact_id')
     selamta_dba = fields.Char('Store / restaurant name (DBA)')
+    # The website offers "liftgate" (deliver) and "pickup"; "dock" is for staff to set
+    # on the few customers that have a loading dock.
     selamta_receiving = fields.Selection(
         [
-            ('dock', 'Loading dock'),
-            ('liftgate', 'No dock - needs a liftgate truck'),
+            ('liftgate', 'Delivery - needs a liftgate'),
+            ('dock', 'Delivery - has a loading dock'),
             ('pickup', 'Picks up at the warehouse'),
         ],
-        string='Receives deliveries by',
+        string='Delivery or pickup',
     )
-    selamta_receiving_hours = fields.Char('Receiving days and hours')
+    selamta_receiving_hours = fields.Char('Delivery days and hours')
     selamta_delivery_address = fields.Text('Delivery address (if different)')
     selamta_invoice_email = fields.Char('Email for invoices')
     selamta_resale_number = fields.Char('Sales tax / resale certificate number')
@@ -115,6 +117,13 @@ class ResPartner(models.Model):
                 values[key] = self._selamta_format_us_phone(values[key]) or False
         if values.get('zip'):
             values['zip'] = values['zip'].strip()
+        if values.get('selamta_receiving') not in ('liftgate', 'pickup'):
+            values.pop('selamta_receiving', None)
+        if values.get('selamta_receiving') == 'pickup':
+            values.pop('selamta_receiving_hours', None)
+            values.pop('selamta_delivery_address', None)
+        if values.get('selamta_receiving_hours'):
+            values['selamta_receiving_hours'] = ' '.join(values['selamta_receiving_hours'].split())[:120]
         if not values.get('country_id'):
             us = self.env.ref('base.us', raise_if_not_found=False)
             if us:
@@ -233,8 +242,8 @@ class ResPartner(models.Model):
                 self.street, self.street2, self.city,
                 ' '.join(filter(None, [self.state_id.code, self.zip])),
             ]))),
-            (_('Receives deliveries by'), selection('selamta_receiving')),
-            (_('Receiving hours'), self.selamta_receiving_hours),
+            (_('Delivery or pickup'), selection('selamta_receiving')),
+            (_('Delivery days and hours'), self.selamta_receiving_hours),
             (_('Delivery address'), self.selamta_delivery_address),
             (_('Invoice email'), self.selamta_invoice_email),
             (_('Resale certificate no.'), self.selamta_resale_number),
