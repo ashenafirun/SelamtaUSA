@@ -208,33 +208,16 @@
 
                         <div class="col-12 sel-reg-group"><h2 class="h5">Deliveries</h2></div>
 
-                        <div data-name="Field" class="s_website_form_field mb-3 col-12 s_website_form_required" data-type="selection">
-                            <label class="s_website_form_label" for="sel_reg_receiving0">
-                                <span class="s_website_form_label_content">How do you want to get your orders?</span>
-                                <span class="s_website_form_mark"> *</span>
-                            </label>
-                            <div class="row s_col_no_resize s_col_no_bgcolor s_website_form_multiple" data-name="selamta_receiving" data-display="horizontal">
-                                <t t-foreach="[('liftgate', 'Deliver to my business'), ('pickup', &quot;I'll pick up at your Atlanta warehouse&quot;)]" t-as="opt">
-                                    <div class="radio col-12 col-md-6">
-                                        <div class="form-check">
-                                            <input type="radio" class="s_website_form_input form-check-input" t-att-id="'sel_reg_receiving%s' % opt_index" name="selamta_receiving" t-att-value="opt[0]" required="1"/>
-                                            <label class="form-check-label s_website_form_check_label" t-att-for="'sel_reg_receiving%s' % opt_index" t-out="opt[1]"/>
-                                        </div>
-                                    </div>
-                                </t>
-                            </div>
-                            <div class="s_website_form_field_description small form-text text-muted">We deliver Monday to Friday, by freight truck with a liftgate.</div>
-                        </div>
-                        <!-- Shown only for deliveries. The day buttons and time lists are added by
-                             registration.js and fill this text field; without JS it stays a text box. -->
-                        <div data-name="Field" class="s_website_form_field mb-3 col-12 sel-reg-hours s_website_form_field_hidden_if d-none" data-type="char" data-visibility-dependency="selamta_receiving" data-visibility-condition="pickup" data-visibility-comparator="!selected">
+                        <!-- The day buttons and time lists are added by registration.js and fill
+                             this text field; without JS it stays a text box. -->
+                        <div data-name="Field" class="s_website_form_field mb-3 col-12 sel-reg-hours" data-type="char">
                             <label class="s_website_form_label" for="sel_reg_hours">
                                 <span class="s_website_form_label_content">When can we deliver?</span>
                             </label>
                             <input class="form-control s_website_form_input" type="text" name="selamta_receiving_hours" placeholder="e.g. Mon to Fri, 9am to 3pm" maxlength="120" id="sel_reg_hours"/>
-                            <div class="s_website_form_field_description small form-text text-muted">Tap the weekdays you can receive, then pick the hours.</div>
+                            <div class="s_website_form_field_description small form-text text-muted">We deliver Monday to Friday, 8 AM to 6 PM. Tap the days you can receive, then pick the hours.</div>
                         </div>
-                        <div data-name="Field" class="s_website_form_field mb-3 col-12 s_website_form_field_hidden_if d-none" data-type="text" data-visibility-dependency="selamta_receiving" data-visibility-condition="pickup" data-visibility-comparator="!selected">
+                        <div data-name="Field" class="s_website_form_field mb-3 col-12" data-type="text">
                             <label class="s_website_form_label" for="sel_reg_delivery">
                                 <span class="s_website_form_label_content">Delivery address, if different</span>
                             </label>

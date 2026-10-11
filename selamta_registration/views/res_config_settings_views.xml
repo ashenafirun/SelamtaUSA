@@ -11,6 +11,19 @@
                              help="Who gets an email when a business applies on the Open a Wholesale Account page.">
                         <field name="selamta_registration_notify_email" placeholder="contact@selamtausa.com"/>
                     </setting>
+                    <setting id="selamta_registration_pricelists" string="Pricelist when approved"
+                             help="Set on the business when you click Approve and send login. Leave a box empty to keep Odoo's default pricelist.">
+                        <div class="content-group">
+                            <div class="row mt8">
+                                <label for="selamta_pricelist_georgia_id" string="Georgia" class="col-lg-4 o_light_label"/>
+                                <field name="selamta_pricelist_georgia_id" class="col-lg-8" options="{'no_create': True}"/>
+                            </div>
+                            <div class="row">
+                                <label for="selamta_pricelist_other_id" string="Other states" class="col-lg-4 o_light_label"/>
+                                <field name="selamta_pricelist_other_id" class="col-lg-8" options="{'no_create': True}" placeholder="Odoo's default pricelist"/>
+                            </div>
+                        </div>
+                    </setting>
                     <setting id="selamta_registration_places" string="Address suggestions"
                              help="Google 'Places API (New)' key. Suggests full street addresses while customers type. Leave empty to turn suggestions off."
                              groups="base.group_system">

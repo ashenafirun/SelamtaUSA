@@ -10,8 +10,9 @@
             <xpath expr="//notebook" position="inside">
                 <page string="Wholesale application" name="selamta_application" invisible="not selamta_application_state">
                     <div class="d-flex flex-wrap gap-2 mb-3">
-                        <button name="action_selamta_application_approve" type="object" string="Mark approved"
-                                class="btn-primary" invisible="selamta_application_state != 'new'"/>
+                        <button name="action_selamta_application_approve" type="object" string="Approve and send login"
+                                class="btn-primary" invisible="selamta_application_state != 'new'"
+                                confirm="Approve this business? Odoo sets their pricelist and emails the applicant a link to set their password."/>
                         <button name="action_selamta_application_decline" type="object" string="Decline"
                                 class="btn-secondary" invisible="selamta_application_state != 'new'"/>
                         <button name="action_selamta_application_reopen" type="object" string="Back to review"
