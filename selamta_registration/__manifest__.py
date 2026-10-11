@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta Wholesale Registration',
-    'version': '18.0.1.3.0',
+    'version': '18.0.1.4.0',
     'category': 'Website/Website',
     'summary': 'Wholesale account application page for selamtausa.com',
     'description': """
@@ -13,7 +13,8 @@ Redesigned "Open a Wholesale Account" page (/new-customer-registration):
   address, type of business in the standard Industry field) with the person as its
   contact. Extra answers kept on the company: store name (DBA), delivery or pickup,
   delivery days and hours (Monday to Friday buttons and time lists), delivery address,
-  invoice email, resale certificate number and documents, terms acceptance.
+  resale certificate number and documents, how they heard about us (dropdown), terms
+  acceptance.
 * ZIP code fills in city and state (built-in U.S. ZIP list, no outside service).
 * Street address suggestions while typing (Google Places API (New); needs a key
   under Website > Settings > Wholesale registration).
