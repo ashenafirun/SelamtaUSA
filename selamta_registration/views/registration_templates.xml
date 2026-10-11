@@ -223,7 +223,7 @@
                                     </div>
                                 </t>
                             </div>
-                            <div class="s_website_form_field_description small form-text text-muted">Deliveries come by freight truck with a liftgate.</div>
+                            <div class="s_website_form_field_description small form-text text-muted">We deliver Monday to Friday, by freight truck with a liftgate.</div>
                         </div>
                         <!-- Shown only for deliveries. The day buttons and time lists are added by
                              registration.js and fill this text field; without JS it stays a text box. -->
@@ -232,7 +232,7 @@
                                 <span class="s_website_form_label_content">When can we deliver?</span>
                             </label>
                             <input class="form-control s_website_form_input" type="text" name="selamta_receiving_hours" placeholder="e.g. Mon to Fri, 9am to 3pm" maxlength="120" id="sel_reg_hours"/>
-                            <div class="s_website_form_field_description small form-text text-muted">Tap the days you can receive, then pick the hours.</div>
+                            <div class="s_website_form_field_description small form-text text-muted">Tap the weekdays you can receive, then pick the hours.</div>
                         </div>
                         <div data-name="Field" class="s_website_form_field mb-3 col-12 s_website_form_field_hidden_if d-none" data-type="text" data-visibility-dependency="selamta_receiving" data-visibility-condition="pickup" data-visibility-comparator="!selected">
                             <label class="s_website_form_label" for="sel_reg_delivery">
