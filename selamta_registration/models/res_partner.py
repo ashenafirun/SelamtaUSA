@@ -40,6 +40,14 @@ APPLICATION_FIELDS = [
     'selamta_referral', 'selamta_terms_accepted',
 ]
 
+# Delivery details are set on the business and copied to all its contacts, like the
+# Tax ID (Odoo "commercial fields").
+DELIVERY_FIELDS = ['selamta_receiving_hours', 'selamta_receiving', 'selamta_delivery_address']
+# Contact tags that hold opening hours, e.g. "OPEN 6 DAYS: 0800 A.M. - 0430 P.M.",
+# "10AM-9PM", "CLOSED ON MON".
+HOURS_TAG_RE = re.compile(r'\b(?:open|closed)\b|\d\s*(?::\d{2})?\s*[ap]\.?\s?m\b', re.IGNORECASE)
+HOURS_FROM_TAGS_PARAM = 'selamta_registration.hours_from_tags_done'
+
 
 class ResPartner(models.Model):
     _inherit = 'res.partner'
@@ -68,8 +76,13 @@ class ResPartner(models.Model):
         ],
         string='Delivery or pickup',
     )
-    selamta_receiving_hours = fields.Char('Delivery days and hours')
+    selamta_receiving_hours = fields.Char(
+        'Delivery days and hours',
+        help='When the business can receive deliveries. Shown in the green bar under the name '
+             'on the business and all its contacts.')
     selamta_delivery_address = fields.Text('Delivery address (if different)')
+    selamta_delivery_banner = fields.Char(
+        'Delivery summary', compute='_compute_selamta_delivery_banner')
     selamta_resale_number = fields.Char('Sales tax / resale certificate number')
     selamta_referral = fields.Selection(REFERRAL_SOURCES, string='Heard about us from')
     selamta_terms_accepted = fields.Boolean('Accepted terms on application', copy=False)
@@ -90,6 +103,63 @@ class ResPartner(models.Model):
                     lambda c: c.type == 'contact')[:1]
             else:
                 partner.selamta_application_contact_id = partner
+
+    @api.model
+    def _commercial_fields(self):
+        return super()._commercial_fields() + DELIVERY_FIELDS
+
+    @api.depends('parent_id', 'selamta_receiving_hours', 'selamta_receiving',
+                 'commercial_partner_id.selamta_receiving_hours',
+                 'commercial_partner_id.selamta_receiving')
+    def _compute_selamta_delivery_banner(self):
+        truck = {'liftgate': _('Liftgate truck'), 'dock': _('Loading dock')}
+        for partner in self:
+            business = partner.commercial_partner_id if partner.parent_id else partner
+            hours = (business.selamta_receiving_hours or '').strip()
+            receiving = business.selamta_receiving
+            parts = []
+            if receiving == 'pickup':
+                parts.append(_('Picks up at the warehouse'))
+                if hours:
+                    parts.append(_('Hours: %s', hours))
+            elif hours:
+                parts.append(_('Delivery hours: %s', hours))
+                if receiving in truck:
+                    parts.append(truck[receiving])
+            elif receiving in truck:
+                parts += [truck[receiving], _('delivery hours not set yet')]
+            partner.selamta_delivery_banner = ' · '.join(parts) or False
+
+    @api.model
+    def _selamta_copy_hours_from_tags(self):
+        """One-time (1.7.0): copy opening-hours tags such as "OPEN 6 DAYS: 0800 A.M. -
+        0430 P.M." or "CLOSED ON MON" into "Delivery days and hours" on the business,
+        where that is still empty. The tags themselves are kept."""
+        ICP = self.env['ir.config_parameter'].sudo()
+        if ICP.get_param(HOURS_FROM_TAGS_PARAM):
+            return
+        tags = self.env['res.partner.category'].sudo().with_context(active_test=False).search(
+            [], order='id').filtered(lambda t: HOURS_TAG_RE.search(t.name or ''))
+        names_by_business = {}
+        if tags:
+            partners = self.sudo().search([('category_id', 'in', tags.ids)], order='id')
+            for partner in partners:
+                names = names_by_business.setdefault(partner.commercial_partner_id, [])
+                for tag in partner.category_id & tags:
+                    name = ' '.join(tag.name.split())
+                    if name.lower() not in (n.lower() for n in names):
+                        names.append(name)
+        updated = 0
+        for business, names in names_by_business.items():
+            if business.selamta_receiving_hours or not names:
+                continue
+            # opening hours first, closed days after
+            names.sort(key=lambda n: bool(re.search(r'\bclosed\b', n, re.IGNORECASE)))
+            business.write({'selamta_receiving_hours': '; '.join(names)})
+            updated += 1
+        ICP.set_param(HOURS_FROM_TAGS_PARAM, '1')
+        _logger.info('selamta_registration: copied opening-hours tags to "Delivery days and hours" '
+                     'on %s business(es)', updated)
 
     @api.model
     def _selamta_clean_referral_values(self):
