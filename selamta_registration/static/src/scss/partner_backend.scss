@@ -1,0 +1,22 @@
+// Green delivery bar under the contact name (res.partner form).
+.o_form_view .o_selamta_delivery_banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: -8px 0 16px;
+    padding: 8px 14px;
+    border-left: 4px solid #2E7D46;
+    border-radius: 6px;
+    background-color: #EAF4EC;
+    color: #145A2A;
+    font-weight: 600;
+
+    > .fa {
+        font-size: 1.15em;
+    }
+
+    .o_field_widget {
+        width: auto;
+        color: inherit;
+    }
+}
