@@ -26,11 +26,10 @@
                             <field name="selamta_referral"/>
                             <field name="selamta_terms_accepted" readonly="1"/>
                         </group>
-                        <group string="Deliveries and invoices">
+                        <group string="Deliveries">
                             <field name="selamta_receiving"/>
                             <field name="selamta_receiving_hours"/>
                             <field name="selamta_delivery_address"/>
-                            <field name="selamta_invoice_email" widget="email"/>
                         </group>
                         <group string="Documents">
                             <field name="selamta_ein_document_ids" widget="many2many_binary"/>
