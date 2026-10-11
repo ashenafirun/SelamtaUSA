@@ -20,3 +20,64 @@
         color: inherit;
     }
 }
+
+// Day buttons and From / Until lists for "Delivery days and hours".
+.o_field_selamta_delivery_hours {
+    width: 100%;
+}
+
+.o_selamta_hours {
+    width: 100%;
+
+    .o_selamta_hours_days {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    .o_selamta_day {
+        min-width: 44px;
+        padding: 3px 8px;
+        border: 1px solid #C9D3CC;
+        border-radius: 14px;
+        background-color: transparent;
+        color: inherit;
+        font-size: 0.92em;
+        line-height: 1.4;
+
+        &:hover {
+            border-color: #2E7D46;
+        }
+
+        &.o_selected {
+            border-color: #145A2A;
+            background-color: #145A2A;
+            color: #FFFFFF;
+            font-weight: 600;
+        }
+    }
+
+    .o_selamta_hours_times {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 6px;
+
+        select {
+            width: auto;
+            min-width: 7.5em;
+        }
+    }
+
+    .o_selamta_hours_hint {
+        margin-top: 4px;
+        font-size: 0.88em;
+        color: $text-muted;
+    }
+
+    .o_selamta_hours_warning {
+        margin-top: 4px;
+        font-size: 0.88em;
+        color: $danger;
+    }
+}
