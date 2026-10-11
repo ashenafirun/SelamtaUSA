@@ -1,0 +1,289 @@
+// Selamta wholesale registration page (/new-customer-registration)
+// and the "application received" page.
+
+$sel-reg-green: #145A2A;
+$sel-reg-green-dark: #0F4D24;
+$sel-reg-yellow: #FFC220;
+$sel-reg-ink: #1D2A22;
+$sel-reg-cream: #F7F5EF;
+$sel-reg-line: #E3DFD3;
+$sel-reg-tint: #EAF4EC;
+
+// ---------------------------------------------------------------- intro
+.sel-reg-hero {
+    background-color: $sel-reg-green;
+    color: #fff;
+
+    h1, h2, h3, h4, h5, h6, p {
+        color: #fff;
+    }
+    .sel-reg-eyebrow {
+        color: $sel-reg-yellow;
+        font-weight: 700;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        font-size: .85rem;
+        margin-bottom: .5rem;
+    }
+    .sel-reg-title {
+        font-weight: 800;
+        font-size: clamp(2rem, 4vw, 3rem);
+        line-height: 1.1;
+        margin-bottom: .75rem;
+    }
+    .sel-reg-lead {
+        opacity: .92;
+        margin-bottom: 1.75rem;
+    }
+}
+
+.sel-reg-steps > div {
+    margin-bottom: .75rem;
+}
+
+.sel-reg-step {
+    display: flex;
+    gap: .875rem;
+    align-items: flex-start;
+    height: 100%;
+    padding: 1rem 1.125rem;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .08);
+    border: 1px solid rgba(255, 255, 255, .14);
+
+    p {
+        opacity: .88;
+        font-size: .95rem;
+    }
+}
+
+.sel-reg-step-title {
+    font-weight: 700;
+    margin-bottom: .25rem;
+}
+
+.sel-reg-step-num {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: $sel-reg-yellow;
+    color: $sel-reg-ink;
+    font-weight: 800;
+}
+
+.sel-reg-ready {
+    background-color: $sel-reg-cream;
+    color: $sel-reg-ink;
+}
+
+.sel-reg-h {
+    font-weight: 700;
+    color: $sel-reg-green;
+}
+
+.sel-reg-checklist {
+    list-style: none;
+    padding-left: 0;
+
+    li {
+        position: relative;
+        padding-left: 1.75rem;
+        margin-bottom: .4rem;
+
+        &::before {
+            content: "\2713";
+            position: absolute;
+            left: 0;
+            top: 0;
+            color: $sel-reg-green;
+            font-weight: 800;
+        }
+    }
+}
+
+// ---------------------------------------------------------------- form
+.sel-reg-form {
+    form {
+        max-width: 880px;
+        margin: 0 auto;
+        padding: 1.5rem 1.25rem .5rem;
+        background: #fff;
+        border: 1px solid $sel-reg-line;
+        border-radius: 16px;
+        box-shadow: 0 6px 24px rgba(20, 90, 42, .06);
+
+        @media (min-width: 768px) {
+            padding: 2rem 2.25rem 1rem;
+        }
+    }
+
+    // Labels above the fields, full width (the builder's 200px is for side labels).
+    .s_website_form_label:not(.d-none) {
+        display: block;
+        width: auto !important;
+        font-weight: 600;
+        margin-bottom: .3rem;
+        color: $sel-reg-ink;
+    }
+    .s_website_form_submit .s_website_form_label {
+        display: none !important;
+    }
+
+    .sel-reg-group {
+        padding-top: 1.25rem;
+        margin-top: .25rem;
+        margin-bottom: .75rem;
+        border-top: 1px solid $sel-reg-line;
+
+        h2 {
+            color: $sel-reg-green;
+            font-weight: 700;
+            margin-bottom: 0;
+        }
+    }
+    .s_website_form_field_hidden + .s_website_form_field_hidden + .sel-reg-group,
+    .s_website_form_rows > .sel-reg-group:first-child {
+        border-top: 0;
+        padding-top: 0;
+    }
+
+    .form-control, .form-select {
+        min-height: 46px;
+    }
+
+    // Radio choices as tappable tiles.
+    .s_website_form_multiple {
+        --bs-gutter-x: .75rem;
+
+        .radio {
+            margin-bottom: .5rem;
+        }
+        .form-check {
+            height: 100%;
+            margin: 0;
+            padding: .7rem .9rem .7rem 2.4rem;
+            border: 1px solid $sel-reg-line;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: border-color .15s, background-color .15s;
+
+            &:hover {
+                border-color: $sel-reg-green;
+            }
+            &:has(.form-check-input:checked) {
+                border-color: $sel-reg-green;
+                background: $sel-reg-tint;
+            }
+        }
+        .form-check-input {
+            margin-left: -1.6rem;
+        }
+        .form-check-label {
+            cursor: pointer;
+            width: 100%;
+        }
+    }
+
+    .sel-reg-terms .form-check {
+        padding: .9rem 1rem .9rem 2.6rem;
+        background: $sel-reg-cream;
+        border-radius: 10px;
+
+        .form-check-input {
+            margin-left: -1.7rem;
+        }
+    }
+
+    .s_website_form_send {
+        min-width: 240px;
+        font-weight: 700;
+    }
+
+    // Street suggestions
+    .sel-reg-street-wrap {
+        position: relative;
+    }
+    .sel-reg-suggest {
+        position: absolute;
+        z-index: 1056;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        background: #fff;
+        border: 1px solid $sel-reg-line;
+        border-radius: 10px;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, .12);
+        overflow: hidden;
+
+        .sel-reg-suggest-item {
+            display: block;
+            width: 100%;
+            padding: .6rem .9rem;
+            border: 0;
+            border-bottom: 1px solid #F0EEE7;
+            background: #fff;
+            text-align: left;
+            color: $sel-reg-ink;
+            line-height: 1.3;
+
+            small {
+                display: block;
+                color: #6B746E;
+            }
+            &:hover, &.active {
+                background: $sel-reg-tint;
+            }
+        }
+        .sel-reg-suggest-footer {
+            padding: .35rem .9rem;
+            font-size: .75rem;
+            color: #6B746E;
+            text-align: right;
+            background: #FAFAF7;
+        }
+    }
+
+    .sel-reg-zip-hint {
+        color: $sel-reg-green;
+    }
+}
+
+// ---------------------------------------------------------------- thank you
+.sel-reg-thanks {
+    background-color: $sel-reg-cream;
+
+    .sel-reg-thanks-card {
+        background: #fff;
+        border: 1px solid $sel-reg-line;
+        border-radius: 16px;
+        padding: 2rem 1.5rem;
+
+        @media (min-width: 768px) {
+            padding: 2.5rem 3rem;
+        }
+    }
+    .sel-reg-thanks-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 3rem;
+        height: 3rem;
+        margin-bottom: 1rem;
+        border-radius: 50%;
+        background: $sel-reg-green;
+        color: #fff;
+        font-size: 1.5rem;
+        font-weight: 800;
+    }
+    .sel-reg-title {
+        font-weight: 800;
+        color: $sel-reg-ink;
+    }
+    .sel-reg-next li {
+        margin-bottom: .35rem;
+    }
+}
