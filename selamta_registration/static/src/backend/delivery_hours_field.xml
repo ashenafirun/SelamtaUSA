@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="selamta_registration.DeliveryHoursField">
+        <div class="o_selamta_hours">
+            <t t-if="props.readonly">
+                <span t-esc="value"/>
+            </t>
+            <t t-elif="state.textMode">
+                <input type="text" class="o_input" t-att-id="props.id" t-att-value="value"
+                       placeholder="e.g. Mon–Fri, 9:00 AM – 3:00 PM" t-on-change="onTextChange"/>
+                <div class="o_selamta_hours_hint">
+                    <t t-if="value">Typed text (for example from an old tag). </t>
+                    <a href="#" t-on-click.prevent="pickInstead">Pick days and hours</a>
+                </div>
+            </t>
+            <t t-else="">
+                <div class="o_selamta_hours_days" role="group" aria-label="Days">
+                    <t t-foreach="dayNames" t-as="day" t-key="day_index">
+                        <button type="button" class="o_selamta_day"
+                                t-att-class="{'o_selected': state.days.includes(day_index)}"
+                                t-att-aria-pressed="state.days.includes(day_index) ? 'true' : 'false'"
+                                t-on-click="() => this.toggleDay(day_index)" t-esc="day"/>
+                    </t>
+                </div>
+                <div class="o_selamta_hours_times">
+                    <select class="o_input" aria-label="From" t-att-id="props.id"
+                            t-on-change="(ev) => this.onTimeChange('from', ev)">
+                        <option value="" t-att-selected="state.from === null">From</option>
+                        <t t-foreach="times" t-as="time" t-key="time.value">
+                            <option t-att-value="time.value" t-att-selected="state.from === time.value" t-esc="time.label"/>
+                        </t>
+                    </select>
+                    <span>to</span>
+                    <select class="o_input" aria-label="Until"
+                            t-on-change="(ev) => this.onTimeChange('to', ev)">
+                        <option value="" t-att-selected="state.to === null">Until</option>
+                        <t t-foreach="times" t-as="time" t-key="time.value">
+                            <option t-att-value="time.value" t-att-selected="state.to === time.value" t-esc="time.label"/>
+                        </t>
+                    </select>
+                </div>
+                <div t-if="endBeforeStart" class="o_selamta_hours_warning">The end time is earlier than the start time.</div>
+                <div class="o_selamta_hours_hint">
+                    <t t-if="state.oldText">Replaces: <span t-esc="state.oldText"/> · </t>
+                    <a href="#" t-on-click.prevent="typeInstead">Type instead</a>
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>
