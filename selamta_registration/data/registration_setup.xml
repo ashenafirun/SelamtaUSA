@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Let the public registration form write the new contact fields
+         (same mechanism website_sale uses for name, email, street, ...). -->
+    <function model="ir.model.fields" name="formbuilder_whitelist">
+        <value>res.partner</value>
+        <value eval="[
+            'mobile', 'website',
+            'selamta_application_state',
+            'selamta_dba', 'selamta_business_type',
+            'selamta_receiving', 'selamta_receiving_hours', 'selamta_delivery_address',
+            'selamta_invoice_email', 'selamta_resale_number', 'selamta_referral',
+            'selamta_terms_accepted',
+            'selamta_ein_document_ids', 'selamta_resale_document_ids',
+        ]"/>
+    </function>
+
+    <!-- Write the new content to /new-customer-registration (backs up the old one). -->
+    <function model="website" name="_selamta_registration_setup"/>
+</odoo>
