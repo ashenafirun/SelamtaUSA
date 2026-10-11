@@ -287,3 +287,63 @@ $sel-reg-tint: #EAF4EC;
         margin-bottom: .35rem;
     }
 }
+
+// ---------------------------------------------------------------- delivery days and hours
+.sel-reg-form {
+    .sel-reg-hours-picker {
+        display: flex;
+        flex-direction: column;
+        gap: .75rem;
+        margin-top: .5rem;
+    }
+
+    .sel-reg-days {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .5rem;
+    }
+
+    .sel-reg-day {
+        min-width: 3.5rem;
+        min-height: 44px;
+        padding: .5rem .75rem;
+        border: 1px solid $sel-reg-line;
+        border-radius: 999px;
+        background: #fff;
+        color: $sel-reg-ink;
+        font-weight: 600;
+        line-height: 1;
+        transition: border-color .15s, background-color .15s, color .15s;
+
+        &:hover {
+            border-color: $sel-reg-green;
+        }
+        &:focus-visible {
+            outline: 2px solid $sel-reg-green;
+            outline-offset: 2px;
+        }
+        &[aria-pressed="true"] {
+            border-color: $sel-reg-green;
+            background: $sel-reg-green;
+            color: #fff;
+        }
+    }
+
+    .sel-reg-times {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .75rem;
+        max-width: 420px;
+
+        label {
+            display: block;
+            margin-bottom: .2rem;
+            color: #6B746E;
+            font-weight: 600;
+        }
+    }
+
+    .sel-reg-hours-warning {
+        color: #A04400;
+    }
+}
