@@ -21,6 +21,8 @@ PAGE_PATCHES = [
     (2, [('selamta_receiving', 'selamta_receiving'),
          ('selamta_receiving_hours', 'selamta_receiving_hours'),
          ('selamta_delivery_address', 'selamta_delivery_address')]),
+    (3, [('selamta_receiving', 'selamta_receiving'),
+         ('selamta_receiving_hours', 'selamta_receiving_hours')]),
 ]
 PATCH_LEVEL = PAGE_PATCHES[-1][0]
 # States offered in the form: the 50 states and DC (no territories / military).
