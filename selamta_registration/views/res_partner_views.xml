@@ -54,8 +54,8 @@
             </xpath>
             <xpath expr="//group[@name='container_row_2']/group[@name='sale']" position="after">
                 <group string="Deliveries" name="selamta_deliveries">
-                    <field name="selamta_receiving_hours" readonly="parent_id and not is_company"
-                           placeholder="e.g. Mon–Fri, 9:00 AM – 3:00 PM"/>
+                    <field name="selamta_receiving_hours" widget="selamta_delivery_hours"
+                           readonly="parent_id and not is_company"/>
                     <field name="selamta_delivery_service_ids" widget="many2many_tags"
                            readonly="parent_id and not is_company"
                            options="{'color_field': 'color'}"

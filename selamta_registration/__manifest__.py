@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta Wholesale Registration',
-    'version': '18.0.1.8.1',
+    'version': '18.0.1.9.0',
     'category': 'Website/Website',
     'summary': 'Wholesale account application page for selamtausa.com',
     'description': """
@@ -23,7 +23,8 @@ Redesigned "Open a Wholesale Account" page (/new-customer-registration):
 * Delivery days and hours on every contact: a green bar under the name (hours and
   delivery services such as Liftgate Service, Residential Delivery, Limited Access
   Delivery; more can be added in Contacts > Configuration > Delivery services), edited
-  in a "Deliveries" box on the Sales & Purchase tab and kept on the business for all
+  in a "Deliveries" box on the Sales & Purchase tab (day buttons Mon to Sun and From /
+  Until lists, no typing) and kept on the business for all
   its contacts. Install copies
   opening-hours tags (e.g. "OPEN 6 DAYS: 0800 A.M. - 0430 P.M.") into it once, and
   gives businesses with a residential tag the Residential Delivery service.
@@ -54,6 +55,8 @@ Install backs up the current page content; uninstalling restores it.
         ],
         'web.assets_backend': [
             'selamta_registration/static/src/scss/partner_backend.scss',
+            'selamta_registration/static/src/backend/delivery_hours_field.js',
+            'selamta_registration/static/src/backend/delivery_hours_field.xml',
         ],
         'web.assets_web_dark': [
             'selamta_registration/static/src/scss/partner_backend.dark.scss',

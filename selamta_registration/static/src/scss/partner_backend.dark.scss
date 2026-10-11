@@ -4,3 +4,12 @@
     background-color: rgba(76, 175, 106, 0.16);
     color: #9FDBB0;
 }
+
+.o_selamta_hours .o_selamta_day {
+    border-color: #4A5A50;
+
+    &.o_selected {
+        border-color: #4CAF6A;
+        background-color: #2E7D46;
+    }
+}
