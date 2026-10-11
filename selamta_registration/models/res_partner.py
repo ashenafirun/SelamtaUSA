@@ -35,14 +35,14 @@ REFERRAL_SOURCES = [
 # Application answers kept on the business (company) record.
 APPLICATION_FIELDS = [
     'selamta_application_state', 'selamta_application_date',
-    'selamta_dba', 'selamta_receiving', 'selamta_receiving_hours',
+    'selamta_dba', 'selamta_receiving_hours',
     'selamta_delivery_address', 'selamta_resale_number',
     'selamta_referral', 'selamta_terms_accepted',
 ]
 
 # Delivery details are set on the business and copied to all its contacts, like the
 # Tax ID (Odoo "commercial fields").
-DELIVERY_FIELDS = ['selamta_receiving_hours', 'selamta_receiving', 'selamta_delivery_address']
+DELIVERY_FIELDS = ['selamta_receiving_hours', 'selamta_delivery_service_ids', 'selamta_delivery_address']
 # Contact tags that hold opening hours, e.g. "OPEN 6 DAYS: 0800 A.M. - 0430 P.M.",
 # "10AM-9PM", "CLOSED ON MON".
 HOURS_TAG_RE = re.compile(r'\b(?:open|closed)\b|\d\s*(?::\d{2})?\s*[ap]\.?\s?m\b', re.IGNORECASE)
@@ -66,20 +66,27 @@ class ResPartner(models.Model):
     selamta_application_contact_id = fields.Many2one(
         'res.partner', string='Applicant', compute='_compute_selamta_application_contact_id')
     selamta_dba = fields.Char('Store / restaurant name (DBA)')
-    # Not asked on the website any more (1.5.0); staff set it on the contact when it
-    # matters (pickup customers, the rare loading dock).
+    # Old "Delivery or pickup" choice: no longer shown anywhere (1.8.0). Kept only so
+    # that upgrading from older versions, whose saved views still mention it, works.
     selamta_receiving = fields.Selection(
         [
             ('liftgate', 'Delivery - needs a liftgate'),
             ('dock', 'Delivery - has a loading dock'),
             ('pickup', 'Picks up at the warehouse'),
         ],
-        string='Delivery or pickup',
+        string='Delivery or pickup (old)',
     )
     selamta_receiving_hours = fields.Char(
         'Delivery days and hours',
         help='When the business can receive deliveries. Shown in the green bar under the name '
              'on the business and all its contacts.')
+    # Set by staff (not asked on the website). Replaces the 1.5.0-1.7.0 "Delivery or
+    # pickup" choice below, which was never filled in on live.
+    selamta_delivery_service_ids = fields.Many2many(
+        'selamta.delivery.service', 'selamta_partner_delivery_service_rel', 'partner_id', 'service_id',
+        string='Delivery services',
+        help='What deliveries to this business need, e.g. Liftgate Service, Residential Delivery, '
+             'Limited Access Delivery. Shown in the green bar under the name.')
     selamta_delivery_address = fields.Text('Delivery address (if different)')
     selamta_delivery_banner = fields.Char(
         'Delivery summary', compute='_compute_selamta_delivery_banner')
@@ -108,26 +115,18 @@ class ResPartner(models.Model):
     def _commercial_fields(self):
         return super()._commercial_fields() + DELIVERY_FIELDS
 
-    @api.depends('parent_id', 'selamta_receiving_hours', 'selamta_receiving',
+    @api.depends('parent_id', 'selamta_receiving_hours', 'selamta_delivery_service_ids.name',
                  'commercial_partner_id.selamta_receiving_hours',
-                 'commercial_partner_id.selamta_receiving')
+                 'commercial_partner_id.selamta_delivery_service_ids.name')
     def _compute_selamta_delivery_banner(self):
-        truck = {'liftgate': _('Liftgate truck'), 'dock': _('Loading dock')}
         for partner in self:
             business = partner.commercial_partner_id if partner.parent_id else partner
             hours = (business.selamta_receiving_hours or '').strip()
-            receiving = business.selamta_receiving
-            parts = []
-            if receiving == 'pickup':
-                parts.append(_('Picks up at the warehouse'))
-                if hours:
-                    parts.append(_('Hours: %s', hours))
-            elif hours:
-                parts.append(_('Delivery hours: %s', hours))
-                if receiving in truck:
-                    parts.append(truck[receiving])
-            elif receiving in truck:
-                parts += [truck[receiving], _('delivery hours not set yet')]
+            services = business.selamta_delivery_service_ids.mapped('name')
+            parts = [_('Delivery hours: %s', hours)] if hours else []
+            parts += services
+            if services and not hours:
+                parts.append(_('delivery hours not set yet'))
             partner.selamta_delivery_banner = ' · '.join(parts) or False
 
     @api.model
@@ -213,6 +212,7 @@ class ResPartner(models.Model):
         if values.get('selamta_referral') not in dict(REFERRAL_SOURCES):
             values.pop('selamta_referral', None)
         # set by staff only, never by the website form
+        values.pop('selamta_delivery_service_ids', None)
         values.pop('selamta_receiving', None)
         if values.get('selamta_receiving_hours'):
             values['selamta_receiving_hours'] = ' '.join(values['selamta_receiving_hours'].split())[:120]
@@ -413,7 +413,7 @@ class ResPartner(models.Model):
                 self.street, self.street2, self.city,
                 ' '.join(filter(None, [self.state_id.code, self.zip])),
             ]))),
-            (_('Delivery or pickup'), selection('selamta_receiving')),
+            (_('Delivery services'), ', '.join(self.selamta_delivery_service_ids.mapped('name'))),
             (_('Delivery days and hours'), self.selamta_receiving_hours),
             (_('Delivery address'), self.selamta_delivery_address),
             (_('Resale certificate no.'), self.selamta_resale_number),
