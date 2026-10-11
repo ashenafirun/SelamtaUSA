@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_selamta_registration" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.selamta.registration</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="website.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//app[@name='website']" position="inside">
+                <block title="Wholesale registration" id="selamta_registration_settings">
+                    <setting id="selamta_registration_notify" string="New application emails"
+                             help="Who gets an email when a business applies on the Open a Wholesale Account page.">
+                        <field name="selamta_registration_notify_email" placeholder="contact@selamtausa.com"/>
+                    </setting>
+                    <setting id="selamta_registration_pricelists" string="Pricelist when approved"
+                             help="Set on the business when you click Approve and send login. Leave a box empty to keep Odoo's default pricelist.">
+                        <div class="content-group">
+                            <div class="row mt8">
+                                <label for="selamta_pricelist_georgia_id" string="Georgia" class="col-lg-4 o_light_label"/>
+                                <field name="selamta_pricelist_georgia_id" class="col-lg-8" options="{'no_create': True}"/>
+                            </div>
+                            <div class="row">
+                                <label for="selamta_pricelist_other_id" string="Other states" class="col-lg-4 o_light_label"/>
+                                <field name="selamta_pricelist_other_id" class="col-lg-8" options="{'no_create': True}" placeholder="Odoo's default pricelist"/>
+                            </div>
+                        </div>
+                    </setting>
+                    <setting id="selamta_registration_places" string="Address suggestions"
+                             help="Google 'Places API (New)' key. Suggests full street addresses while customers type. Leave empty to turn suggestions off."
+                             groups="base.group_system">
+                        <field name="selamta_google_places_api_key" password="True" placeholder="Paste the Google API key"/>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

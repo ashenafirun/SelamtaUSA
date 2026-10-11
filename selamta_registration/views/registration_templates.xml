@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Content of /new-customer-registration.
+        Rendered once at install/upgrade into the page's own view (see
+        models/website.py), so the page holds plain HTML that the website
+        builder can edit. Do not t-call this from a page.
+        Avoid "&" in text: write "and".
+    -->
+    <template id="registration_page_content" name="Selamta: wholesale registration content">
+        <section class="sel-reg-hero pt48 pb48" data-name="Wholesale intro">
+            <div class="container">
+                <div class="row">
+                    <div class="col-lg-7">
+                        <p class="sel-reg-eyebrow">Wholesale accounts</p>
+                        <h1 class="sel-reg-title">Open a wholesale account</h1>
+                        <p class="lead sel-reg-lead">Wholesale prices on 500+ authentic Ethiopian foods, for restaurants, markets and caterers across the U.S.</p>
+                    </div>
+                </div>
+                <div class="row sel-reg-steps">
+                    <div class="col-md-4">
+                        <div class="sel-reg-step">
+                            <span class="sel-reg-step-num">1</span>
+                            <div>
+                                <h3 class="h6 sel-reg-step-title">Apply online</h3>
+                                <p class="mb-0">Takes about 3 minutes.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="sel-reg-step">
+                            <span class="sel-reg-step-num">2</span>
+                            <div>
+                                <h3 class="h6 sel-reg-step-title">We verify your business</h3>
+                                <p class="mb-0">Usually within 2 business days.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="sel-reg-step">
+                            <span class="sel-reg-step-num">3</span>
+                            <div>
+                                <h3 class="h6 sel-reg-step-title">Start ordering</h3>
+                                <p class="mb-0">We email your login. Sign in to see prices and order.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="sel-reg-ready pt32 pb32" data-name="What you need">
+            <div class="container">
+                <div class="row">
+                    <div class="col-lg-7 pb16">
+                        <h2 class="h5 sel-reg-h">Have these ready</h2>
+                        <ul class="sel-reg-checklist mb-0">
+                            <li>Your federal EIN (9 digits, like 12-3456789)</li>
+                            <li>A photo or PDF of your IRS EIN letter (CP 575 or 147C) or your business license</li>
+                            <li>Your sales tax / resale certificate, if you have one</li>
+                        </ul>
+                    </div>
+                    <div class="col-lg-5 pb16">
+                        <h2 class="h5 sel-reg-h">U.S. businesses only</h2>
+                        <p>We open accounts only for active businesses in the United States.</p>
+                        <p class="mb-0">Questions? Call <a href="tel:+14047504162">(404) 750-4162</a> or email <a href="mailto:contact@selamtausa.com">contact@selamtausa.com</a>.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="s_website_form sel-reg-form pt48 pb64" data-vcss="001" data-snippet="s_website_form" data-name="Application form">
+            <div class="container">
+                <form action="/website/form/" method="post" enctype="multipart/form-data" class="o_mark_required" data-mark="*" data-pre-fill="true" data-model_name="res.partner" data-success-mode="redirect" data-success-page="/wholesale-application-received">
+                    <div class="s_website_form_rows row s_col_no_bgcolor">
+
+                        <!-- Marks the contact as a wholesale application (forced to "new" on the server). -->
+                        <div data-name="Field" class="s_website_form_field mb-3 col-12 s_website_form_field_hidden" data-type="selection">
+                            <label class="s_website_form_label" for="sel_reg_marker"><span class="s_website_form_label_content">Wholesale application</span></label>
+                            <input type="hidden" class="form-control s_website_form_input" name="selamta_application_state" value="new" id="sel_reg_marker"/>
+                        </div>
+                        <div data-name="Field" class="s_website_form_field mb-3 col-12 s_website_form_field_hidden" data-type="many2one">
+                            <label class="s_website_form_label" for="sel_reg_country"><span class="s_website_form_label_content">Country</span></label>
+                            <input type="hidden" class="form-control s_website_form_input" name="country_id" t-att-value="us.id" id="sel_reg_country"/>
+                        </div>
+
+                        <div class="col-12 sel-reg-group"><h2 class="h5">Your business</h2></div>
+
+                        <div data-name="Field" class="s_website_form_field mb-3 col-12 col-md-6 s_website_form_required" data-type="char">
+                            <label class="s_website_form_label" for="sel_reg_company">
+                                <span class="s_website_form_label_content">Legal business name</span>
+                                <span class="s_website_form_mark"> *</span>
+                            </label>
+                            <input class="form-control s_website_form_input" type="text" name="company_name" required="1" data-fill-with="commercial_company_name" autocomplete="organization" id="sel_reg_company"/>
+                            <div class="s_website_form_field_description small form-text text-muted">As it appears on your EIN letter.</div>
+                        </div>
+                        <div data-name="Field" class="s_website_form_field mb-3 col-12 col-md-6" data-type="char">
+                            <label class="s_website_form_label" for="sel_reg_dba">
+                                <span class="s_website_form_label_content">Store or restaurant name</span>
+                            </label>
+                            <input class="form-control s_website_form_input" type="text" name="selamta_dba" id="sel_reg_dba"/>
+                            <div class="s_website_form_field_description small form-text text-muted">If different from the legal name.</div>
+                        </div>
+                        <div data-name="Field" class="s_website_form_field mb-3 col-12 s_website_form_required" data-type="selection">
+                            <label class="s_website_form_label" for="sel_reg_type0">
+                                <span class="s_website_form_label_content">Type of business</span>
+                                <span class="s_website_form_mark"> *</span>
+                            </label>
+                            <div class="row s_col_no_resize s_col_no_bgcolor s_website_form_multiple" data-name="industry_id" data-display="horizontal">
+                                <t t-foreach="industries" t-as="industry">
+                                    <div class="radio col-12 col-lg-4 col-md-6">
+                                        <div class="form-check">
+                                            <input type="radio" class="s_website_form_input form-check-input" t-att-id="'sel_reg_type%s' % industry_index" name="industry_id" t-att-value="industry.id" required="1"/>
+                                            <label class="form-check-label s_website_form_check_label" t-att-for="'sel_reg_type%s' % industry_index" t-out="industry.name"/>
+                                        </div>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                        <div data-name="Field" class="s_website_form_field mb-3 col-12 col-md-6 s_website_form_required" data-type="char">
+                            <label class="s_website_form_label" for="sel_reg_ein">
+                                <span class="s_website_form_label_content">Federal EIN</span>
+                                <span class="s_website_form_mark"> *</span>
+                            </label>
+                            <input class="form-control s_website_form_input" type="text" name="vat" required="1" placeholder="12-3456789" inputmode="numeric" maxlength="10" pattern="[0-9]{2}-?[0-9]{7}" autocomplete="off" id="sel_reg_ein"/>
+                            <div class="s_website_form_field_description small form-text text-muted">9 digits, from your IRS EIN letter.</div>
+                        </div>
+                        <div data-name="Field" class="s_website_form_field mb-3 col-12 col-md-6" data-type="char">
+                            <label class="s_website_form_label" for="sel_reg_website">
+                                <span class="s_website_form_label_content">Website or social page</span>
+                            </label>
+                            <input class="form-control s_website_form_input" type="text" name="website" placeholder="www.example.com or instagram.com/yourstore" autocomplete="url" id="sel_reg_website"/>
+                        </div>
+
+                        <div class="col-12 sel-reg-group"><h2 class="h5">Contact person</h2></div>
+
+                        <div data-name="Field" class="s_website_form_field mb-3 col-12 col-md-6 s_website_form_model_required" data-type="char">
+                            <label class="s_website_form_label" for="sel_reg_name">
+                                <span class="s_website_form_label_content">Your name</span>
+                                <span class="s_website_form_mark"> *</span>
+                            </label>
+                            <input class="form-control s_website_form_input" type="text" name="name" required="1" data-fill-with="name" autocomplete="name" id="sel_reg_name"/>
+                        </div>
+                        <div data-name="Field" class="s_website_form_field mb-3 col-12 col-md-6 s_website_form_required" data-type="email">
+                            <label class="s_website_form_label" for="sel_reg_email">
+                                <span class="s_website_form_label_content">Email</span>
+                                <span class="s_website_form_mark"> *</span>
+                            </label>
+                            <input class="form-control s_website_form_input" type="email" name="email" required="1" data-fill-with="email" autocomplete="email" id="sel_reg_email"/>
+                            <div class="s_website_form_field_description small form-text text-muted">Your login and order emails go here.</div>
+                        </div>
+                        <div data-name="Field" class="s_website_form_field mb-3 col-12 col-md-6 s_website_form_required" data-type="tel">
+                            <label class="s_website_form_label" for="sel_reg_phone">
+                                <span class="s_website_form_label_content">Business phone</span>
+                                <span class="s_website_form_mark"> *</span>
+                            </label>
+                            <input class="form-control s_website_form_input" type="tel" name="phone" required="1" data-fill-with="phone" autocomplete="tel" id="sel_reg_phone"/>
+                        </div>
+                        <div data-name="Field" class="s_website_form_field mb-3 col-12 col-md-6" data-type="tel">
+                            <label class="s_website_form_label" for="sel_reg_mobile">
+                                <span class="s_website_form_label_content">Mobile phone</span>
+                            </label>
+                            <input class="form-control s_website_form_input" type="tel" name="mobile" autocomplete="tel" id="sel_reg_mobile"/>
+                        </div>
+
+                        <div class="col-12 sel-reg-group"><h2 class="h5">Business address</h2></div>
+
+                        <div data-name="Field" class="s_website_form_field mb-3 col-12 s_website_form_required sel-reg-street" data-type="char">
+                            <label class="s_website_form_label" for="sel_reg_street">
+                                <span class="s_website_form_label_content">Street address</span>
+                                <span class="s_website_form_mark"> *</span>
+                            </label>
+                            <input class="form-control s_website_form_input" type="text" name="street" required="1" placeholder="Start typing, e.g. 123 Main St" autocomplete="address-line1" id="sel_reg_street"/>
+                        </div>
+                        <div data-name="Field" class="s_website_form_field mb-3 col-6 col-md-3" data-type="char">
+                            <label class="s_website_form_label" for="sel_reg_street2">
+                                <span class="s_website_form_label_content">Suite / unit</span>
+                            </label>
+                            <input class="form-control s_website_form_input" type="text" name="street2" autocomplete="address-line2" id="sel_reg_street2"/>
+                        </div>
+                        <div data-name="Field" class="s_website_form_field mb-3 col-6 col-md-3 s_website_form_required" data-type="char">
+                            <label class="s_website_form_label" for="sel_reg_zip">
+                                <span class="s_website_form_label_content">ZIP code</span>
+                                <span class="s_website_form_mark"> *</span>
+                            </label>
+                            <input class="form-control s_website_form_input" type="text" name="zip" required="1" inputmode="numeric" maxlength="10" pattern="[0-9]{5}(-[0-9]{4})?" autocomplete="postal-code" id="sel_reg_zip"/>
+                        </div>
+                        <div data-name="Field" class="s_website_form_field mb-3 col-12 col-md-3 s_website_form_required" data-type="char">
+                            <label class="s_website_form_label" for="sel_reg_city">
+                                <span class="s_website_form_label_content">City</span>
+                                <span class="s_website_form_mark"> *</span>
+                            </label>
+                            <input class="form-control s_website_form_input" type="text" name="city" required="1" autocomplete="address-level2" id="sel_reg_city"/>
+                        </div>
+                        <div data-name="Field" class="s_website_form_field mb-3 col-12 col-md-3 s_website_form_required" data-type="many2one">
+                            <label class="s_website_form_label" for="sel_reg_state">
+                                <span class="s_website_form_label_content">State</span>
+                                <span class="s_website_form_mark"> *</span>
+                            </label>
+                            <select class="form-select s_website_form_input" name="state_id" required="1" autocomplete="address-level1" id="sel_reg_state">
+                                <option value="">Select state</option>
+                                <t t-foreach="states" t-as="state">
+                                    <option t-att-value="state.id" t-att-data-code="state.code" t-out="state.name"/>
+                                </t>
+                            </select>
+                        </div>
+
+                        <div class="col-12 sel-reg-group"><h2 class="h5">Deliveries</h2></div>
+
+                        <!-- The day buttons and time lists are added by registration.js and fill
+                             this text field; without JS it stays a text box. -->
+                        <div data-name="Field" class="s_website_form_field mb-3 col-12 sel-reg-hours" data-type="char">
+                            <label class="s_website_form_label" for="sel_reg_hours">
+                                <span class="s_website_form_label_content">When can we deliver?</span>
+                            </label>
+                            <input class="form-control s_website_form_input" type="text" name="selamta_receiving_hours" placeholder="e.g. Mon to Fri, 9am to 3pm" maxlength="120" id="sel_reg_hours"/>
+                            <div class="s_website_form_field_description small form-text text-muted">We deliver Monday to Friday, 8 AM to 6 PM. Tap the days you can receive, then pick the hours.</div>
+                        </div>
+                        <div data-name="Field" class="s_website_form_field mb-3 col-12" data-type="text">
+                            <label class="s_website_form_label" for="sel_reg_delivery">
+                                <span class="s_website_form_label_content">Delivery address, if different</span>
+                            </label>
+                            <textarea class="form-control s_website_form_input" name="selamta_delivery_address" rows="2" id="sel_reg_delivery"></textarea>
+                        </div>
+
+                        <div class="col-12 sel-reg-group"><h2 class="h5">Documents</h2></div>
+
+                        <div data-name="Field" class="s_website_form_field mb-3 col-12 s_website_form_required" data-type="many2many">
+                            <label class="s_website_form_label" for="sel_reg_ein_doc">
+                                <span class="s_website_form_label_content">EIN letter or business license</span>
+                                <span class="s_website_form_mark"> *</span>
+                            </label>
+                            <input type="file" class="form-control s_website_form_input" name="selamta_ein_document_ids" required="1" multiple="" accept="image/*,.pdf" data-max-files-number="3" data-max-file-size="10" id="sel_reg_ein_doc"/>
+                            <div class="s_website_form_field_description small form-text text-muted">IRS letter CP 575 or 147C, or your business license. A PDF or a phone photo is fine (up to 10 MB).</div>
+                        </div>
+                        <div data-name="Field" class="s_website_form_field mb-3 col-12 col-md-6" data-type="char">
+                            <label class="s_website_form_label" for="sel_reg_resale">
+                                <span class="s_website_form_label_content">Sales tax / resale certificate number</span>
+                            </label>
+                            <input class="form-control s_website_form_input" type="text" name="selamta_resale_number" autocomplete="off" id="sel_reg_resale"/>
+                            <div class="s_website_form_field_description small form-text text-muted">If you have one.</div>
+                        </div>
+                        <div data-name="Field" class="s_website_form_field mb-3 col-12 col-md-6" data-type="many2many">
+                            <label class="s_website_form_label" for="sel_reg_resale_doc">
+                                <span class="s_website_form_label_content">Resale certificate</span>
+                            </label>
+                            <input type="file" class="form-control s_website_form_input" name="selamta_resale_document_ids" multiple="" accept="image/*,.pdf" data-max-files-number="3" data-max-file-size="10" id="sel_reg_resale_doc"/>
+                            <div class="s_website_form_field_description small form-text text-muted">Optional. PDF or photo.</div>
+                        </div>
+
+                        <div class="col-12 sel-reg-group"><h2 class="h5">Almost done</h2></div>
+
+                        <!-- Selection field shown as a dropdown (builder: Selection type "Dropdown List"). -->
+                        <div data-name="Field" class="s_website_form_field mb-3 col-12 col-md-6" data-type="many2one">
+                            <label class="s_website_form_label" for="sel_reg_referral">
+                                <span class="s_website_form_label_content">How did you hear about us?</span>
+                            </label>
+                            <select class="form-select s_website_form_input" name="selamta_referral" id="sel_reg_referral">
+                                <option value="">Select one</option>
+                                <t t-foreach="referral_options" t-as="opt">
+                                    <option t-att-value="opt[0]" t-out="opt[1]"/>
+                                </t>
+                            </select>
+                        </div>
+                        <div data-name="Field" class="s_website_form_field mb-3 col-12 s_website_form_required sel-reg-terms" data-type="boolean">
+                            <label class="s_website_form_label d-none" for="sel_reg_terms">
+                                <span class="s_website_form_label_content">Terms</span>
+                                <span class="s_website_form_mark"> *</span>
+                            </label>
+                            <div class="form-check">
+                                <input type="checkbox" value="Yes" class="s_website_form_input form-check-input" name="selamta_terms_accepted" required="1" id="sel_reg_terms"/>
+                                <label class="form-check-label" for="sel_reg_terms">This is an active U.S. business, and I agree to the <a href="/terms-and-conditions" target="_blank">Terms and Conditions</a>.</label>
+                            </div>
+                        </div>
+
+                        <div class="mb-0 py-2 col-12 s_website_form_submit s_website_form_no_submit_label" data-name="Submit Button">
+                            <div style="width: 200px;" class="s_website_form_label"/>
+                            <span id="s_website_form_result"></span>
+                            <a href="#" role="button" class="btn btn-primary btn-lg s_website_form_send">Submit application</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </section>
+    </template>
+
+    <!-- Thank-you page (form redirects here) -->
+    <record id="page_application_received" model="website.page">
+        <field name="name">Wholesale application received</field>
+        <field name="type">qweb</field>
+        <field name="url">/wholesale-application-received</field>
+        <field name="website_indexed" eval="False"/>
+        <field name="is_published">True</field>
+        <field name="key">selamta_registration.application_received</field>
+        <field name="arch" type="xml">
+            <t name="Wholesale application received" t-name="selamta_registration.application_received">
+                <t t-call="website.layout">
+                    <div id="wrap" class="oe_structure oe_empty">
+                        <section class="sel-reg-thanks pt64 pb64" data-name="Application received">
+                            <div class="container">
+                                <div class="row">
+                                    <div class="col-lg-8 offset-lg-2">
+                                        <div class="sel-reg-thanks-card">
+                                            <span class="sel-reg-thanks-icon" role="img" aria-label="Done">✓</span>
+                                            <h1 class="sel-reg-title">Thanks, your application is in</h1>
+                                            <p class="lead">We review applications in the order they arrive and usually reply within 2 business days.</p>
+                                            <h2 class="h5 sel-reg-h mt-4">What happens next</h2>
+                                            <ol class="sel-reg-next">
+                                                <li>We check your business and tax ID.</li>
+                                                <li>You get an email with your login.</li>
+                                                <li>Sign in to see wholesale prices and place your first order.</li>
+                                            </ol>
+                                            <p>Need to order sooner? Call <a href="tel:+14047504162">(404) 750-4162</a> or email <a href="mailto:contact@selamtausa.com">contact@selamtausa.com</a>.</p>
+                                            <p class="mb-0 pt8">
+                                                <a href="/shop" class="btn btn-primary me-2 mb-2">Browse the catalog</a>
+                                                <a href="/" class="btn btn-outline-secondary mb-2">Back to home</a>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </t>
+            </t>
+        </field>
+    </record>
+
+</odoo>
