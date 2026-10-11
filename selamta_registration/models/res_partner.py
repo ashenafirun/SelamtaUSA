@@ -35,7 +35,7 @@ REFERRAL_SOURCES = [
 APPLICATION_FIELDS = [
     'selamta_application_state', 'selamta_application_date',
     'selamta_dba', 'selamta_receiving', 'selamta_receiving_hours',
-    'selamta_delivery_address', 'selamta_invoice_email', 'selamta_resale_number',
+    'selamta_delivery_address', 'selamta_resale_number',
     'selamta_referral', 'selamta_terms_accepted',
 ]
 
@@ -69,7 +69,6 @@ class ResPartner(models.Model):
     )
     selamta_receiving_hours = fields.Char('Delivery days and hours')
     selamta_delivery_address = fields.Text('Delivery address (if different)')
-    selamta_invoice_email = fields.Char('Email for invoices')
     selamta_resale_number = fields.Char('Sales tax / resale certificate number')
     selamta_referral = fields.Selection(REFERRAL_SOURCES, string='Heard about us from')
     selamta_terms_accepted = fields.Boolean('Accepted terms on application', copy=False)
@@ -90,6 +89,19 @@ class ResPartner(models.Model):
                     lambda c: c.type == 'contact')[:1]
             else:
                 partner.selamta_application_contact_id = partner
+
+    @api.model
+    def _selamta_clean_referral_values(self):
+        """Upgrade helper: "heard about us" was free text before 1.4.0 and is now a
+        fixed list; clear old free-text answers that are not one of the choices."""
+        self.env.cr.execute(
+            "UPDATE res_partner SET selamta_referral = NULL "
+            "WHERE selamta_referral IS NOT NULL AND selamta_referral NOT IN %s",
+            (tuple(dict(REFERRAL_SOURCES)),),
+        )
+        if self.env.cr.rowcount:
+            _logger.info('selamta_registration: cleared %s old "heard about us" answers', self.env.cr.rowcount)
+            self.invalidate_model(['selamta_referral'])
 
     @api.model
     def _selamta_website_industries(self):
@@ -119,9 +131,8 @@ class ResPartner(models.Model):
             values.pop('industry_id', None)
         if values.get('vat'):
             values['vat'] = self._selamta_format_ein(values['vat'])
-        for key in ('email', 'selamta_invoice_email'):
-            if values.get(key):
-                values[key] = values[key].strip().lower()
+        if values.get('email'):
+            values['email'] = values['email'].strip().lower()
         for key in ('phone', 'mobile'):
             if key in values:
                 # a lone "+1" (country code only) means the field was left empty
@@ -179,7 +190,7 @@ class ResPartner(models.Model):
             'vat': person.vat,
             'industry_id': person.industry_id.id,
             'phone': person.phone,
-            'email': person.selamta_invoice_email or person.email,
+            'email': person.email,
             'website': person.website,
             'lang': person.lang,
         }
@@ -258,7 +269,6 @@ class ResPartner(models.Model):
             (_('Delivery or pickup'), selection('selamta_receiving')),
             (_('Delivery days and hours'), self.selamta_receiving_hours),
             (_('Delivery address'), self.selamta_delivery_address),
-            (_('Invoice email'), self.selamta_invoice_email),
             (_('Resale certificate no.'), self.selamta_resale_number),
             (_('Heard about us from'), selection('selamta_referral')),
             (_('Website'), self.website),
