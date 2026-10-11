@@ -9,7 +9,7 @@
             'selamta_application_state',
             'selamta_dba', 'industry_id',
             'selamta_receiving', 'selamta_receiving_hours', 'selamta_delivery_address',
-            'selamta_invoice_email', 'selamta_resale_number', 'selamta_referral',
+            'selamta_resale_number', 'selamta_referral',
             'selamta_terms_accepted',
             'selamta_ein_document_ids', 'selamta_resale_document_ids',
         ]"/>
