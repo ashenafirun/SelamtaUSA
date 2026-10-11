@@ -89,8 +89,9 @@ class ResPartner(models.Model):
             if values.get(key):
                 values[key] = values[key].strip().lower()
         for key in ('phone', 'mobile'):
-            if values.get(key):
-                values[key] = self._selamta_format_us_phone(values[key])
+            if key in values:
+                # a lone "+1" (country code only) means the field was left empty
+                values[key] = self._selamta_format_us_phone(values[key]) or False
         if values.get('zip'):
             values['zip'] = values['zip'].strip()
         if not values.get('country_id'):
@@ -109,6 +110,8 @@ class ResPartner(models.Model):
     @api.model
     def _selamta_format_us_phone(self, value):
         digits = re.sub(r'\D', '', value or '')
+        if digits in ('', '1'):
+            return ''
         if len(digits) == 11 and digits.startswith('1'):
             digits = digits[1:]
         if len(digits) == 10:
