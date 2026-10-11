@@ -20,6 +20,17 @@ WEBSITE_INDUSTRY_XMLIDS = [
     'selamta_registration.industry_other',
 ]
 
+# "How did you hear about us?" choices (website dropdown and backend field).
+REFERRAL_SOURCES = [
+    ('business', 'Another business recommended us'),
+    ('community', 'Friend or community'),
+    ('google', 'Google search'),
+    ('instagram', 'Instagram'),
+    ('facebook', 'Facebook'),
+    ('sales', 'Selamta sales visit or call'),
+    ('other', 'Other'),
+]
+
 # Application answers kept on the business (company) record.
 APPLICATION_FIELDS = [
     'selamta_application_state', 'selamta_application_date',
@@ -60,7 +71,7 @@ class ResPartner(models.Model):
     selamta_delivery_address = fields.Text('Delivery address (if different)')
     selamta_invoice_email = fields.Char('Email for invoices')
     selamta_resale_number = fields.Char('Sales tax / resale certificate number')
-    selamta_referral = fields.Char('Heard about us from')
+    selamta_referral = fields.Selection(REFERRAL_SOURCES, string='Heard about us from')
     selamta_terms_accepted = fields.Boolean('Accepted terms on application', copy=False)
     selamta_ein_document_ids = fields.Many2many(
         'ir.attachment', 'selamta_partner_ein_document_rel', 'partner_id', 'attachment_id',
@@ -117,6 +128,8 @@ class ResPartner(models.Model):
                 values[key] = self._selamta_format_us_phone(values[key]) or False
         if values.get('zip'):
             values['zip'] = values['zip'].strip()
+        if values.get('selamta_referral') not in dict(REFERRAL_SOURCES):
+            values.pop('selamta_referral', None)
         if values.get('selamta_receiving') not in ('liftgate', 'pickup'):
             values.pop('selamta_receiving', None)
         if values.get('selamta_receiving') == 'pickup':
@@ -247,7 +260,7 @@ class ResPartner(models.Model):
             (_('Delivery address'), self.selamta_delivery_address),
             (_('Invoice email'), self.selamta_invoice_email),
             (_('Resale certificate no.'), self.selamta_resale_number),
-            (_('Heard about us from'), self.selamta_referral),
+            (_('Heard about us from'), selection('selamta_referral')),
             (_('Website'), self.website),
             (_('Documents'), ', '.join((self.selamta_ein_document_ids | self.selamta_resale_document_ids).mapped('name')) or _('none')),
             (_('Already in Odoo?'), '; '.join(duplicates.mapped('display_name'))),

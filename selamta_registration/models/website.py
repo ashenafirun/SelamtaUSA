@@ -6,6 +6,8 @@ from lxml import etree
 
 from odoo import api, fields, models
 
+from .res_partner import REFERRAL_SOURCES
+
 _logger = logging.getLogger(__name__)
 
 REGISTRATION_URL = '/new-customer-registration'
@@ -23,6 +25,9 @@ PAGE_PATCHES = [
          ('selamta_delivery_address', 'selamta_delivery_address')]),
     (3, [('selamta_receiving', 'selamta_receiving'),
          ('selamta_receiving_hours', 'selamta_receiving_hours')]),
+    # None = remove the field from the page
+    (4, [('selamta_invoice_email', None),
+         ('selamta_referral', 'selamta_referral')]),
 ]
 PATCH_LEVEL = PAGE_PATCHES[-1][0]
 # States offered in the form: the 50 states and DC (no territories / military).
@@ -60,8 +65,10 @@ class Website(models.Model):
         states = self.env['res.country.state'].search(
             [('country_id', '=', us.id), ('code', 'in', list(US_STATE_CODES))], order='name')
         industries = self.env['res.partner'].with_context(lang='en_US')._selamta_website_industries()
-        html = self.env['ir.qweb'].with_context(lang='en_US')._render(
-            CONTENT_TEMPLATE, {'states': states, 'us': us, 'industries': industries, 'website': self})
+        html = self.env['ir.qweb'].with_context(lang='en_US')._render(CONTENT_TEMPLATE, {
+            'states': states, 'us': us, 'industries': industries, 'website': self,
+            'referral_options': REFERRAL_SOURCES,
+        })
         return str(html)
 
     def _selamta_registration_page(self):
@@ -164,8 +171,21 @@ class Website(models.Model):
         changed = []
         for old_name, new_name in todo:
             old_block = field_block(root, old_name)
+            if old_block is None:
+                continue
+            if new_name is None:
+                parent = old_block.getparent()
+                previous = old_block.getprevious()
+                if old_block.tail:
+                    if previous is not None:
+                        previous.tail = (previous.tail or '') + old_block.tail
+                    else:
+                        parent.text = (parent.text or '') + old_block.tail
+                parent.remove(old_block)
+                changed.append(old_name)
+                continue
             new_block = field_block(new_root, new_name)
-            if old_block is None or new_block is None:
+            if new_block is None:
                 continue
             new_block.tail = old_block.tail
             old_block.getparent().replace(old_block, new_block)
