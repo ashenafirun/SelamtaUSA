@@ -19,7 +19,8 @@ function isUserEvent(ev) {
     return !!native.isTrusted;
 }
 
-const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+// Selamta delivers Monday to Friday only, so no weekend buttons.
+const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 const FIRST_TIME = 5 * 60; // 5:00 AM
 const LAST_TIME = 23 * 60 + 30; // 11:30 PM
 const TIME_STEP = 30;
@@ -33,10 +34,7 @@ function formatTime(minutes) {
 }
 
 function formatDays(days) {
-    // days: sorted indexes 0 (Mon) .. 6 (Sun) -> "Mon–Fri", "Tue, Thu", "Every day"
-    if (days.length === 7) {
-        return "Every day";
-    }
+    // days: sorted indexes 0 (Mon) .. 4 (Fri) -> "Mon–Fri", "Tue, Thu", "Mon, Wed–Fri"
     const parts = [];
     let i = 0;
     while (i < days.length) {
