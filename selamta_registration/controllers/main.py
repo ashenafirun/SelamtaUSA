@@ -224,9 +224,17 @@ class SelamtaWebsiteForm(WebsiteForm):
         if record_id:
             partner = request.env['res.partner'].sudo().browse(record_id)
             if partner.exists() and partner.selamta_application_state == 'new':
+                application = partner
                 try:
                     with request.env.cr.savepoint():
-                        partner._selamta_notify_new_application()
+                        application = partner._selamta_application_to_company()
+                except Exception:
+                    # keep the application as the single contact the form created
+                    application = partner
+                    _logger.exception('Could not create the company for wholesale application %s', record_id)
+                try:
+                    with request.env.cr.savepoint():
+                        application._selamta_notify_new_application()
                 except Exception:
                     # never lose the application because the notification failed
                     _logger.exception('Could not send the wholesale application notification for %s', record_id)
