@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Business types offered on the wholesale registration page.
+         Stored in the standard Industry field of contacts (Contacts > Configuration >
+         Industries). noupdate: renaming them in Odoo is kept on upgrade. -->
+    <data noupdate="1">
+        <record id="industry_restaurant" model="res.partner.industry">
+            <field name="name">Restaurant</field>
+            <field name="full_name">Restaurant (wholesale customer)</field>
+        </record>
+        <record id="industry_grocery" model="res.partner.industry">
+            <field name="name">Grocery store / market</field>
+            <field name="full_name">Grocery store / market (wholesale customer)</field>
+        </record>
+        <record id="industry_cafe" model="res.partner.industry">
+            <field name="name">Café / coffee shop</field>
+            <field name="full_name">Café / coffee shop (wholesale customer)</field>
+        </record>
+        <record id="industry_caterer" model="res.partner.industry">
+            <field name="name">Caterer / food service</field>
+            <field name="full_name">Caterer / food service (wholesale customer)</field>
+        </record>
+        <record id="industry_distributor" model="res.partner.industry">
+            <field name="name">Wholesaler / distributor</field>
+            <field name="full_name">Wholesaler / distributor (wholesale customer)</field>
+        </record>
+        <record id="industry_other" model="res.partner.industry">
+            <field name="name">Other</field>
+            <field name="full_name">Other business type (wholesale customer)</field>
+        </record>
+    </data>
+</odoo>
