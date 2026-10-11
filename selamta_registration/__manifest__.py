@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta Wholesale Registration',
-    'version': '18.0.1.5.0',
+    'version': '18.0.1.6.0',
     'category': 'Website/Website',
     'summary': 'Wholesale account application page for selamtausa.com',
     'description': """
