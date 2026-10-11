@@ -13,8 +13,8 @@ _logger = logging.getLogger(__name__)
 
 # Industries offered as "Type of business" on the website (data/industry_data.xml), in order.
 WEBSITE_INDUSTRY_XMLIDS = [
-    'selamta_registration.industry_restaurant',
     'selamta_registration.industry_grocery',
+    'selamta_registration.industry_restaurant',
     'selamta_registration.industry_cafe',
     'selamta_registration.industry_caterer',
     'selamta_registration.industry_distributor',
