@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta Wholesale Registration',
-    'version': '18.0.1.8.0',
+    'version': '18.0.1.8.1',
     'category': 'Website/Website',
     'summary': 'Wholesale account application page for selamtausa.com',
     'description': """
@@ -25,7 +25,8 @@ Redesigned "Open a Wholesale Account" page (/new-customer-registration):
   Delivery; more can be added in Contacts > Configuration > Delivery services), edited
   in a "Deliveries" box on the Sales & Purchase tab and kept on the business for all
   its contacts. Install copies
-  opening-hours tags (e.g. "OPEN 6 DAYS: 0800 A.M. - 0430 P.M.") into it once.
+  opening-hours tags (e.g. "OPEN 6 DAYS: 0800 A.M. - 0430 P.M.") into it once, and
+  gives businesses with a residential tag the Residential Delivery service.
 * "Approve and send login" on the application: sets the pricelist (Georgia / other
   states, chosen in Website > Settings > Wholesale registration), makes the business
   a customer, and sends Odoo's portal invitation so the applicant can set a password.
