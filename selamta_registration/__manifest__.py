@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta Wholesale Registration',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.1.0',
     'category': 'Website/Website',
     'summary': 'Wholesale account application page for selamtausa.com',
     'description': """
@@ -9,9 +9,11 @@ Redesigned "Open a Wholesale Account" page (/new-customer-registration):
 
 * Clear intro (what you get, what you need, what happens next) and a grouped form
   built from ordinary website-builder blocks, so text and fields stay editable.
-* Extra business details stored on the contact: store name (DBA), business type,
-  receiving method and hours, delivery address, invoice email, resale certificate
-  number and documents, terms acceptance.
+* Each application is saved like other customers: a company (business name, EIN,
+  address, type of business in the standard Industry field) with the person as its
+  contact. Extra answers kept on the company: store name (DBA), receiving method and
+  hours, delivery address, invoice email, resale certificate number and documents,
+  terms acceptance.
 * ZIP code fills in city and state (built-in U.S. ZIP list, no outside service).
 * Street address suggestions while typing (Google Places API (New); needs a key
   under Website > Settings > Wholesale registration).
@@ -25,6 +27,7 @@ Install backs up the current page content; uninstalling restores it.
     'depends': ['website_sale', 'mail'],
     'data': [
         'data/registration_params.xml',
+        'data/industry_data.xml',
         'views/registration_templates.xml',
         'views/res_partner_views.xml',
         'views/res_config_settings_views.xml',
