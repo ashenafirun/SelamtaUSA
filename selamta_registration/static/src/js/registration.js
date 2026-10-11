@@ -21,8 +21,9 @@ function isUserEvent(ev) {
 
 // Selamta delivers Monday to Friday only, so no weekend buttons.
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri"];
-const FIRST_TIME = 5 * 60; // 5:00 AM
-const LAST_TIME = 23 * 60 + 30; // 11:30 PM
+// Selamta's delivery window: 8:00 AM to 6:00 PM
+const FIRST_TIME = 8 * 60; // 8:00 AM
+const LAST_TIME = 18 * 60; // 6:00 PM
 const TIME_STEP = 30;
 
 function formatTime(minutes) {
