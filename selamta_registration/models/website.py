@@ -46,8 +46,9 @@ class Website(models.Model):
         us = self.env.ref('base.us')
         states = self.env['res.country.state'].search(
             [('country_id', '=', us.id), ('code', 'in', list(US_STATE_CODES))], order='name')
+        industries = self.env['res.partner'].with_context(lang='en_US')._selamta_website_industries()
         html = self.env['ir.qweb'].with_context(lang='en_US')._render(
-            CONTENT_TEMPLATE, {'states': states, 'us': us, 'website': self})
+            CONTENT_TEMPLATE, {'states': states, 'us': us, 'industries': industries, 'website': self})
         return str(html)
 
     def _selamta_registration_page(self):
@@ -112,6 +113,7 @@ class Website(models.Model):
         if stored and stored != _arch_hash(view.arch_db):
             _logger.info('selamta_registration: %s was edited in the website builder; '
                          'leaving its content as it is', REGISTRATION_URL)
+            self._selamta_registration_patch_fields(view, content)
             return
 
         backup_key = BACKUP_KEY % self.id
@@ -124,6 +126,37 @@ class Website(models.Model):
         view.write({'arch': self._selamta_registration_build_arch(view.arch_db, content)})
         ICP.set_param(param, _arch_hash(view.arch_db))
         _logger.info('selamta_registration: wrote new content to %s (view %s)', REGISTRATION_URL, view.id)
+
+    # Form fields renamed between versions: old input name -> new input name.
+    # On a page edited in the builder, only these field blocks are swapped for
+    # the new ones; everything else stays as edited.
+    RENAMED_FIELDS = {'selamta_business_type': 'industry_id'}
+
+    def _selamta_registration_patch_fields(self, view, content_html):
+        def field_block(root, input_name):
+            inputs = root.xpath(".//input[@name=$n] | .//select[@name=$n]", n=input_name)
+            if not inputs:
+                return None
+            blocks = inputs[0].xpath("ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' s_website_form_field ')][1]")
+            return blocks[0] if blocks else None
+
+        root = etree.fromstring(view.arch_db.encode('utf-8'))
+        new_root = etree.fromstring(('<div>%s</div>' % content_html).encode('utf-8'))
+        changed = []
+        for old_name, new_name in self.RENAMED_FIELDS.items():
+            old_block = field_block(root, old_name)
+            new_block = field_block(new_root, new_name)
+            if old_block is None or new_block is None:
+                continue
+            new_block.tail = old_block.tail
+            old_block.getparent().replace(old_block, new_block)
+            changed.append(old_name)
+        if changed:
+            # The stored hash is left alone on purpose: the page still counts as
+            # edited, so later upgrades keep the builder changes.
+            view.write({'arch': etree.tostring(root, encoding='unicode')})
+            _logger.info('selamta_registration: updated form field(s) %s on the edited page %s',
+                         ', '.join(changed), REGISTRATION_URL)
 
     def _selamta_registration_restore_page(self):
         """Uninstall: put the backed-up content back."""
