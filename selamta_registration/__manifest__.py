@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta Wholesale Registration',
-    'version': '18.0.1.6.0',
+    'version': '18.0.1.7.0',
     'category': 'Website/Website',
     'summary': 'Wholesale account application page for selamtausa.com',
     'description': """
@@ -20,6 +20,10 @@ Redesigned "Open a Wholesale Account" page (/new-customer-registration):
   under Website > Settings > Wholesale registration).
 * Own thank-you page, an email to the team for every new application, and a
   "Wholesale Applications" list under Website > eCommerce > Orders.
+* Delivery days and hours on every contact: a green bar under the name (hours,
+  liftgate / loading dock / pickup), edited in a "Deliveries" box on the Sales &
+  Purchase tab and kept on the business for all its contacts. Install copies
+  opening-hours tags (e.g. "OPEN 6 DAYS: 0800 A.M. - 0430 P.M.") into it once.
 * "Approve and send login" on the application: sets the pricelist (Georgia / other
   states, chosen in Website > Settings > Wholesale registration), makes the business
   a customer, and sends Odoo's portal invitation so the applicant can set a password.
@@ -41,6 +45,12 @@ Install backs up the current page content; uninstalling restores it.
         'web.assets_frontend': [
             'selamta_registration/static/src/scss/registration.scss',
             'selamta_registration/static/src/js/registration.js',
+        ],
+        'web.assets_backend': [
+            'selamta_registration/static/src/scss/partner_backend.scss',
+        ],
+        'web.assets_web_dark': [
+            'selamta_registration/static/src/scss/partner_backend.dark.scss',
         ],
     },
     'uninstall_hook': 'uninstall_hook',
