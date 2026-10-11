@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="selamta_delivery_service_view_list" model="ir.ui.view">
+        <field name="name">selamta.delivery.service.list</field>
+        <field name="model">selamta.delivery.service</field>
+        <field name="arch" type="xml">
+            <list string="Delivery services" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="color" widget="color_picker" optional="show"/>
+                <field name="active" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="selamta_delivery_service_view_search" model="ir.ui.view">
+        <field name="name">selamta.delivery.service.search</field>
+        <field name="model">selamta.delivery.service</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_selamta_delivery_service" model="ir.actions.act_window">
+        <field name="name">Delivery services</field>
+        <field name="res_model">selamta.delivery.service</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Add a delivery service</p>
+            <p>Things deliveries to a customer can need, like Liftgate Service or Residential
+               Delivery. Pick them on a contact's Sales &amp; Purchase tab; they show in the green
+               bar under the contact name.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_selamta_delivery_service"
+              name="Delivery services"
+              parent="contacts.res_partner_menu_config"
+              action="action_selamta_delivery_service"
+              sequence="4"/>
+</odoo>
