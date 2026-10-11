@@ -18,6 +18,9 @@
     <!-- "How did you hear about us?" became a fixed list in 1.4.0. -->
     <function model="res.partner" name="_selamta_clean_referral_values"/>
 
+    <!-- Georgia businesses get the "Atlanta" pricelist on approval (changeable in settings). -->
+    <function model="res.partner" name="_selamta_default_approval_pricelists"/>
+
     <!-- Write the new content to /new-customer-registration (backs up the old one). -->
     <function model="website" name="_selamta_registration_setup"/>
 </odoo>
