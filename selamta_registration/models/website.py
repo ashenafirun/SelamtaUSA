@@ -28,6 +28,9 @@ PAGE_PATCHES = [
     # None = remove the field from the page
     (4, [('selamta_invoice_email', None),
          ('selamta_referral', 'selamta_referral')]),
+    (5, [('selamta_receiving', None),
+         ('selamta_receiving_hours', 'selamta_receiving_hours'),
+         ('selamta_delivery_address', 'selamta_delivery_address')]),
 ]
 PATCH_LEVEL = PAGE_PATCHES[-1][0]
 # States offered in the form: the 50 states and DC (no territories / military).

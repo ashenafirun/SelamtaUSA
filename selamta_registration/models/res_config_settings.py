@@ -18,3 +18,14 @@ class ResConfigSettings(models.TransientModel):
         help='Key for "Places API (New)" in Google Cloud. Used to suggest street addresses '
              'while customers type on the wholesale registration page.',
     )
+    selamta_pricelist_georgia_id = fields.Many2one(
+        'product.pricelist', 'Pricelist for Georgia businesses',
+        config_parameter='selamta_registration.pricelist_georgia_id',
+        help='Set on a business with a Georgia address when you approve its wholesale application.',
+    )
+    selamta_pricelist_other_id = fields.Many2one(
+        'product.pricelist', 'Pricelist for other states',
+        config_parameter='selamta_registration.pricelist_other_id',
+        help='Set on businesses outside Georgia when you approve their application. '
+             'Leave empty to keep Odoo\'s default pricelist.',
+    )

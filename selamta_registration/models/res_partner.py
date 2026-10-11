@@ -5,6 +5,7 @@ import re
 from markupsafe import Markup, escape
 
 from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 from odoo.fields import Command
 from odoo.osv import expression
 
@@ -57,8 +58,8 @@ class ResPartner(models.Model):
     selamta_application_contact_id = fields.Many2one(
         'res.partner', string='Applicant', compute='_compute_selamta_application_contact_id')
     selamta_dba = fields.Char('Store / restaurant name (DBA)')
-    # The website offers "liftgate" (deliver) and "pickup"; "dock" is for staff to set
-    # on the few customers that have a loading dock.
+    # Not asked on the website any more (1.5.0); staff set it on the contact when it
+    # matters (pickup customers, the rare loading dock).
     selamta_receiving = fields.Selection(
         [
             ('liftgate', 'Delivery - needs a liftgate'),
@@ -141,11 +142,8 @@ class ResPartner(models.Model):
             values['zip'] = values['zip'].strip()
         if values.get('selamta_referral') not in dict(REFERRAL_SOURCES):
             values.pop('selamta_referral', None)
-        if values.get('selamta_receiving') not in ('liftgate', 'pickup'):
-            values.pop('selamta_receiving', None)
-        if values.get('selamta_receiving') == 'pickup':
-            values.pop('selamta_receiving_hours', None)
-            values.pop('selamta_delivery_address', None)
+        # set by staff only, never by the website form
+        values.pop('selamta_receiving', None)
         if values.get('selamta_receiving_hours'):
             values['selamta_receiving_hours'] = ' '.join(values['selamta_receiving_hours'].split())[:120]
         if not values.get('country_id'):
@@ -220,8 +218,87 @@ class ResPartner(models.Model):
     # ------------------------------------------------------------------
 
     def action_selamta_application_approve(self):
-        self.write({'selamta_application_state': 'approved'})
+        """Approve in one click: set the pricelist, make it a customer, email the
+        applicant a link to set their password (Odoo's portal invitation), and mark
+        the application approved. Uses the approver's own access rights, the same
+        ones Odoo's "Grant portal access" needs."""
+        messages = []
+        for partner in self:
+            contact = partner.selamta_application_contact_id or partner
+            commercial = partner.commercial_partner_id
+            if not (contact.email or '').strip():
+                raise UserError(_('%s has no email address. Add one on the contact first, '
+                                  'then approve again.', contact.display_name))
+
+            pricelist = partner._selamta_approval_pricelist()
+            if pricelist and commercial.property_product_pricelist != pricelist:
+                commercial.property_product_pricelist = pricelist
+            if hasattr(commercial, '_increase_rank') and not commercial.customer_rank:
+                commercial._increase_rank('customer_rank')
+
+            invited = partner._selamta_grant_portal_access(contact)
+            partner.selamta_application_state = 'approved'
+
+            lines = [_('Wholesale application approved by %s.', self.env.user.name)]
+            if invited:
+                lines.append(_('Login invitation emailed to %s.', contact.email))
+            else:
+                lines.append(_('%s already had a login, so no invitation was sent.', contact.name))
+            lines.append(_('Pricelist: %s.', commercial.property_product_pricelist.display_name or _('none')))
+            partner.message_post(
+                body=Markup('<br/>').join(lines),
+                message_type='comment',
+                subtype_xmlid='mail.mt_note',
+            )
+            messages.append(' '.join(lines[1:]))
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Approved'),
+                'message': ' '.join(messages),
+                'type': 'success',
+                'sticky': False,
+                'next': {'type': 'ir.actions.client', 'tag': 'soft_reload'},
+            },
+        }
+
+    def _selamta_approval_pricelist(self):
+        """Pricelist from Website > Settings > Wholesale registration: one for Georgia
+        businesses, one for everyone else. Empty setting = leave Odoo's default."""
+        self.ensure_one()
+        ICP = self.env['ir.config_parameter'].sudo()
+        commercial = self.commercial_partner_id
+        in_georgia = commercial.state_id.code == 'GA' and commercial.country_id.code == 'US'
+        key = 'selamta_registration.pricelist_georgia_id' if in_georgia else 'selamta_registration.pricelist_other_id'
+        try:
+            pricelist_id = int(ICP.get_param(key) or 0)
+        except ValueError:
+            pricelist_id = 0
+        pricelist = self.env['product.pricelist'].browse(pricelist_id).exists() if pricelist_id else False
+        return pricelist or self.env['product.pricelist']
+
+    def _selamta_grant_portal_access(self, contact):
+        """Give the contact a website login and send Odoo's invitation email.
+        Returns False when the contact already has a login."""
+        wizard = self.env['portal.wizard'].with_context(default_partner_ids=contact.ids).create({})
+        line = wizard.user_ids.filtered(lambda l: l.partner_id == contact)[:1]
+        if not line or line.is_portal or line.is_internal:
+            return False
+        line.action_grant_access()
         return True
+
+    @api.model
+    def _selamta_default_approval_pricelists(self):
+        """Install/upgrade: pre-fill the Georgia pricelist setting with "Atlanta",
+        which most Georgia customers already use. Never overwrites a chosen value."""
+        ICP = self.env['ir.config_parameter'].sudo()
+        if ICP.get_param('selamta_registration.pricelist_georgia_id'):
+            return
+        atlanta = self.env['product.pricelist'].search([('name', '=ilike', 'atlanta')], limit=1)
+        if atlanta:
+            ICP.set_param('selamta_registration.pricelist_georgia_id', str(atlanta.id))
 
     def action_selamta_application_decline(self):
         self.write({'selamta_application_state': 'rejected'})
