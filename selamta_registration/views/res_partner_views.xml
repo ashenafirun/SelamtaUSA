@@ -56,7 +56,10 @@
                 <group string="Deliveries" name="selamta_deliveries">
                     <field name="selamta_receiving_hours" readonly="parent_id and not is_company"
                            placeholder="e.g. Mon–Fri, 9:00 AM – 3:00 PM"/>
-                    <field name="selamta_receiving" readonly="parent_id and not is_company"/>
+                    <field name="selamta_delivery_service_ids" widget="many2many_tags"
+                           readonly="parent_id and not is_company"
+                           options="{'color_field': 'color'}"
+                           placeholder="e.g. Liftgate Service, Residential Delivery"/>
                     <field name="selamta_delivery_address" readonly="parent_id and not is_company"/>
                     <div name="selamta_parent_deliveries" colspan="2" invisible="is_company or not parent_id">
                         <p>Delivery details are managed on <button name="open_commercial_entity" type="object" string="the parent company" class="oe_link"/></p>
@@ -98,7 +101,8 @@
                 <field name="city" optional="show"/>
                 <field name="state_id" optional="show"/>
                 <field name="selamta_receiving_hours" optional="hide"/>
-                <field name="selamta_receiving" optional="hide"/>
+                <field name="selamta_delivery_service_ids" widget="many2many_tags" optional="hide"
+                       options="{'color_field': 'color'}"/>
                 <field name="selamta_application_state" widget="badge"
                        decoration-warning="selamta_application_state == 'new'"
                        decoration-success="selamta_application_state == 'approved'"
