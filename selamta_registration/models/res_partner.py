@@ -47,6 +47,10 @@ DELIVERY_FIELDS = ['selamta_receiving_hours', 'selamta_delivery_service_ids', 's
 # "10AM-9PM", "CLOSED ON MON".
 HOURS_TAG_RE = re.compile(r'\b(?:open|closed)\b|\d\s*(?::\d{2})?\s*[ap]\.?\s?m\b', re.IGNORECASE)
 HOURS_FROM_TAGS_PARAM = 'selamta_registration.hours_from_tags_done'
+# Contact tags that mean the delivery is residential, e.g. "RESIDENTIAL DELIVERY",
+# "97211 -> Is Residential Address", "...-Is Resdential Delivery".
+RESIDENTIAL_TAG_RE = re.compile(r'\bresi?dential\b', re.IGNORECASE)
+RESIDENTIAL_FROM_TAGS_PARAM = 'selamta_registration.residential_from_tags_done'
 
 
 class ResPartner(models.Model):
@@ -159,6 +163,29 @@ class ResPartner(models.Model):
         ICP.set_param(HOURS_FROM_TAGS_PARAM, '1')
         _logger.info('selamta_registration: copied opening-hours tags to "Delivery days and hours" '
                      'on %s business(es)', updated)
+
+    @api.model
+    def _selamta_residential_from_tags(self):
+        """One-time (1.8.1): businesses with a residential tag ("RESIDENTIAL DELIVERY",
+        "... Is Residential Address") get the Residential Delivery service. Only adds,
+        never removes; the tags are kept."""
+        ICP = self.env['ir.config_parameter'].sudo()
+        if ICP.get_param(RESIDENTIAL_FROM_TAGS_PARAM):
+            return
+        service = self.env.ref('selamta_registration.delivery_service_residential', raise_if_not_found=False)
+        updated = 0
+        if service:
+            tags = self.env['res.partner.category'].sudo().with_context(active_test=False).search(
+                []).filtered(lambda t: RESIDENTIAL_TAG_RE.search(t.name or ''))
+            if tags:
+                partners = self.sudo().search([('category_id', 'in', tags.ids)])
+                businesses = partners.mapped('commercial_partner_id').filtered(
+                    lambda b: service not in b.selamta_delivery_service_ids)
+                for business in businesses:
+                    business.write({'selamta_delivery_service_ids': [Command.link(service.id)]})
+                updated = len(businesses)
+        ICP.set_param(RESIDENTIAL_FROM_TAGS_PARAM, '1')
+        _logger.info('selamta_registration: added Residential Delivery from tags on %s business(es)', updated)
 
     @api.model
     def _selamta_clean_referral_values(self):
