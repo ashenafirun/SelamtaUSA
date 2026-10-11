@@ -4,6 +4,8 @@
  *  - ZIP code -> city and state (built-in U.S. ZIP list on the server)
  *  - street address suggestions while typing (Google Places, when a key is set)
  *  - EIN shown as 12-3456789, U.S. phones as (404) 555-1234
+ *  - delivery days and hours picked with day buttons and time lists
+ *    (they fill the plain "selamta_receiving_hours" text field)
  *
  * Runs only on the public page (never inside the website editor).
  */
@@ -15,6 +17,43 @@ function isUserEvent(ev) {
     // jQuery-wrapped events keep the browser event in originalEvent
     const native = ev.originalEvent || ev;
     return !!native.isTrusted;
+}
+
+const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const FIRST_TIME = 5 * 60; // 5:00 AM
+const LAST_TIME = 23 * 60 + 30; // 11:30 PM
+const TIME_STEP = 30;
+
+function formatTime(minutes) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    const suffix = h < 12 ? "AM" : "PM";
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:${String(m).padStart(2, "0")} ${suffix}`;
+}
+
+function formatDays(days) {
+    // days: sorted indexes 0 (Mon) .. 6 (Sun) -> "Mon–Fri", "Tue, Thu", "Every day"
+    if (days.length === 7) {
+        return "Every day";
+    }
+    const parts = [];
+    let i = 0;
+    while (i < days.length) {
+        let j = i;
+        while (j + 1 < days.length && days[j + 1] === days[j] + 1) {
+            j++;
+        }
+        if (j - i >= 2) {
+            parts.push(`${DAY_NAMES[days[i]]}\u2013${DAY_NAMES[days[j]]}`);
+        } else {
+            for (let k = i; k <= j; k++) {
+                parts.push(DAY_NAMES[days[k]]);
+            }
+        }
+        i = j + 1;
+    }
+    return parts.join(", ");
 }
 
 function newSessionToken() {
@@ -78,6 +117,7 @@ publicWidget.registry.SelamtaRegistrationForm = publicWidget.Widget.extend({
             this.zipHintEl.setAttribute("aria-live", "polite");
             this.zipEl.insertAdjacentElement("afterend", this.zipHintEl);
         }
+        this._setupHoursPicker();
 
         rpc("/selamta/registration/config", {})
             .then((config) => {
@@ -92,13 +132,137 @@ publicWidget.registry.SelamtaRegistrationForm = publicWidget.Widget.extend({
     },
 
     destroy() {
+        // Put the page back exactly as stored, so the website editor never saves
+        // anything this script added.
         if (this.suggestEl) {
             this.suggestEl.remove();
+        }
+        if (this.streetEl) {
+            const wrap = this.streetEl.closest(".sel-reg-street-wrap");
+            if (wrap) {
+                wrap.parentNode.insertBefore(this.streetEl, wrap);
+                wrap.remove();
+            }
+            this.streetEl.setAttribute("autocomplete", "address-line1");
+            this.streetEl.removeAttribute("aria-autocomplete");
+            this.streetEl.removeAttribute("aria-controls");
+            this.streetEl.removeAttribute("aria-expanded");
         }
         if (this.zipHintEl) {
             this.zipHintEl.remove();
         }
+        if (this.hoursPickerEl) {
+            this.hoursPickerEl.remove();
+            this.hoursInput.classList.remove("d-none");
+            if (this.hoursLabelEl && this.hoursLabelFor) {
+                this.hoursLabelEl.setAttribute("for", this.hoursLabelFor);
+            }
+        }
         this._super(...arguments);
+    },
+
+    //--------------------------------------------------------------------------
+    // Delivery days and hours
+    //--------------------------------------------------------------------------
+
+    _setupHoursPicker() {
+        const input = this.el.querySelector("input[name='selamta_receiving_hours']");
+        if (!input) {
+            return;
+        }
+        this.hoursInput = input;
+        const picker = document.createElement("div");
+        picker.className = "sel-reg-hours-picker";
+
+        const daysEl = document.createElement("div");
+        daysEl.className = "sel-reg-days";
+        daysEl.setAttribute("role", "group");
+        daysEl.setAttribute("aria-label", "Delivery days");
+        this.dayButtons = DAY_NAMES.map((name, index) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "sel-reg-day";
+            button.dataset.day = index;
+            button.setAttribute("aria-pressed", "false");
+            button.textContent = name;
+            button.addEventListener("click", () => {
+                const pressed = button.getAttribute("aria-pressed") === "true";
+                button.setAttribute("aria-pressed", pressed ? "false" : "true");
+                this._composeHours();
+            });
+            daysEl.appendChild(button);
+            return button;
+        });
+        picker.appendChild(daysEl);
+
+        const timesEl = document.createElement("div");
+        timesEl.className = "sel-reg-times";
+        const makeSelect = (id, labelText, emptyText) => {
+            const wrap = document.createElement("div");
+            wrap.className = "sel-reg-time";
+            const label = document.createElement("label");
+            label.className = "small";
+            label.htmlFor = id;
+            label.textContent = labelText;
+            const select = document.createElement("select");
+            select.className = "form-select";
+            select.id = id;
+            const empty = document.createElement("option");
+            empty.value = "";
+            empty.textContent = emptyText;
+            select.appendChild(empty);
+            for (let t = FIRST_TIME; t <= LAST_TIME; t += TIME_STEP) {
+                const option = document.createElement("option");
+                option.value = String(t);
+                option.textContent = formatTime(t);
+                select.appendChild(option);
+            }
+            select.addEventListener("change", () => this._composeHours());
+            wrap.append(label, select);
+            timesEl.appendChild(wrap);
+            return select;
+        };
+        this.fromEl = makeSelect("sel_reg_hours_from", "From", "Select time");
+        this.toEl = makeSelect("sel_reg_hours_to", "Until", "Select time");
+        picker.appendChild(timesEl);
+
+        this.hoursWarningEl = document.createElement("div");
+        this.hoursWarningEl.className = "small sel-reg-hours-warning d-none";
+        this.hoursWarningEl.setAttribute("aria-live", "polite");
+        this.hoursWarningEl.textContent = "The end time is earlier than the start time.";
+        picker.appendChild(this.hoursWarningEl);
+
+        input.classList.add("d-none");
+        // after the "Tap the days..." hint, so the instructions come first
+        const hint = input.parentElement.querySelector(".s_website_form_field_description");
+        (hint || input).insertAdjacentElement("afterend", picker);
+        this.hoursPickerEl = picker;
+        // The field label pointed at the text box; point it at the first day button.
+        this.hoursLabelEl = this.el.querySelector(`label[for='${input.id}']`);
+        if (this.hoursLabelEl) {
+            this.hoursLabelFor = input.id;
+            this.hoursLabelEl.removeAttribute("for");
+        }
+    },
+
+    _composeHours() {
+        const days = this.dayButtons
+            .filter((b) => b.getAttribute("aria-pressed") === "true")
+            .map((b) => parseInt(b.dataset.day, 10));
+        const from = this.fromEl.value ? parseInt(this.fromEl.value, 10) : null;
+        const to = this.toEl.value ? parseInt(this.toEl.value, 10) : null;
+        let timeText = "";
+        if (from !== null && to !== null) {
+            timeText = `${formatTime(from)} \u2013 ${formatTime(to)}`;
+        } else if (from !== null) {
+            timeText = `from ${formatTime(from)}`;
+        } else if (to !== null) {
+            timeText = `until ${formatTime(to)}`;
+        }
+        const value = [formatDays(days), timeText].filter(Boolean).join(", ");
+        this.hoursInput.value = value;
+        this.hoursInput.dispatchEvent(new Event("input", { bubbles: true }));
+        this.hoursWarningEl.classList.toggle("d-none", !(from !== null && to !== null && to <= from));
     },
 
     //--------------------------------------------------------------------------
