@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Let the public registration form write the new contact fields
+         (same mechanism website_sale uses for name, email, street, ...). -->
+    <function model="ir.model.fields" name="formbuilder_whitelist">
+        <value>res.partner</value>
+        <value eval="[
+            'mobile', 'website',
+            'selamta_application_state',
+            'selamta_dba', 'industry_id',
+            'selamta_receiving', 'selamta_receiving_hours', 'selamta_delivery_address',
+            'selamta_resale_number', 'selamta_referral',
+            'selamta_terms_accepted',
+            'selamta_ein_document_ids', 'selamta_resale_document_ids',
+        ]"/>
+    </function>
+
+    <!-- "How did you hear about us?" became a fixed list in 1.4.0. -->
+    <function model="res.partner" name="_selamta_clean_referral_values"/>
+
+    <!-- Georgia businesses get the "Atlanta" pricelist on approval (changeable in settings). -->
+    <function model="res.partner" name="_selamta_default_approval_pricelists"/>
+
+    <!-- Write the new content to /new-customer-registration (backs up the old one). -->
+    <function model="website" name="_selamta_registration_setup"/>
+</odoo>

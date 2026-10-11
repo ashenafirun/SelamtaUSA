@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- "Wholesale application" tab on the contact form -->
+    <record id="view_partner_form_selamta_application" model="ir.ui.view">
+        <field name="name">res.partner.form.selamta.application</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Wholesale application" name="selamta_application" invisible="not selamta_application_state">
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <button name="action_selamta_application_approve" type="object" string="Approve and send login"
+                                class="btn-primary" invisible="selamta_application_state != 'new'"
+                                confirm="Approve this business? Odoo sets their pricelist and emails the applicant a link to set their password."/>
+                        <button name="action_selamta_application_decline" type="object" string="Decline"
+                                class="btn-secondary" invisible="selamta_application_state != 'new'"/>
+                        <button name="action_selamta_application_reopen" type="object" string="Back to review"
+                                class="btn-secondary" invisible="selamta_application_state == 'new'"/>
+                    </div>
+                    <group>
+                        <group string="Application">
+                            <field name="selamta_application_state" readonly="1"/>
+                            <field name="selamta_application_date"/>
+                            <field name="selamta_dba"/>
+                            <field name="industry_id" string="Type of business" options="{'no_create': True}"/>
+                            <field name="selamta_referral"/>
+                            <field name="selamta_terms_accepted" readonly="1"/>
+                        </group>
+                        <group string="Deliveries">
+                            <field name="selamta_receiving"/>
+                            <field name="selamta_receiving_hours"/>
+                            <field name="selamta_delivery_address"/>
+                        </group>
+                        <group string="Documents">
+                            <field name="selamta_ein_document_ids" widget="many2many_binary"/>
+                            <field name="selamta_resale_number"/>
+                            <field name="selamta_resale_document_ids" widget="many2many_binary"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Filters on the contacts search -->
+    <record id="view_res_partner_filter_selamta_application" model="ir.ui.view">
+        <field name="name">res.partner.search.selamta.application</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_res_partner_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='inactive']" position="after">
+                <separator/>
+                <filter string="Applications to review" name="selamta_application_new"
+                        domain="[('selamta_application_state', '=', 'new')]"/>
+                <filter string="Wholesale applications" name="selamta_application_any"
+                        domain="[('selamta_application_state', '!=', False)]"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_partner_list_selamta_application" model="ir.ui.view">
+        <field name="name">res.partner.list.selamta.application</field>
+        <field name="model">res.partner</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <list string="Wholesale applications" default_order="selamta_application_date desc">
+                <field name="selamta_application_date"/>
+                <field name="name" string="Business"/>
+                <field name="selamta_dba" optional="show"/>
+                <field name="industry_id" string="Type of business" optional="show"/>
+                <field name="selamta_application_contact_id" string="Contact"/>
+                <field name="email" optional="show"/>
+                <field name="phone" optional="show"/>
+                <field name="city" optional="show"/>
+                <field name="state_id" optional="show"/>
+                <field name="selamta_receiving" optional="hide"/>
+                <field name="selamta_application_state" widget="badge"
+                       decoration-warning="selamta_application_state == 'new'"
+                       decoration-success="selamta_application_state == 'approved'"
+                       decoration-muted="selamta_application_state == 'rejected'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_selamta_wholesale_applications" model="ir.actions.act_window">
+        <field name="name">Wholesale Applications</field>
+        <field name="res_model">res.partner</field>
+        <field name="path">wholesale-applications</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('selamta_application_state', '!=', False)]</field>
+        <field name="context">{'search_default_selamta_application_new': 1}</field>
+        <field name="search_view_id" ref="base.view_res_partner_filter"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No wholesale applications yet</p>
+            <p>Businesses that apply on the website's "Open a Wholesale Account" page show up here.</p>
+        </field>
+    </record>
+    <record id="action_selamta_wholesale_applications_list" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_partner_list_selamta_application"/>
+        <field name="act_window_id" ref="action_selamta_wholesale_applications"/>
+    </record>
+
+    <menuitem id="menu_selamta_wholesale_applications"
+              name="Wholesale Applications"
+              parent="website_sale.menu_orders"
+              action="action_selamta_wholesale_applications"
+              sequence="5"/>
+
+</odoo>
