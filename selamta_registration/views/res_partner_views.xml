@@ -22,7 +22,7 @@
                             <field name="selamta_application_state" readonly="1"/>
                             <field name="selamta_application_date"/>
                             <field name="selamta_dba"/>
-                            <field name="selamta_business_type"/>
+                            <field name="industry_id" string="Type of business" options="{'no_create': True}"/>
                             <field name="selamta_referral"/>
                             <field name="selamta_terms_accepted" readonly="1"/>
                         </group>
@@ -66,10 +66,10 @@
         <field name="arch" type="xml">
             <list string="Wholesale applications" default_order="selamta_application_date desc">
                 <field name="selamta_application_date"/>
-                <field name="company_name" string="Business"/>
+                <field name="name" string="Business"/>
                 <field name="selamta_dba" optional="show"/>
-                <field name="selamta_business_type" optional="show"/>
-                <field name="name" string="Contact"/>
+                <field name="industry_id" string="Type of business" optional="show"/>
+                <field name="selamta_application_contact_id" string="Contact"/>
                 <field name="email" optional="show"/>
                 <field name="phone" optional="show"/>
                 <field name="city" optional="show"/>

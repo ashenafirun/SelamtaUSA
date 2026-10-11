@@ -107,12 +107,12 @@
                                 <span class="s_website_form_label_content">Type of business</span>
                                 <span class="s_website_form_mark"> *</span>
                             </label>
-                            <div class="row s_col_no_resize s_col_no_bgcolor s_website_form_multiple" data-name="selamta_business_type" data-display="horizontal">
-                                <t t-foreach="[('restaurant', 'Restaurant'), ('grocery', 'Grocery store / market'), ('cafe', 'Café / coffee shop'), ('caterer', 'Caterer / food service'), ('distributor', 'Wholesaler / distributor'), ('other', 'Other')]" t-as="opt">
+                            <div class="row s_col_no_resize s_col_no_bgcolor s_website_form_multiple" data-name="industry_id" data-display="horizontal">
+                                <t t-foreach="industries" t-as="industry">
                                     <div class="radio col-12 col-lg-4 col-md-6">
                                         <div class="form-check">
-                                            <input type="radio" class="s_website_form_input form-check-input" t-att-id="'sel_reg_type%s' % opt_index" name="selamta_business_type" t-att-value="opt[0]" required="1"/>
-                                            <label class="form-check-label s_website_form_check_label" t-att-for="'sel_reg_type%s' % opt_index" t-out="opt[1]"/>
+                                            <input type="radio" class="s_website_form_input form-check-input" t-att-id="'sel_reg_type%s' % industry_index" name="industry_id" t-att-value="industry.id" required="1"/>
+                                            <label class="form-check-label s_website_form_check_label" t-att-for="'sel_reg_type%s' % industry_index" t-out="industry.name"/>
                                         </div>
                                     </div>
                                 </t>
