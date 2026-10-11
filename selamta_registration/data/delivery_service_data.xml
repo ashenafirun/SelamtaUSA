@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Starting list; rename, archive or add more in Contacts > Configuration > Delivery services. -->
+    <record id="delivery_service_liftgate" model="selamta.delivery.service">
+        <field name="name">Liftgate Service</field>
+        <field name="sequence">10</field>
+        <field name="color">10</field>
+    </record>
+    <record id="delivery_service_residential" model="selamta.delivery.service">
+        <field name="name">Residential Delivery</field>
+        <field name="sequence">20</field>
+        <field name="color">4</field>
+    </record>
+    <record id="delivery_service_limited_access" model="selamta.delivery.service">
+        <field name="name">Limited Access Delivery</field>
+        <field name="sequence">30</field>
+        <field name="color">2</field>
+    </record>
+</odoo>
