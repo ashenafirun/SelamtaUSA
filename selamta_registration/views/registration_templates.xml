@@ -268,18 +268,17 @@
 
                         <div class="col-12 sel-reg-group"><h2 class="h5">Almost done</h2></div>
 
-                        <div data-name="Field" class="s_website_form_field mb-3 col-12 col-md-6" data-type="email">
-                            <label class="s_website_form_label" for="sel_reg_invoice_email">
-                                <span class="s_website_form_label_content">Email for invoices</span>
-                            </label>
-                            <input class="form-control s_website_form_input" type="email" name="selamta_invoice_email" id="sel_reg_invoice_email"/>
-                            <div class="s_website_form_field_description small form-text text-muted">If invoices should go to someone else.</div>
-                        </div>
-                        <div data-name="Field" class="s_website_form_field mb-3 col-12 col-md-6" data-type="char">
+                        <!-- Selection field shown as a dropdown (builder: Selection type "Dropdown List"). -->
+                        <div data-name="Field" class="s_website_form_field mb-3 col-12 col-md-6" data-type="many2one">
                             <label class="s_website_form_label" for="sel_reg_referral">
                                 <span class="s_website_form_label_content">How did you hear about us?</span>
                             </label>
-                            <input class="form-control s_website_form_input" type="text" name="selamta_referral" id="sel_reg_referral"/>
+                            <select class="form-select s_website_form_input" name="selamta_referral" id="sel_reg_referral">
+                                <option value="">Select one</option>
+                                <t t-foreach="referral_options" t-as="opt">
+                                    <option t-att-value="opt[0]" t-out="opt[1]"/>
+                                </t>
+                            </select>
                         </div>
                         <div data-name="Field" class="s_website_form_field mb-3 col-12 s_website_form_required sel-reg-terms" data-type="boolean">
                             <label class="s_website_form_label d-none" for="sel_reg_terms">
