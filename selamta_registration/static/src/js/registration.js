@@ -353,6 +353,10 @@ publicWidget.registry.SelamtaRegistrationForm = publicWidget.Widget.extend({
     _onPhoneBlur(ev) {
         const el = ev.currentTarget;
         let digits = el.value.replace(/\D/g, "");
+        if (digits === "1") {
+            el.value = ""; // only the country code: treat as empty
+            return;
+        }
         if (digits.length === 11 && digits.startsWith("1")) {
             digits = digits.slice(1);
         }
