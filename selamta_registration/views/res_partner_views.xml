@@ -27,11 +27,6 @@
                             <field name="selamta_referral"/>
                             <field name="selamta_terms_accepted" readonly="1"/>
                         </group>
-                        <group string="Deliveries">
-                            <field name="selamta_receiving"/>
-                            <field name="selamta_receiving_hours"/>
-                            <field name="selamta_delivery_address"/>
-                        </group>
                         <group string="Documents">
                             <field name="selamta_ein_document_ids" widget="many2many_binary"/>
                             <field name="selamta_resale_number"/>
@@ -39,6 +34,37 @@
                         </group>
                     </group>
                 </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Delivery days and hours on every contact: green bar under the name, and a
+         "Deliveries" box on the Sales & Purchase tab to edit them -->
+    <record id="view_partner_form_selamta_deliveries" model="ir.ui.view">
+        <field name="name">res.partner.form.selamta.deliveries</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/div[hasclass('oe_title')]" position="after">
+                <div class="o_selamta_delivery_banner" name="selamta_delivery_banner"
+                     invisible="not selamta_delivery_banner">
+                    <i class="fa fa-truck" role="img" title="Deliveries" aria-label="Deliveries"/>
+                    <field name="selamta_delivery_banner" readonly="1"/>
+                </div>
+            </xpath>
+            <xpath expr="//group[@name='container_row_2']/group[@name='sale']" position="after">
+                <group string="Deliveries" name="selamta_deliveries">
+                    <field name="selamta_receiving_hours" readonly="parent_id and not is_company"
+                           placeholder="e.g. Mon–Fri, 9:00 AM – 3:00 PM"/>
+                    <field name="selamta_delivery_service_ids" widget="many2many_tags"
+                           readonly="parent_id and not is_company"
+                           options="{'color_field': 'color'}"
+                           placeholder="e.g. Liftgate Service, Residential Delivery"/>
+                    <field name="selamta_delivery_address" readonly="parent_id and not is_company"/>
+                    <div name="selamta_parent_deliveries" colspan="2" invisible="is_company or not parent_id">
+                        <p>Delivery details are managed on <button name="open_commercial_entity" type="object" string="the parent company" class="oe_link"/></p>
+                    </div>
+                </group>
             </xpath>
         </field>
     </record>
@@ -74,7 +100,9 @@
                 <field name="phone" optional="show"/>
                 <field name="city" optional="show"/>
                 <field name="state_id" optional="show"/>
-                <field name="selamta_receiving" optional="hide"/>
+                <field name="selamta_receiving_hours" optional="hide"/>
+                <field name="selamta_delivery_service_ids" widget="many2many_tags" optional="hide"
+                       options="{'color_field': 'color'}"/>
                 <field name="selamta_application_state" widget="badge"
                        decoration-warning="selamta_application_state == 'new'"
                        decoration-success="selamta_application_state == 'approved'"

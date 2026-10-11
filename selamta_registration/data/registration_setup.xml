@@ -8,7 +8,7 @@
             'mobile', 'website',
             'selamta_application_state',
             'selamta_dba', 'industry_id',
-            'selamta_receiving', 'selamta_receiving_hours', 'selamta_delivery_address',
+            'selamta_receiving_hours', 'selamta_delivery_address',
             'selamta_resale_number', 'selamta_referral',
             'selamta_terms_accepted',
             'selamta_ein_document_ids', 'selamta_resale_document_ids',
@@ -20,6 +20,12 @@
 
     <!-- Georgia businesses get the "Atlanta" pricelist on approval (changeable in settings). -->
     <function model="res.partner" name="_selamta_default_approval_pricelists"/>
+
+    <!-- 1.7.0: copy opening-hours tags into "Delivery days and hours" (once, only where empty). -->
+    <function model="res.partner" name="_selamta_copy_hours_from_tags"/>
+
+    <!-- 1.8.1: residential tags → "Residential Delivery" service (once, only adds). -->
+    <function model="res.partner" name="_selamta_residential_from_tags"/>
 
     <!-- Write the new content to /new-customer-registration (backs up the old one). -->
     <function model="website" name="_selamta_registration_setup"/>
