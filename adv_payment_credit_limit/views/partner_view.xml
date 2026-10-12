@@ -6,7 +6,7 @@
         <field name="inherit_id" ref="payment_credit_limit.view_partner_form_inherit"/>
         <field name="arch" type="xml">
             <field name="credit_limit" position="after">
-                <field name="credit_code_id" string="Credit Check Rule" required="credit_limit > 0"/>
+                <field name="credit_code_id" string="Credit Check Rule" required="credit_limit > 0" groups="account.group_account_invoice,account.group_account_readonly"/>
             </field>
         </field>
     </record>

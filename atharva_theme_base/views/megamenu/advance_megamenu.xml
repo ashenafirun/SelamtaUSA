@@ -59,7 +59,7 @@
                             <field name="category_first_level" context="{'default_level': 1}" mode="kanban">
                                 <kanban>
                                     <templates>
-                                        <t t-name="kanban-box">
+                                        <t t-name="card">
                                             <field name="is_menu_tag_active" invisible="True"/>
                                             <div class="oe_kanban_details oe_kanban_global_click  d-flex">
                                                 <div>
@@ -142,7 +142,7 @@
                             <field name="category_second_level" context="{'default_level': 2}" mode="kanban" invisible="not show_category_second_level">
                                 <kanban>
                                     <templates>
-                                        <t t-name="kanban-box">
+                                        <t t-name="card">
                                             <field name="is_menu_tag_active" invisible="True"/>
                                             <div class="oe_kanban_details oe_kanban_global_click">
                                                 <div class="d-flex">
@@ -225,7 +225,7 @@
                             <field name="category_third_level" context="{'default_level': 3}" mode="kanban" invisible="not show_category_third_level">
                                 <kanban>
                                     <templates>
-                                        <t t-name="kanban-box">
+                                        <t t-name="card">
                                             <field name="is_menu_tag_active" invisible="True"/>
                                             <div class="oe_kanban_details oe_kanban_global_click">
                                                 <div class="d-flex">
@@ -308,7 +308,7 @@
                             <field name="category_fourth_level" context="{'default_level': 4}" mode="kanban" invisible="not show_category_fourth_level">
                                 <kanban>
                                     <templates>
-                                        <t t-name="kanban-box">
+                                        <t t-name="card">
                                             <field name="is_menu_tag_active" invisible="True"/>
                                             <div class="oe_kanban_details oe_kanban_global_click">
                                                 <div class="d-flex">
