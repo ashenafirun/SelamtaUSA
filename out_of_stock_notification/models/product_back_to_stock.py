@@ -4,6 +4,7 @@ from odoo.http import request
 
 class ProductBackToStock(models.Model):
     _name = 'product.back.to.stock'
+    _description = 'Back in Stock Notification Request'
 
     user_id = fields.Many2one('res.users', string='User')
     product_id = fields.Many2one('product.product', string='Product')

@@ -12,7 +12,7 @@
             "/quantity_quick_cart_selamta/static/src/scss/shop.scss",
         ],
     },
-    'licence': 'LGPL-3',
+    'license': 'LGPL-3',
     "auto_install": True,
     "application": True,
     "installable": True,
