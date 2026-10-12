@@ -6,8 +6,8 @@
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
             <xpath expr="//notebook/page[2]/group/group[1]/field[@name='user_id']" position="before">
-                <field name="credit_limit" widget="monetary"/>
-                <field name="remaining_credit_limit" widget="monetary"/>
+                <field name="credit_limit" widget="monetary" groups="account.group_account_invoice,account.group_account_readonly"/>
+                <field name="remaining_credit_limit" widget="monetary" groups="account.group_account_invoice,account.group_account_readonly"/>
             </xpath>
         </field>
     </record>

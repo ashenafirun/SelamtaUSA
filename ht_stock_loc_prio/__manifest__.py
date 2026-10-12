@@ -26,6 +26,7 @@
     'version': '18.0.0.0.1',
     'category': 'Base',
     'author': 'Harhu IT Solutions',
+    'license': 'LGPL-3',
     'maintainer': 'Harhu IT Solutions',
     'contributors': ["Harhu IT Solutions"],
     'website': 'http://www.harhu.com',

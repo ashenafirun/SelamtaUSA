@@ -66,7 +66,6 @@ class SaleOrder(models.Model):
         for order in self:
             order.picking_ids = self.env['stock.picking'].search(
                 [('group_id', '=', order.procurement_group_id.id)]) if order.procurement_group_id else []
-            order.delivery_count = len(order.picking_ids)
         for order in self:
             if order.merged:
                 for a in self.env['stock.picking'].search([]):
@@ -74,12 +73,17 @@ class SaleOrder(models.Model):
                         for b in a.sale_ids:
                             if order.id == b.id:
                                 order.picking_ids = [(4, a.id)]
+
+    # Separate compute so picking_ids (stored) and delivery_count (not stored)
+    # don't share one method with different store/compute_sudo settings.
+    @api.depends('picking_ids')
+    def _compute_merged_delivery_count(self):
         for order in self:
             order.delivery_count = len(order.picking_ids)
 
     picking_ids = fields.Many2many('stock.picking', compute='_compute_picking_ids',
                                    string='Picking associated to this sale')
-    delivery_count = fields.Integer(string='Delivery Orders', compute='_compute_picking_ids')
+    delivery_count = fields.Integer(string='Delivery Orders', compute='_compute_merged_delivery_count')
 
 
 class MergeInternalPicking(models.TransientModel):

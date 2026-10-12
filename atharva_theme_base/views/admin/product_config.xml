@@ -33,7 +33,7 @@
                 <field name="pro_tab_ids" mode="kanban">
                     <kanban>
                         <templates>
-                            <t t-name="kanban-box">
+                            <t t-name="card">
                                 <div class="oe_kanban_details oe_kanban_global_click">
                                     <field name="tab_name"/>
                                 </div>
@@ -56,7 +56,7 @@
                 <field name="product_faqs_ids" mode="kanban">
                     <kanban>
                         <templates>
-                            <t t-name="kanban-box">
+                            <t t-name="card">
                                 <div class="oe_kanban_details oe_kanban_global_click">
                                     <field name="question"/>
                                 </div>
