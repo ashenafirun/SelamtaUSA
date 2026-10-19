@@ -48,11 +48,21 @@ class SelamtaWhatsAppWebhook(Webhook):
         return result
 
     def _selamta_process_skipped_changes(self):
-        data = json.loads(request.httprequest.data)
+        raw = request.httprequest.data
+        data = json.loads(raw)
+        standard = any(
+            _standard_phone_number_id(change.get('value') or {})
+            for entry in data.get('entry', []) for change in entry.get('changes', [])
+        )
+        if not standard:
+            # Diagnostic: the standard controller found no phone number in this webhook.
+            _logger.info("Selamta WhatsApp: webhook without standard phone_number_id: %s",
+                         raw[:6000].decode('utf-8', 'replace') if isinstance(raw, bytes) else str(raw)[:6000])
         for entry in data.get('entry', []):
             account = request.env['whatsapp.account'].sudo().search(
                 [('account_uid', '=', entry.get('id'))], limit=1)
             if not account:
+                _logger.info("Selamta WhatsApp: no account for entry id %s", entry.get('id'))
                 continue
             for change in entry.get('changes', []):
                 value = change.get('value') or {}

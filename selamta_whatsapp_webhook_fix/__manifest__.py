@@ -1,6 +1,6 @@
 {
     'name': 'Selamta - WhatsApp Webhook Compatibility',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.0.1',
     'summary': 'Process incoming WhatsApp messages whose webhook payload lacks metadata.phone_number_id',
     'description': """
 Meta's newer WhatsApp account / Messaging account structure delivers incoming
