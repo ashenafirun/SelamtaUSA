@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
+from .settings_reader import merge_settings
 from odoo.tools import float_is_zero, float_compare, DEFAULT_SERVER_DATETIME_FORMAT
 from odoo.tools.misc import formatLang
 from odoo.tools import html2plaintext
@@ -52,7 +53,7 @@ class ProductTemplate(models.Model):
 	@api.model_create_multi
 	def create(self, vals):
 		res = super(ProductTemplate, self).create(vals) 
-		settings = self.env['res.config.settings'].search([], limit=1, order="id desc")
+		settings = merge_settings(self.env)
 		if res:
 			if settings.product_sync:
 				e_cat = self.env['product.public.category'].search([('name' ,'=' , res.categ_id.name)])
@@ -77,7 +78,7 @@ class Productcategory(models.Model):
 	def create(self, vals):
 		res = super(Productcategory, self).create(vals)
 		if res:
-			settings = self.env['res.config.settings'].search([], limit=1, order="id desc")
+			settings = merge_settings(self.env)
 			ecommerce_cat = self.env['product.public.category']
 			if settings.category_sync:
 				for cat in res:
@@ -111,7 +112,7 @@ class Productcategory(models.Model):
 
 	def write(self, vals):
 		res =  super(Productcategory, self).write(vals)
-		settings = self.env['res.config.settings'].search([], limit=1, order="id desc")
+		settings = merge_settings(self.env)
 		if settings.category_sync:
 			if self.public_cat_id:
 				if self.public_cat_id.name != self.name:

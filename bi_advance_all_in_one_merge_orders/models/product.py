@@ -3,6 +3,7 @@
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
+from .settings_reader import merge_settings
 
 
 class ProductTemplate(models.Model):
@@ -11,7 +12,7 @@ class ProductTemplate(models.Model):
     @api.model_create_multi
     def create(self, vals):
         res = super(ProductTemplate, self).create(vals)
-        setting = self.env['res.config.settings'].search([], limit=1, order="id desc")
+        setting = merge_settings(self.env)
         if res:
             if setting.sync_product and res.available_in_pos:
                 prod_category = self.env['pos.category'].search([('complete_name','=',res.categ_id.complete_name)], limit=1)
@@ -23,7 +24,7 @@ class ProductTemplate(models.Model):
 
     def write(self, vals):
         res = super(ProductTemplate, self).write(vals)
-        setting = self.env['res.config.settings'].search([], limit=1, order="id desc")
+        setting = merge_settings(self.env)
         if setting.sync_product and 'categ_id' in vals:
             if self.available_in_pos:
                 prod_category = self.env['pos.category'].search([('complete_name','=',self.categ_id.complete_name)], limit=1)
@@ -63,7 +64,7 @@ class Productcategory(models.Model):
 
     @api.depends('name', 'parent_id','property_cost_method')
     def _is_sync_category_checked(self):
-        setting = self.env['res.config.settings'].search([], limit=1, order="id desc")
+        setting = merge_settings(self.env)
         for rec in self:
             if setting.sync_category:
                 rec.create_pos_categ = True
@@ -75,7 +76,7 @@ class Productcategory(models.Model):
     def create(self, vals):
         res = super(Productcategory, self).create(vals)
         if res:
-            setting = self.env['res.config.settings'].search([], limit=1, order="id desc")
+            setting = merge_settings(self.env)
             pos_categ = self.env['pos.category']
             if setting.sync_category and res.avail_in_pos == True:
                 for category in res:
@@ -112,7 +113,7 @@ class Productcategory(models.Model):
         if self.avail_in_pos == True:
             vals['pos_readonly_flag'] = True
         res =  super(Productcategory, self).write(vals)
-        setting = self.env['res.config.settings'].search([], limit=1, order="id desc")
+        setting = merge_settings(self.env)
         if setting.sync_category and self.avail_in_pos == True:
             pos_categ = self.env['pos.category']
             for category in self:
