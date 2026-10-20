@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Payment receipt: card / bank account used, and the card processing fee as its own line. -->
+    <template id="report_payment_receipt_document_card_fee"
+              inherit_id="account.report_payment_receipt_document">
+        <xpath expr="//div[@t-if='o.amount']/.." position="after">
+            <div class="row" name="paid_with" t-if="o.payment_account_display">
+                <div class="col-6"/>
+                <div class="col-6">
+                    <t t-if="o.payment_type == 'outbound'">Refunded to:</t><t t-else="">Paid with:</t> <span t-out="o.payment_account_display"/>
+                </div>
+            </div>
+            <div class="row mt-2" name="card_fee_breakdown" t-if="o.card_fee_amount">
+                <div class="col-6">
+                    <t t-set="is_refund" t-value="o.payment_type == 'outbound'"/>
+                    <table class="table table-sm table-borderless mb-0">
+                        <tr>
+                            <td class="ps-0">
+                                <t t-if="is_refund">Amount refunded</t>
+                                <t t-else="">Amount paid</t>
+                            </td>
+                            <td class="text-end">
+                                <span t-out="o.amount - o.card_fee_amount"
+                                      t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="ps-0">
+                                <t t-out="o.card_fee_label"/><t t-if="is_refund"> refunded</t>
+                            </td>
+                            <td class="text-end">
+                                <span t-out="o.card_fee_amount"
+                                      t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                            </td>
+                        </tr>
+                        <tr style="border-top: 1px solid #999;">
+                            <td class="ps-0">
+                                <strong><t t-if="is_refund">Total refunded to</t><t t-else="">Total charged to</t> <t t-out="o.payment_account_display or 'card'"/></strong>
+                            </td>
+                            <td class="text-end">
+                                <strong>
+                                    <span t-field="o.amount"
+                                          t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                </strong>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </xpath>
+    </template>
+</odoo>

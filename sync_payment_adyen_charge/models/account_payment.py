@@ -15,6 +15,44 @@ class AccountPayment(models.Model):
         "is recorded for the amount plus this fee.",
     )
 
+    card_fee_amount = fields.Monetary(
+        string="Card Processing Fee",
+        currency_field="currency_id",
+        compute="_compute_card_fee_amount",
+        help="Card processing fee included in this payment (or, for a refund, the fee "
+        "returned with it). Shown as a separate line on the receipt.",
+    )
+    card_fee_percent = fields.Float(
+        string="Card Fee Rate (%)",
+        compute="_compute_card_fee_amount",
+    )
+    card_fee_label = fields.Char(
+        string="Card Fee Label",
+        compute="_compute_card_fee_amount",
+    )
+    payment_account_display = fields.Char(
+        string="Paid With",
+        compute="_compute_payment_account_display",
+        help="Card brand or bank method and its last four digits, e.g. VISA •••• 7897.",
+    )
+
+    @api.depends(
+        "payment_transaction_id.payment_method_id",
+        "payment_transaction_id.payment_last4",
+        "payment_token_id.payment_details",
+    )
+    def _compute_payment_account_display(self):
+        for payment in self:
+            tx = payment.sudo().payment_transaction_id
+            source = tx.source_transaction_id or tx
+            token = payment.sudo().payment_token_id or source.token_id
+            method = source.payment_method_id or token.payment_method_id
+            last4 = (source.payment_last4 or token.payment_details or "").strip()
+            parts = [method.name] if method else []
+            if last4[-4:].isdigit():
+                parts.append("•••• %s" % last4[-4:])
+            payment.payment_account_display = " ".join(parts)
+
     @api.depends(
         "amount", "payment_token_id", "partner_id", "currency_id",
         "payment_type", "partner_type", "state",
@@ -22,6 +60,38 @@ class AccountPayment(models.Model):
     def _compute_card_fee_preview(self):
         for payment in self:
             payment.card_fee_preview = payment._get_hand_entered_card_fee()
+
+    @api.depends(
+        "payment_transaction_id.fees",
+        "payment_transaction_id.card_fee_on_payment",
+        "payment_transaction_id.card_fee_refunded",
+    )
+    def _compute_card_fee_amount(self):
+        for payment in self:
+            tx = payment.sudo().payment_transaction_id
+            if tx.operation == "refund":
+                fee = tx.card_fee_refunded
+            elif tx.card_fee_on_payment:
+                fee = tx.fees
+            else:
+                fee = 0.0
+            payment.card_fee_amount = fee
+            percent = payment._get_card_fee_percent(tx) if fee else 0.0
+            payment.card_fee_percent = percent
+            payment.card_fee_label = (
+                _("Card processing fee (%s%%)", "%g" % percent) if percent
+                else _("Card processing fee")
+            )
+
+    def _get_card_fee_percent(self, tx):
+        """The percentage to print next to the fee, when it is a plain percentage."""
+        provider = tx.provider_id
+        source = tx.source_transaction_id or tx
+        if not provider or provider.fees_dom_fixed or provider.fees_int_fixed:
+            return 0.0
+        country = source.partner_id.country_id or provider.company_id.country_id
+        rate = provider.fees_dom_var if country == provider.company_id.country_id else provider.fees_int_var
+        return rate * 100
 
     def action_post(self):
         """Charge the card fee on payments entered by hand with a saved card.
