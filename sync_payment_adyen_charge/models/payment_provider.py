@@ -131,7 +131,7 @@ class PaymentProvider(models.Model):
         New method which will calculate fees
         """
         self.ensure_one()
-        if (
+        if not pm_sudo or not (
             (pm_sudo.code == "card")
             or (
                 pm_sudo.primary_payment_method_id
@@ -139,13 +139,20 @@ class PaymentProvider(models.Model):
             )
             and self.code == "adyen"
         ):
-            currency = kwargs.get("currency")
-            if isinstance(currency, int):
-                currency = self.env["res.currency"].sudo().browse(currency)
-            partner_id = kwargs.get("partner_id")
-            country = self.env["res.country"].sudo()
-            if isinstance(partner_id, int):
-                country = self.env["res.partner"].sudo().browse(partner_id).country_id
+            return 0.0
+        currency = kwargs.get("currency")
+        if isinstance(currency, int):
+            currency = self.env["res.currency"].sudo().browse(currency)
+        partner_id = kwargs.get("partner_id")
+        if isinstance(partner_id, models.BaseModel):
+            partner = partner_id.sudo()
+        elif partner_id:
+            partner = self.env["res.partner"].sudo().browse(partner_id)
+        else:
+            partner = self.env["res.partner"].sudo()
+        # Same rule as staff charges (Register Payment): a customer with no country
+        # on file is treated as domestic, so they pay the domestic fee.
+        country = partner.country_id or self.company_id.country_id
         return self._card_compute_fees(amount, currency, country)
 
     def _get_card_fee_account(self):
@@ -167,30 +174,37 @@ class PaymentProvider(models.Model):
             or fee_product.categ_id.property_account_income_categ_id
         )
 
-    def _prepare_card_fee_write_off_vals(self, fee, currency, partner, date=None):
+    def _prepare_card_fee_write_off_vals(
+        self, fee, currency, partner, date=None, refund=False, account=None
+    ):
         """Return the write-off line that books a card fee on the payment itself.
 
         The payment is recorded for the full amount charged to the card (amount +
         fee). This line moves the fee to the fee income account, so only the amount
         itself is applied to the customer's invoices. The invoice is never touched.
 
+        With `refund=True` the line takes the fee back out of the fee income account
+        (a refund payment returns amount + fee to the card, but only the amount is
+        owed back on the customer's account).
+
         :return: dict for `write_off_line_vals`, or None when no fee account is set.
         """
         self.ensure_one()
-        account = self._get_card_fee_account()
+        account = account or self._get_card_fee_account()
         if not account:
             return None
         company = self.company_id or self.env.company
         balance = currency._convert(
             fee, company.currency_id, company, date or fields.Date.context_today(self)
         )
+        sign = 1 if refund else -1
         return {
-            "name": _("Adyen Processing Fee"),
+            "name": _("Adyen Processing Fee refund") if refund else _("Adyen Processing Fee"),
             "account_id": account.id,
             "partner_id": partner.id,
             "currency_id": currency.id,
-            "amount_currency": -fee,
-            "balance": -balance,
+            "amount_currency": sign * fee,
+            "balance": sign * balance,
         }
 
     def is_support_fees(self, method):

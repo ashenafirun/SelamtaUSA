@@ -96,12 +96,10 @@ class AccountPaymentRegister(models.TransientModel):
             return False
         if self.payment_type != "inbound":
             return False
+        # The fee applies only when Odoo actually charges a saved card. Without a
+        # saved card nothing is charged, so the payment is just recorded as typed.
         token_method = self.payment_token_id.payment_method_id
-        if token_method:
-            # Only card tokens carry the fee (not ACH or other methods).
-            if not provider.is_support_fees(token_method):
-                return False
-        elif self.payment_method_line_id.payment_method_id.code == "ach_direct_debit":
+        if not token_method or not provider.is_support_fees(token_method):
             return False
         has_fees = (
             provider.fees_dom_fixed > 0
@@ -140,6 +138,15 @@ class AccountPaymentRegister(models.TransientModel):
                 raise UserError(_(
                     "Set an income account on the 'Payment Fees' product (or its "
                     "product category) before charging card fees."
+                ))
+            if not self.payment_method_line_id.payment_account_id:
+                # Without an Outstanding Receipts account Odoo posts no journal
+                # entry for the payment, so the fee line would be silently dropped.
+                raise UserError(_(
+                    "Set an Outstanding Receipts account on the '%(method)s' payment "
+                    "method of the %(journal)s journal before charging card fees.",
+                    method=self.payment_method_line_id.name,
+                    journal=self.journal_id.display_name,
                 ))
         _logger.info(
             "[PAYMENT] Amount: %s | Card fee: %s | Total charged: %s",
