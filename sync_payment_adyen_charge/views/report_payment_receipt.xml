@@ -1,8 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Payment receipt: card / bank account used, and the card processing fee as its own line. -->
+    <!-- Receipts use a smaller top margin, to go with the compact header below. -->
+    <record id="paperformat_payment_receipt" model="report.paperformat">
+        <field name="name">US Letter (payment receipt, compact header)</field>
+        <field name="format">Letter</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">30</field>
+        <field name="margin_bottom">25</field>
+        <field name="margin_left">7</field>
+        <field name="margin_right">7</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">26</field>
+        <field name="dpi">90</field>
+    </record>
+    <record id="account.action_report_payment_receipt" model="ir.actions.report">
+        <field name="paperformat_id" ref="paperformat_payment_receipt"/>
+    </record>
+
+    <!-- Payment receipt: compact header, card / bank used, card fee breakdown,
+         grid lines on the invoice table and the customer's remaining balance. -->
     <template id="report_payment_receipt_document_card_fee"
               inherit_id="account.report_payment_receipt_document">
+        <xpath expr="//t[@t-call='web.external_layout']" position="before">
+            <t t-set="compact_company_header" t-value="True"/>
+        </xpath>
         <xpath expr="//div[@t-if='o.amount']/.." position="after">
             <div class="row" name="paid_with" t-if="o.payment_account_display">
                 <div class="col-6"/>
@@ -13,9 +34,9 @@
             <div class="row mt-2" name="card_fee_breakdown" t-if="o.card_fee_amount">
                 <div class="col-6">
                     <t t-set="is_refund" t-value="o.payment_type == 'outbound'"/>
-                    <table class="table table-sm table-borderless mb-0">
+                    <table class="table table-sm mb-0 o_card_fee_breakdown">
                         <tr>
-                            <td class="ps-0">
+                            <td>
                                 <t t-if="is_refund">Amount refunded</t>
                                 <t t-else="">Amount paid</t>
                             </td>
@@ -25,7 +46,7 @@
                             </td>
                         </tr>
                         <tr>
-                            <td class="ps-0">
+                            <td>
                                 <t t-out="o.card_fee_label"/><t t-if="is_refund"> refunded</t>
                             </td>
                             <td class="text-end">
@@ -34,7 +55,7 @@
                             </td>
                         </tr>
                         <tr style="border-top: 1px solid #999;">
-                            <td class="ps-0">
+                            <td>
                                 <strong><t t-if="is_refund">Total refunded to</t><t t-else="">Total charged to</t> <t t-out="o.payment_account_display or 'card'"/></strong>
                             </td>
                             <td class="text-end">
@@ -47,6 +68,64 @@
                     </table>
                 </div>
             </div>
+        </xpath>
+        <!-- Grid lines between every row and column of the invoice table,
+             whatever table style the company layout uses. -->
+        <xpath expr="//div[hasclass('page')]" position="inside">
+            <style>
+                table.o_receipt_invoices, table.o_receipt_invoices th, table.o_receipt_invoices td {
+                    border: 1px solid #555 !important;
+                }
+                table.o_receipt_invoices th, table.o_receipt_invoices td,
+                table.o_card_fee_breakdown td {
+                    padding: 4px 8px !important;
+                }
+            </style>
+        </xpath>
+        <xpath expr="//table[@name='invoices']" position="attributes">
+            <attribute name="class">table table-bordered o_receipt_invoices</attribute>
+            <attribute name="style">border: 1px solid #555;</attribute>
+        </xpath>
+        <xpath expr="//table[@name='invoices']/tbody" position="after">
+            <tfoot t-if="o.partner_type == 'customer'">
+                <tr name="balance_due">
+                    <td t-att-colspan="4 if otherCurrency else 3" class="text-end">
+                        <strong t-if="o.partner_balance_due &lt; 0">Your account has a credit balance of</strong>
+                        <strong t-else="">Your remaining balance due is</strong>
+                    </td>
+                    <td class="text-end">
+                        <strong>
+                            <span t-out="abs(o.partner_balance_due)"
+                                  t-options="{'widget': 'monetary', 'display_currency': o.company_currency_id}"/>
+                        </strong>
+                    </td>
+                </tr>
+            </tfoot>
+        </xpath>
+    </template>
+
+    <!-- Boxed layout: on receipts only, show the logo smaller and the company name and
+         contact details on two lines, without the street address. Other documents
+         (invoices, quotes...) keep the full company details. -->
+    <template id="external_layout_boxed_compact_receipt_header"
+              inherit_id="web.external_layout_boxed">
+        <xpath expr="//img[hasclass('o_company_logo_big')]" position="attributes">
+            <attribute name="t-att-style">'max-height: 60px; width: auto;' if compact_company_header else None</attribute>
+        </xpath>
+        <xpath expr="//div[@name='company_address']" position="replace">
+            <t t-if="compact_company_header">
+                <div name="company_address" class="mb4 o_compact_company_header" style="line-height: 1.35;">
+                    <div style="font-size: 16px;"><strong t-out="company.name"/></div>
+                    <div style="font-size: 13px;">
+                        <span t-if="company.phone" t-out="company.phone"/>
+                        <t t-if="company.phone and (company.email or company.website)"> | </t>
+                        <span t-if="company.email" t-out="company.email"/>
+                        <t t-if="company.email and company.website"> | </t>
+                        <span t-if="company.website" t-out="company.website.strip().replace('https://', '').replace('http://', '').rstrip('/')"/>
+                    </div>
+                </div>
+            </t>
+            <t t-else="">$0</t>
         </xpath>
     </template>
 </odoo>
