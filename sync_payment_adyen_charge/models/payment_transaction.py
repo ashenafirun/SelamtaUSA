@@ -233,15 +233,15 @@ class PaymentTransaction(models.Model):
                     method, amount, currency=currency, partner_id=partner.id
                 )
                 values["net_amount"] = amount
-                # A saved card charged from a payment entered by hand (e.g.
-                # Accounting > Payments > New) rather than from Register Payment:
-                # the fee would be charged to the card while the payment records
-                # only the amount. Refuse, and send the user to the invoice.
+                # A saved card charged from a payment whose fee wasn't booked
+                # (Register Payment and Payments > New both book it and set the
+                # backend flag): the card would be charged the fee while the payment
+                # records only the amount. Refuse rather than charge.
                 if values["fees"] and values.get("payment_id"):
                     raise UserError(_(
-                        "Card payments with the processing fee are charged from the "
-                        "invoice: open the invoice (or select several invoices) and "
-                        "use Register Payment."
+                        "The card processing fee can't be added to this payment. "
+                        "Create a new payment (Accounting > Payments > New) or use "
+                        "Register Payment on the invoice to charge the card."
                     ))
         txs = super().create(values_list)
         txs.invalidate_recordset(["amount", "fees"])
