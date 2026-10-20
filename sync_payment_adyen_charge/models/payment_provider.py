@@ -148,6 +148,51 @@ class PaymentProvider(models.Model):
                 country = self.env["res.partner"].sudo().browse(partner_id).country_id
         return self._card_compute_fees(amount, currency, country)
 
+    def _get_card_fee_account(self):
+        """Return the income account the card processing fee is booked to.
+
+        It is the income account of the 'Payment Fees' product, or of its product
+        category when the product has none.
+        """
+        self.ensure_one()
+        fee_product = self.env.ref(
+            "sync_payment_adyen_charge.product_product_payment_fees",
+            raise_if_not_found=False,
+        )
+        if not fee_product:
+            return self.env["account.account"]
+        fee_product = fee_product.with_company(self.company_id or self.env.company)
+        return (
+            fee_product.property_account_income_id
+            or fee_product.categ_id.property_account_income_categ_id
+        )
+
+    def _prepare_card_fee_write_off_vals(self, fee, currency, partner, date=None):
+        """Return the write-off line that books a card fee on the payment itself.
+
+        The payment is recorded for the full amount charged to the card (amount +
+        fee). This line moves the fee to the fee income account, so only the amount
+        itself is applied to the customer's invoices. The invoice is never touched.
+
+        :return: dict for `write_off_line_vals`, or None when no fee account is set.
+        """
+        self.ensure_one()
+        account = self._get_card_fee_account()
+        if not account:
+            return None
+        company = self.company_id or self.env.company
+        balance = currency._convert(
+            fee, company.currency_id, company, date or fields.Date.context_today(self)
+        )
+        return {
+            "name": _("Adyen Processing Fee"),
+            "account_id": account.id,
+            "partner_id": partner.id,
+            "currency_id": currency.id,
+            "amount_currency": -fee,
+            "balance": -balance,
+        }
+
     def is_support_fees(self, method):
         """
         New method for method support fees

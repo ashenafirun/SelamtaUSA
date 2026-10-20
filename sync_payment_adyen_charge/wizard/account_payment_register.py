@@ -3,6 +3,7 @@
 import logging
 
 from odoo import models, fields, api, _
+from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -13,7 +14,7 @@ class AccountPaymentRegister(models.TransientModel):
     card_fees = fields.Monetary(
         string="Card Fees",
         currency_field="currency_id",
-        help="Stripe Charge payment Card fees (e.g., card processing).",
+        help="Card processing fee added to this charge, computed on the amount being paid.",
         store=True,
         compute="_compute_card_account_compute_fees",
     )
@@ -35,89 +36,72 @@ class AccountPaymentRegister(models.TransientModel):
         store=False
     )
 
-    @api.depends("payment_method_line_id",'payment_token_id')
+    @api.depends("payment_method_line_id", "payment_token_id")
     def _compute_adyen_method_code(self):
         for rec in self:
             rec.adyen_method_code = (
                 rec.payment_token_id.payment_method_id.code or ""
             )
 
-    @api.depends("amount", "payment_method_line_id", "partner_id", "currency_id")
+    @api.depends(
+        "amount",
+        "payment_method_line_id",
+        "payment_token_id",
+        "partner_id",
+        "currency_id",
+        "payment_type",
+        "can_edit_wizard",
+        "group_payment",
+    )
     def _compute_card_account_compute_fees(self):
         for rec in self:
-            rec.card_fees = 0.0
-            if rec.amount and rec.payment_method_line_id:
-                provider = rec.payment_method_line_id.payment_provider_id
-                payment_method_code = (
-                    rec.payment_token_id.payment_method_id.code
-                    if rec.payment_token_id
-                    else rec.payment_method_line_id.payment_method_id.code
-                )
-                if (
-                    provider
-                    and provider.code == "adyen"
-                    and getattr(provider, "fees_active", False)
-                ):
-                    partner_country = (
-                        rec.partner_id.country_id or rec.company_id.country_id
-                    )
-                    is_dom = partner_country == provider.company_id.country_id
-                    if is_dom:
-                        if (
-                            provider.fees_dom_above
-                            and provider.fees_dom_amount
-                            and rec.amount > provider.fees_dom_amount
-                        ):
-                            rec.card_fees = 0.0
-                            continue
-                    else:
-                        if (
-                            provider.fees_int_above
-                            and provider.fees_int_amount
-                            and rec.amount > provider.fees_int_amount
-                        ):
-                            rec.card_fees = 0.0
-                            continue
-                    computed_fees = provider._card_compute_fees(
-                        rec.amount,
-                        rec.currency_id,
-                        partner_country,
-                    )
-                    if computed_fees == 0 and (
-                        provider.fees_dom_var > 0
-                        or provider.fees_int_var > 0
-                        or provider.fees_dom_fixed > 0
-                        or provider.fees_int_fixed > 0
-                    ):
-                        fixed = (
-                            provider.fees_dom_fixed
-                            if is_dom
-                            else provider.fees_int_fixed
-                        )
-                        variable = (
-                            provider.fees_dom_var if is_dom else provider.fees_int_var
-                        )
+            rec.card_fees = rec._get_card_fee()
 
-                        rec.card_fees = rec.currency_id.round(
-                            (rec.amount * variable) + fixed
-                        )
-                    else:
-                        rec.card_fees = rec.currency_id.round(computed_fees)
+    def _get_card_fee(self):
+        """Return the card fee for this charge.
+
+        The fee is computed on the amount actually being charged (a partial
+        payment pays a fee on the part paid), never on the invoices' open balance.
+        """
+        self.ensure_one()
+        if not self.amount or not self._should_apply_adyen_fees():
+            return 0.0
+        provider = self.payment_method_line_id.payment_provider_id
+        partner_country = self.partner_id.country_id or self.company_id.country_id
+        return self.currency_id.round(
+            provider._card_compute_fees(self.amount, self.currency_id, partner_country)
+        )
+
+    def _is_single_payment(self):
+        """Mirror the test Odoo uses to build one payment from the wizard values.
+
+        That is the only case where the wizard's amount (and a saved card) is used.
+        When the wizard splits into one payment per invoice, nothing is charged to
+        a card, so no fee applies.
+        """
+        self.ensure_one()
+        if not self.can_edit_wizard:
+            return False
+        if self.group_payment:
+            return True
+        batches = self.batches or []
+        return bool(batches) and len(batches[0]["lines"]) == 1
 
     def _should_apply_adyen_fees(self):
+        self.ensure_one()
         provider = self.payment_method_line_id.payment_provider_id
-        payment_method_code = (
-            self.payment_token_id.payment_method_id.code
-            if self.payment_token_id
-            else self.payment_method_line_id.payment_method_id.code
-        )
-        if not provider:
-            return False
-        if provider.code != "adyen":
-            return False
-        if payment_method_code == "ach_direct_debit":
+        if not provider or provider.code != "adyen":
             return False
         if not getattr(provider, "fees_active", False):
+            return False
+        if self.payment_type != "inbound":
+            return False
+        token_method = self.payment_token_id.payment_method_id
+        if token_method:
+            # Only card tokens carry the fee (not ACH or other methods).
+            if not provider.is_support_fees(token_method):
+                return False
+        elif self.payment_method_line_id.payment_method_id.code == "ach_direct_debit":
             return False
         has_fees = (
             provider.fees_dom_fixed > 0
@@ -125,164 +109,52 @@ class AccountPaymentRegister(models.TransientModel):
             or provider.fees_int_fixed > 0
             or provider.fees_int_var > 0
         )
-        return has_fees
+        if not has_fees:
+            return False
+        return self._is_single_payment()
 
     def _create_payment_vals_from_wizard(self, batch_result):
+        """Record the payment for amount + fee, with the fee booked on the payment.
+
+        The fee goes to the fee income account through a write-off line, so only
+        the amount itself is applied to the invoices. The invoices are not
+        modified (adding a fee line meant resetting them to draft, which detached
+        every payment already applied to them).
+        """
         payment_vals = super()._create_payment_vals_from_wizard(batch_result)
-        total_fee = self.env.context.get("card_fees", 0.0)
-        if total_fee:
-            payment_vals["amount"] = self.amount + total_fee
+        fee = self.env.context.get("card_fees") or 0.0
+        if fee:
+            provider = self.payment_method_line_id.payment_provider_id
+            write_off = provider._prepare_card_fee_write_off_vals(
+                fee, self.currency_id, self.partner_id, self.payment_date
+            )
+            payment_vals["amount"] = self.amount + fee
+            payment_vals.setdefault("write_off_line_vals", []).append(write_off)
         return payment_vals
 
     def action_create_payments(self):
-        total_fee = 0.0
-        # provider = self.payment_method_line_id.payment_provider_id
-        fee_product = self.env.ref(
-            "sync_payment_adyen_charge.product_product_payment_fees",
-            raise_if_not_found=False,
-        )
-
-        if self._should_apply_adyen_fees():
-            invoices = self.line_ids.mapped("move_id").filtered(
-                lambda move: move.move_type == "out_invoice"
-            )
-            existing_fees_before = {
-                inv.id: inv.invoice_line_ids.filtered(
-                    lambda line: line.product_id == fee_product
-                )[:1].price_unit
-                or 0.0
-                for inv in invoices
-            }
-            self.create_fee_line()
-            for invoice in invoices:
-                fee_line = invoice.invoice_line_ids.filtered(
-                    lambda line: line.product_id == fee_product
-                )[:1]
-                if fee_line:
-                    fee_before = existing_fees_before.get(invoice.id, 0.0)
-                    new_fee = fee_line.price_unit - fee_before
-                    if new_fee > 0:
-                        total_fee += new_fee
-            total_fee = self.currency_id.round(total_fee)
+        fee = self._get_card_fee()
+        if fee:
+            provider = self.payment_method_line_id.payment_provider_id
+            if not provider._get_card_fee_account():
+                raise UserError(_(
+                    "Set an income account on the 'Payment Fees' product (or its "
+                    "product category) before charging card fees."
+                ))
         _logger.info(
-            "[PAYMENT] Amount: %s | New Fee: %s | Total: %s",
+            "[PAYMENT] Amount: %s | Card fee: %s | Total charged: %s",
             self.amount,
-            total_fee,
-            self.amount + total_fee,
+            fee,
+            self.amount + fee,
         )
-        self._compute_batches()
         context = dict(self.env.context or {})
         context.update(
             {
                 "is_backend_method": True,
-                "amount": self.amount + total_fee,
-                "card_fees": total_fee,
+                "amount": self.amount + fee,
+                "card_fees": fee,
             }
         )
         return super(
             AccountPaymentRegister, self.with_context(**context)
         ).action_create_payments()
-
-    def create_fee_line(self):
-        if not self._should_apply_adyen_fees():
-            return
-
-        provider = self.payment_method_line_id.payment_provider_id
-
-        fee_product = self.env.ref(
-            "sync_payment_adyen_charge.product_product_payment_fees",
-            raise_if_not_found=False,
-        )
-        if not fee_product:
-            _logger.warning("Adyen fee product not found, skipping")
-            return
-
-        fee_account = (
-            fee_product.property_account_income_id
-            or fee_product.categ_id.property_account_income_categ_id
-        )
-        if not fee_account:
-            _logger.warning("No income account on fee product, skipping")
-            return
-
-        invoices = self.line_ids.mapped("move_id").filtered(
-            lambda move: move.move_type == "out_invoice" and move.state == "posted"
-        )
-
-        if not invoices:
-            _logger.info("[FEE] No posted customer invoices found")
-            return
-
-        partner_country = self.partner_id.country_id or self.company_id.country_id
-        is_dom = partner_country == provider.company_id.country_id
-
-        for invoice in invoices:
-            if invoice.amount_residual <= 0:
-                continue
-
-            existing_fee_line = invoice.invoice_line_ids.filtered(
-                lambda line: line.product_id == fee_product
-            )[:1]
-
-            if existing_fee_line:
-                continue
-
-            if is_dom:
-                if (
-                    provider.fees_dom_above
-                    and provider.fees_dom_amount
-                    and invoice.amount_residual > provider.fees_dom_amount
-                ):
-                    invoice_fee = 0.0
-                else:
-                    computed_fee = provider._card_compute_fees(
-                        invoice.amount_residual,
-                        self.currency_id,
-                        partner_country,
-                    )
-                    invoice_fee = self.currency_id.round(computed_fee)
-            else:
-                if (
-                    provider.fees_int_above
-                    and provider.fees_int_amount
-                    and invoice.amount_residual > provider.fees_int_amount
-                ):
-                    invoice_fee = 0.0
-                else:
-                    computed_fee = provider._card_compute_fees(
-                        invoice.amount_residual,
-                        self.currency_id,
-                        partner_country,
-                    )
-                    invoice_fee = self.currency_id.round(computed_fee)
-
-            if invoice_fee <= 0:
-                continue
-
-            invoice.button_draft()
-
-            self.env["account.move.line"].with_context(
-                check_move_validity=False
-            ).create(
-                {
-                    "move_id": invoice.id,
-                    "product_id": fee_product.id,
-                    "name": _(
-                        "Adyen Processing Fee: %(symbol)s %(amount)s",
-                        symbol=self.currency_id.symbol,
-                        amount=invoice_fee,
-                    ),
-                    "account_id": fee_account.id,
-                    "price_unit": invoice_fee,
-                    "quantity": 1,
-                    "display_type": "product",
-                }
-            )
-
-            _logger.info(
-                "[FEE] Created fee line on invoice %s | Fee: %s",
-                invoice.name,
-                invoice_fee,
-            )
-
-            invoice.with_context(by_pass_credit_check=True).action_post()

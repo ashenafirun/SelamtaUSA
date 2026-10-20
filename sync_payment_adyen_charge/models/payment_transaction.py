@@ -3,6 +3,7 @@
 import logging
 
 from odoo import models, fields, api, _, Command
+from odoo.exceptions import UserError
 from odoo.addons.payment import utils as payment_utils
 
 
@@ -49,191 +50,56 @@ class PaymentTransaction(models.Model):
         return res
 
     def _create_payment(self, **extra_create_values):
+        """Record the payment for the full amount charged to the card.
+
+        Adyen charged `amount + fees`, so the payment is created for that total.
+
+        - Paid from a sale order: the fee is already a line on the order (added by
+          `_check_amount_and_confirm_order`) and flows to its invoice, so the whole
+          payment is applied to the invoice as before.
+        - Paid against invoices, or with no document at all: the fee is booked on
+          the payment as a write-off to the fee income account. Only the amount
+          itself is applied to the invoices, and the invoices are never reset to
+          draft (resetting them detached the payments already applied to them).
+        """
         self.ensure_one()
-        if self.fees and self.operation != "refund":
-            # self._add_fee_line_to_sale_order()
-
-            # tx.amount should remain full order total including fee
-            payment_amount = self.amount + self.fees
-            self.amount = payment_amount
-            extra_create_values.update(
-                {
-                    "amount": payment_amount,
-                }
-            )
-
-        payment = super()._create_payment(**extra_create_values)
-
-        if self.fees and self.operation != "refund":
-            self._add_fee_line_to_invoice(payment)
-
-        return payment
-
-    def _add_fee_line_to_invoice(self, payment):
-        """
-        Add an Adyen processing fee line to the related posted invoice.
-
-        At this point:
-        - Invoice is posted
-        - Payment is created and reconciled against the invoice for (amount + fee)
-        - We need to: unreconcile → draft → add line → re-post → re-reconcile
-        """
-        if self.sale_order_ids:
-            return
-
-        fee_product = self.env.ref(
-            "sync_payment_adyen_charge.product_product_payment_fees",
-            raise_if_not_found=False,
-        )
-        if not fee_product:
-            _logger.warning("Adyen fee product not found, skipping fee line addition")
-            return
-
-        invoices = self.invoice_ids.filtered(
-            lambda inv: inv.move_type == "out_invoice" and inv.state == "posted"
-        )
-        total_inv_amount = sum(invoices.mapped(lambda i: i.amount_total or 0.0))
-        for invoice in invoices:
-            self._apply_fee_to_invoice(invoice, payment, fee_product, total_inv_amount)
-
-    def _apply_fee_to_invoice(
-        self, invoice, payment, fee_product, total_inv_amount, fee_map=None
-    ):
-        """
-        Add an Adyen fee line to a specific invoice.
-
-        Fee calculation priority:
-        1. fee_map (explicit per-invoice fee from fee_json)
-        2. self.fees (already computed on the actual transaction amount, which
-           may be a partial amount from a payment link)
-        3. Proportional recalculation for multi-invoice transactions
-        """
-        fee_account = (
-            fee_product.property_account_income_id
-            or fee_product.categ_id.property_account_income_categ_id
-        )
-        if not fee_account:
-            _logger.warning(
-                "No income account on fee product, skipping invoice %s",
-                invoice.name,
-            )
-            return
-
-        invoice_fee = 0.0
-
-        # Priority 1: Use explicit fee_map if provided
-        if fee_map:
-            raw = fee_map.get(str(invoice.id)) or fee_map.get(invoice.id)
-            if raw:
-                invoice_fee = invoice.currency_id.round(float(raw))
-
-        # Priority 2: For single invoice, use self.fees directly
-        # (already computed on the actual payment amount — partial or full)
-        if not invoice_fee and self.fees:
-            all_invoices = self.invoice_ids.filtered(
-                lambda i: i.move_type == "out_invoice"
-            )
-
-            if len(all_invoices) == 1:
-                # Single invoice: use self.fees directly — this is already
-                # computed on the actual transaction amount (partial or full)
-                invoice_fee = invoice.currency_id.round(self.fees)
-            else:
-                # Multi-invoice: proportionally distribute fee based on
-                # net_amount (the actual payment amount, not invoice totals)
-                provider = self.provider_id
-                if provider and provider.code == "adyen" and provider.fees_active:
-                    partner_country = (
-                        self.partner_id.country_id or provider.company_id.country_id
+        fee = self.currency_id.round(self.fees or 0.0)
+        if fee and self.operation != "refund":
+            # tx.amount should remain the full amount charged, fee included.
+            self.amount = self.currency_id.round(self.amount + fee)
+            extra_create_values["amount"] = self.amount
+            if not self.sale_order_ids:
+                write_off = self.provider_id._prepare_card_fee_write_off_vals(
+                    fee,
+                    self.currency_id,
+                    self.partner_id.commercial_partner_id,
+                )
+                if write_off:
+                    extra_create_values["write_off_line_vals"] = list(
+                        extra_create_values.get("write_off_line_vals") or []
+                    ) + [write_off]
+                else:
+                    _logger.warning(
+                        "No income account on the Payment Fees product: the %s fee "
+                        "of %s stays on the customer's account.",
+                        fee,
+                        self.reference,
                     )
-                    is_dom = partner_country == provider.company_id.country_id
+        return super()._create_payment(**extra_create_values)
 
-                    # Use net_amount (set during create, reflects actual
-                    # partial or full payment amount)
-                    net_tx_amount = self.net_amount or (
-                        self.amount - (self.fees or 0.0)
-                    )
-                    # total_inv_amount = sum(
-                    #     all_invoices.mapped(lambda i: i.amount_total or 0.0)
-                    # )
-
-                    if total_inv_amount:
-                        # Proportional share of the payment amount for THIS invoice
-                        inv_amount = invoice.currency_id.round(
-                            (invoice.amount_total / total_inv_amount) * net_tx_amount
-                        )
-                    else:
-                        inv_amount = net_tx_amount
-
-                    # Check "free above" threshold
-                    card_fees = (
-                        is_dom
-                        and provider.fees_dom_above
-                        and provider.fees_dom_amount
-                        and inv_amount > provider.fees_dom_amount
-                    ) or (
-                        not is_dom
-                        and provider.fees_int_above
-                        and provider.fees_int_amount
-                        and inv_amount > provider.fees_int_amount
-                    )
-                    if not card_fees:
-                        card_fee = provider._card_compute_fees_without_fixed(
-                            inv_amount,
-                            invoice.currency_id,
-                            partner_country,
-                        )
-
-                        if partner_country == provider.company_id.country_id:
-                            fixed = provider.fees_dom_fixed
-                        else:
-                            fixed = provider.fees_int_fixed
-
-                        # Distribute fixed charge proportionally based on
-                        # this invoice's share of total selected invoice amount
-
-                        invoice_total_percentage = (
-                            invoice.amount_total / total_inv_amount
-                            if total_inv_amount
-                            else 1.0
-                        )
-                        fixed_charge = fixed * invoice_total_percentage
-                        card_fee += fixed_charge
-                        invoice_fee = invoice.currency_id.round(card_fee)
-
-        if not invoice_fee:
-            _logger.info("Zero fee for invoice %s, skipping", invoice.name)
-            return
-
-        invoice.button_draft()
-        invoice.write(
-            {
-                "invoice_line_ids": [
-                    (
-                        0,
-                        0,
-                        {
-                            "product_id": fee_product.id,
-                            "name": _(
-                                "Adyen Processing Fee: %(symbol)s %(amount)s",
-                                symbol=self.currency_id.symbol,
-                                amount=invoice_fee,
-                            ),
-                            "account_id": fee_account.id,
-                            "price_unit": invoice_fee,
-                            "quantity": 1,
-                        },
-                    )
-                ]
-            }
-        )
-        invoice.with_context(by_pass_credit_check=True).action_post()
-        _logger.info(
-            "Fee line %.2f %s added to invoice %s",
-            invoice_fee,
-            self.currency_id.name,
-            invoice.name,
-        )
+    @api.model
+    def _x2many_command_ids(self, commands):
+        """Return the record ids an x2many create value links to."""
+        ids = []
+        for command in commands or []:
+            if isinstance(command, int):
+                ids.append(command)
+            elif isinstance(command, (list, tuple)) and command:
+                if command[0] == Command.SET:
+                    ids.extend(command[2] or [])
+                elif command[0] == Command.LINK:
+                    ids.append(command[1])
+        return ids
 
     def _send_payment_request(self):
         """
@@ -271,8 +137,8 @@ class PaymentTransaction(models.Model):
             values["net_amount"] = amount
             if context.get("is_backend_method"):
                 values["amount"] = context.get("amount", values.get("amount", 0.0))
-                values["fees"] = context.get("card_fees")
-                values["net_amount"] = context.get("amount")
+                values["fees"] = context.get("card_fees") or 0.0
+                values["net_amount"] = values["amount"] - values["fees"]
             else:
                 if provider.is_support_fees(method) and values.get("operation") not in [
                     "validation",
@@ -289,6 +155,22 @@ class PaymentTransaction(models.Model):
                         method, amount, currency=currency, partner_id=partner.id
                     )
                     values["net_amount"] = amount
+                    # A saved card charged from a payment that has no invoice or
+                    # order attached (e.g. Accounting > Payments > New): the fee
+                    # would be charged to the card with nothing in Odoo recording
+                    # it. Refuse, and send the user to the invoice instead.
+                    if (
+                        values["fees"]
+                        and values.get("operation") == "offline"
+                        and not self._x2many_command_ids(values.get("invoice_ids"))
+                        and not self._x2many_command_ids(values.get("sale_order_ids"))
+                    ):
+                        raise UserError(_(
+                            "This card payment isn't linked to an invoice, so the card "
+                            "processing fee can't be recorded. Charge the card from the "
+                            "invoice instead: open the invoice (or select several "
+                            "invoices) and use Register Payment."
+                        ))
         txs = super().create(values_list)
         txs.invalidate_recordset(["amount", "fees"])
         return txs
