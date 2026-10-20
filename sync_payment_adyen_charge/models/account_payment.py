@@ -30,11 +30,36 @@ class AccountPayment(models.Model):
         string="Card Fee Label",
         compute="_compute_card_fee_amount",
     )
+    partner_balance_due = fields.Monetary(
+        string="Customer Balance Due",
+        currency_field="company_currency_id",
+        compute="_compute_partner_balance_due",
+        help="What the customer still owes in total, printed at the bottom of the receipt.",
+    )
     payment_account_display = fields.Char(
         string="Paid With",
         compute="_compute_payment_account_display",
         help="Card brand or bank method and its last four digits, e.g. VISA •••• 7897.",
     )
+
+    @api.depends("partner_id", "state")
+    def _compute_partner_balance_due(self):
+        for payment in self:
+            partner = payment.partner_id.commercial_partner_id.with_company(payment.company_id)
+            if not partner:
+                payment.partner_balance_due = 0.0
+            elif "total_due" in partner._fields:
+                # Same figure as the "remaining balance due" in the receipt email.
+                payment.partner_balance_due = partner.total_due
+            else:
+                lines = self.env["account.move.line"].sudo().search([
+                    ("partner_id", "=", partner.id),
+                    ("company_id", "=", payment.company_id.id),
+                    ("account_id.account_type", "=", "asset_receivable"),
+                    ("parent_state", "=", "posted"),
+                    ("reconciled", "=", False),
+                ])
+                payment.partner_balance_due = sum(lines.mapped("amount_residual"))
 
     @api.depends(
         "payment_transaction_id.payment_method_id",

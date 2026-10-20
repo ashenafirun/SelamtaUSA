@@ -265,6 +265,9 @@ class TestCardFees(AdyenCommon, AccountPaymentCommon):
         self.assertIn("Paid with:", html)
         self.assertIn("500.00", html)
         self.assertIn("15.00", html)
+        self.assertIn("o_receipt_invoices", html, "grid lines on the invoice table")
+        self.assertIn("Your remaining balance due is", html)
+        self.assertEqual(payment.partner_balance_due, 500.0)
 
         refund = self._refund(payment.payment_transaction_id, 515.0)
         self.assertEqual(refund.card_fee_amount, 15.0)
