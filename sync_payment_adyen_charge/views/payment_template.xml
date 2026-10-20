@@ -47,6 +47,15 @@
                 </t>
             </t>
 
+            <!-- Plain-language hints so customers see which option is free -->
+            <t t-if="mode != 'validation' and pm_sudo.code == 'ach_direct_debit'">
+                <span class="o_selamta_pm_hint small text-muted text-nowrap align-self-center">(Bank account)</span>
+                <span class="o_selamta_pm_hint badge rounded-pill text-bg-success align-self-center">No fee</span>
+            </t>
+            <t t-if="mode != 'validation' and provider_sudo and provider_sudo.is_support_fees(pm_sudo) and provider_sudo.fees_dom_var">
+                <span class="o_selamta_pm_hint small text-muted text-nowrap align-self-center"><t t-out="'%g' % (provider_sudo.fees_dom_var * 100)"/>% fee</span>
+            </t>
+
         </xpath>
     </template>
 
@@ -95,6 +104,15 @@
                     </t>
                 </t>
             </div>
+            <!-- Plain-language hints so customers see which option is free -->
+            <t t-set="selamta_token_pm" t-value="token_sudo.payment_method_id"/>
+            <t t-if="mode != 'validation' and (selamta_token_pm.primary_payment_method_id or selamta_token_pm).code == 'ach_direct_debit'">
+                <span class="o_selamta_pm_hint small text-muted text-nowrap align-self-center">(Bank account)</span>
+                <span class="o_selamta_pm_hint badge rounded-pill text-bg-success align-self-center">No fee</span>
+            </t>
+            <t t-if="mode != 'validation' and token_sudo.provider_id.is_support_fees(selamta_token_pm) and token_sudo.provider_id.fees_dom_var">
+                <span class="o_selamta_pm_hint small text-muted text-nowrap align-self-center"><t t-out="'%g' % (token_sudo.provider_id.fees_dom_var * 100)"/>% fee</span>
+            </t>
         </xpath>
     </template>
 
