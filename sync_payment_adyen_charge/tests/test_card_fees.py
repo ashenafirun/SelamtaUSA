@@ -244,6 +244,57 @@ class TestCardFees(AdyenCommon, AccountPaymentCommon):
         self.assertEqual(self._fee_reversed(refund), 15.0)
         self.assertEqual(self._customer_balance(), 0.0)
 
+    # ---------- receipt ----------
+
+    def _receipt_html(self, payment):
+        html = self.env["ir.actions.report"]._render_qweb_html(
+            "account.report_payment_receipt", payment.ids
+        )[0]
+        return html.decode() if isinstance(html, bytes) else html
+
+    def test_receipt_shows_fee_breakdown(self):
+        invoice = self._invoice(1000.0)
+        self._charge(invoice, self._token(self.card), amount=500.0)
+        payment = self._last_card_payment()
+        self.assertEqual((payment.card_fee_amount, payment.card_fee_percent), (15.0, 3.0))
+        self.assertEqual(payment.payment_account_display, "Card •••• 1234")
+        html = self._receipt_html(payment)
+        self.assertIn("Card processing fee (3%)", html)
+        self.assertIn("Amount paid", html)
+        self.assertIn("Total charged to Card •••• 1234", html)
+        self.assertIn("Paid with:", html)
+        self.assertIn("500.00", html)
+        self.assertIn("15.00", html)
+
+        refund = self._refund(payment.payment_transaction_id, 515.0)
+        self.assertEqual(refund.card_fee_amount, 15.0)
+        html = self._receipt_html(refund)
+        self.assertIn("Card processing fee (3%) refunded", html)
+        self.assertIn("Total refunded to Card •••• 1234", html)
+        self.assertIn("Refunded to:", html)
+
+    def test_receipt_without_fee_has_no_breakdown(self):
+        invoice = self._invoice(1000.0)
+        self._charge(invoice, self._token(self.ach), amount=1000.0)
+        payment = self._last_card_payment()
+        self.assertEqual(payment.card_fee_amount, 0.0)
+        html = self._receipt_html(payment)
+        self.assertNotIn("Card processing fee", html)
+        self.assertIn("Paid with:", html)
+
+    def test_last_four_kept_from_adyen_for_unsaved_card(self):
+        tx = self._online_tx(500.0)
+        tx._process_notification_data({
+            "merchantReference": tx.reference,
+            "pspReference": "PSP-LAST4",
+            "resultCode": "Authorised",
+            "paymentMethod": {"type": "scheme", "brand": "visa"},
+            "additionalData": {"cardSummary": "4242"},
+        })
+        self.assertEqual(tx.payment_last4, "4242")
+        tx._post_process()
+        self.assertTrue(tx.payment_id.payment_account_display.endswith("•••• 4242"))
+
     def test_standalone_card_payment_with_existing_entry_is_refused(self):
         """Fallback: a hand-entered payment we can't add the fee to is not charged."""
         payment = self._standalone_payment(self._token(self.card))

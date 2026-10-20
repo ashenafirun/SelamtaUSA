@@ -2,7 +2,7 @@
 
 {
     "name": "Payment Ayden Charge",
-    "version": "18.0.1.5",
+    "version": "18.0.1.6",
     "summary": "Payment Ayden Charge",
     "sequence": 21,
     "description": """
@@ -20,6 +20,7 @@
         "views/website_template.xml",
         "wizard/account_payment_register.xml",
         "views/account_payment_views.xml",
+        "views/report_payment_receipt.xml",
     ],
     "assets": {
         "web.assets_frontend": [

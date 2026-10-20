@@ -39,6 +39,12 @@ class PaymentTransaction(models.Model):
         copy=False,
         help="The card fee was added as a line on the sale order this payment confirmed.",
     )
+    payment_last4 = fields.Char(
+        string="Last 4 Digits",
+        readonly=True,
+        copy=False,
+        help="Last four digits of the card or bank account, as reported by Adyen.",
+    )
     card_fee_refunded = fields.Monetary(
         string="Card Fee Refunded",
         currency_field="currency_id",
@@ -172,6 +178,29 @@ class PaymentTransaction(models.Model):
             extra_create_values.get("write_off_line_vals") or []
         ) + [write_off]
         return fee_part
+
+    def _process_notification_data(self, notification_data):
+        """Keep the last four digits Adyen reports, for the payment receipt.
+
+        Saved cards already carry them on the token; this also covers cards that
+        were not saved and, when Adyen includes it, the bank account of an ACH
+        payment.
+        """
+        super()._process_notification_data(notification_data)
+        if self.provider_code != "adyen" or self.payment_last4:
+            return
+        additional_data = notification_data.get("additionalData") or {}
+        if not isinstance(additional_data, dict):
+            return
+        candidate = (
+            additional_data.get("cardSummary")
+            or additional_data.get("bankAccount.bankAccountNumber")
+            or additional_data.get("bankAccountNumber")
+            or ""
+        )
+        last4 = str(candidate).strip()[-4:]
+        if len(last4) == 4 and last4.isdigit():
+            self.payment_last4 = last4
 
     def _send_payment_request(self):
         """
