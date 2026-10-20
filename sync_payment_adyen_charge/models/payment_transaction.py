@@ -26,6 +26,26 @@ class PaymentTransaction(models.Model):
         help="Transaction amount excluding processing fees.",
     )
     fee_json = fields.Json(string="Fee Map")
+    card_fee_on_payment = fields.Boolean(
+        string="Card Fee Booked on Payment",
+        readonly=True,
+        copy=False,
+        help="The card fee was booked on the payment, to the fee income account, "
+        "instead of being added to an order.",
+    )
+    card_fee_on_order = fields.Boolean(
+        string="Card Fee Added to Order",
+        readonly=True,
+        copy=False,
+        help="The card fee was added as a line on the sale order this payment confirmed.",
+    )
+    card_fee_refunded = fields.Monetary(
+        string="Card Fee Refunded",
+        currency_field="currency_id",
+        readonly=True,
+        copy=False,
+        help="Part of the source payment's card fee taken back by this refund.",
+    )
 
     def _get_specific_processing_values(self, processing_values):
         res = super()._get_specific_processing_values(processing_values)
@@ -54,52 +74,104 @@ class PaymentTransaction(models.Model):
 
         Adyen charged `amount + fees`, so the payment is created for that total.
 
-        - Paid from a sale order: the fee is already a line on the order (added by
-          `_check_amount_and_confirm_order`) and flows to its invoice, so the whole
-          payment is applied to the invoice as before.
-        - Paid against invoices, or with no document at all: the fee is booked on
-          the payment as a write-off to the fee income account. Only the amount
-          itself is applied to the invoices, and the invoices are never reset to
-          draft (resetting them detached the payments already applied to them).
+        - Paid from a quotation that this payment confirmed: the fee was added as a
+          line on the order (`_check_amount_and_confirm_order`) and flows to its
+          invoice, so the whole payment is applied to the invoice as before.
+        - Anything else (invoices, an order that was already confirmed, a payment
+          link with no document): the fee is booked on the payment as a write-off
+          to the fee income account. Only the amount itself is applied to the
+          customer's account, and invoices are never reset to draft (resetting
+          them detached the payments already applied to them).
+        - A refund of a payment whose fee was booked that way takes back the
+          refunded share of the fee, so the customer isn't left owing it.
         """
         self.ensure_one()
-        fee = self.currency_id.round(self.fees or 0.0)
-        if fee and self.operation != "refund":
-            # tx.amount should remain the full amount charged, fee included.
-            self.amount = self.currency_id.round(self.amount + fee)
-            extra_create_values["amount"] = self.amount
-            if not self.sale_order_ids:
-                write_off = self.provider_id._prepare_card_fee_write_off_vals(
-                    fee,
-                    self.currency_id,
-                    self.partner_id.commercial_partner_id,
-                )
-                if write_off:
-                    extra_create_values["write_off_line_vals"] = list(
-                        extra_create_values.get("write_off_line_vals") or []
-                    ) + [write_off]
-                else:
-                    _logger.warning(
-                        "No income account on the Payment Fees product: the %s fee "
-                        "of %s stays on the customer's account.",
-                        fee,
-                        self.reference,
-                    )
-        return super()._create_payment(**extra_create_values)
+        if self.operation == "refund":
+            fee_refunded = self._add_card_fee_refund_write_off(extra_create_values)
+            payment = super()._create_payment(**extra_create_values)
+            if fee_refunded:
+                self.card_fee_refunded = fee_refunded
+            return payment
 
-    @api.model
-    def _x2many_command_ids(self, commands):
-        """Return the record ids an x2many create value links to."""
-        ids = []
-        for command in commands or []:
-            if isinstance(command, int):
-                ids.append(command)
-            elif isinstance(command, (list, tuple)) and command:
-                if command[0] == Command.SET:
-                    ids.extend(command[2] or [])
-                elif command[0] == Command.LINK:
-                    ids.append(command[1])
-        return ids
+        fee = self.currency_id.round(self.fees or 0.0)
+        if not fee:
+            return super()._create_payment(**extra_create_values)
+
+        gross = self.currency_id.round(self.amount + fee)
+        extra_create_values["amount"] = gross
+        fee_on_payment = False
+        if not self.card_fee_on_order:
+            write_off = self.provider_id._prepare_card_fee_write_off_vals(
+                fee,
+                self.currency_id,
+                self.partner_id.commercial_partner_id,
+            )
+            if write_off:
+                extra_create_values["write_off_line_vals"] = list(
+                    extra_create_values.get("write_off_line_vals") or []
+                ) + [write_off]
+                fee_on_payment = True
+            else:
+                _logger.warning(
+                    "No income account on the Payment Fees product: the %s fee "
+                    "of %s stays on the customer's account.",
+                    fee,
+                    self.reference,
+                )
+        payment = super()._create_payment(**extra_create_values)
+        # Keep tx.amount as the full amount charged to the card, fee included.
+        # Set after the payment is created so Odoo's early-payment-discount check,
+        # which compares tx.amount with the amount due, still sees the amount itself.
+        self.write({"amount": gross, "card_fee_on_payment": fee_on_payment})
+        return payment
+
+    def _add_card_fee_refund_write_off(self, extra_create_values):
+        """Add the write-off that takes back the fee share of a refund.
+
+        :return: the fee amount taken back (0.0 when there is none).
+        """
+        self.ensure_one()
+        source = self.source_transaction_id
+        source_payment = source.payment_id
+        fee = source.currency_id.round(source.fees or 0.0)
+        if not (source.card_fee_on_payment and fee and source_payment.amount):
+            return 0.0
+
+        refunded = abs(self.amount)
+        earlier_refunds = source.child_transaction_ids.filtered(
+            lambda tx: tx != self and tx.operation == "refund" and tx.payment_id
+        )
+        fee_already_refunded = sum(earlier_refunds.mapped("card_fee_refunded"))
+        amount_already_refunded = sum(earlier_refunds.mapped("payment_id.amount"))
+        if self.currency_id.compare_amounts(
+            refunded + amount_already_refunded, source_payment.amount
+        ) >= 0:
+            # Last refund: take back whatever is left, so rounding never leaves a cent.
+            fee_part = fee - fee_already_refunded
+        else:
+            fee_part = fee * refunded / source_payment.amount
+        fee_part = self.currency_id.round(max(min(fee_part, fee - fee_already_refunded), 0.0))
+        if not fee_part:
+            return 0.0
+
+        # Reverse the fee on the account it was booked to.
+        _liquidity, _counterpart, write_offs = source_payment._seek_for_lines()
+        fee_line = write_offs.filtered(
+            lambda line: source.currency_id.is_zero(line.amount_currency + fee)
+        )[:1]
+        write_off = source.provider_id._prepare_card_fee_write_off_vals(
+            fee_part,
+            self.currency_id,
+            self.partner_id.commercial_partner_id,
+            refund=True,
+            account=fee_line.account_id or None,
+        )
+        if not write_off:
+            return 0.0
+        extra_create_values["write_off_line_vals"] = list(
+            extra_create_values.get("write_off_line_vals") or []
+        ) + [write_off]
+        return fee_part
 
     def _send_payment_request(self):
         """
@@ -135,42 +207,42 @@ class PaymentTransaction(models.Model):
             amount = values.get("amount", 0)
             values["fees"] = 0
             values["net_amount"] = amount
-            if context.get("is_backend_method"):
+            if context.get("is_backend_method") and values.get("payment_id"):
+                # Charged from Register Payment: the wizard already computed the fee
+                # and recorded the payment for amount + fee, with the fee booked on it.
                 values["amount"] = context.get("amount", values.get("amount", 0.0))
                 values["fees"] = context.get("card_fees") or 0.0
                 values["net_amount"] = values["amount"] - values["fees"]
-            else:
-                if provider.is_support_fees(method) and values.get("operation") not in [
-                    "validation",
-                    "refund",
-                ]:
-                    currency = (
-                        self.env["res.currency"]
-                        .browse(values.get("currency_id"))
-                        .exists()
-                    )
-                    # Fee is computed on `amount` — for partial payment links,
-                    # this is the partial amount, NOT the full invoice total.
-                    values["fees"] = provider.compute_fees(
-                        method, amount, currency=currency, partner_id=partner.id
-                    )
-                    values["net_amount"] = amount
-                    # A saved card charged from a payment that has no invoice or
-                    # order attached (e.g. Accounting > Payments > New): the fee
-                    # would be charged to the card with nothing in Odoo recording
-                    # it. Refuse, and send the user to the invoice instead.
-                    if (
-                        values["fees"]
-                        and values.get("operation") == "offline"
-                        and not self._x2many_command_ids(values.get("invoice_ids"))
-                        and not self._x2many_command_ids(values.get("sale_order_ids"))
-                    ):
-                        raise UserError(_(
-                            "This card payment isn't linked to an invoice, so the card "
-                            "processing fee can't be recorded. Charge the card from the "
-                            "invoice instead: open the invoice (or select several "
-                            "invoices) and use Register Payment."
-                        ))
+                values["card_fee_on_payment"] = bool(values["fees"])
+            elif values.get("source_transaction_id"):
+                # Refunds, partial captures and voids of an earlier charge: the fee
+                # belongs to the source transaction, never charged again.
+                pass
+            elif provider.is_support_fees(method) and values.get("operation") not in [
+                "validation",
+                "refund",
+            ]:
+                currency = (
+                    self.env["res.currency"]
+                    .browse(values.get("currency_id"))
+                    .exists()
+                )
+                # Fee is computed on `amount` — for partial payment links,
+                # this is the partial amount, NOT the full invoice total.
+                values["fees"] = provider.compute_fees(
+                    method, amount, currency=currency, partner_id=partner.id
+                )
+                values["net_amount"] = amount
+                # A saved card charged from a payment entered by hand (e.g.
+                # Accounting > Payments > New) rather than from Register Payment:
+                # the fee would be charged to the card while the payment records
+                # only the amount. Refuse, and send the user to the invoice.
+                if values["fees"] and values.get("payment_id"):
+                    raise UserError(_(
+                        "Card payments with the processing fee are charged from the "
+                        "invoice: open the invoice (or select several invoices) and "
+                        "use Register Payment."
+                    ))
         txs = super().create(values_list)
         txs.invalidate_recordset(["amount", "fees"])
         return txs
@@ -240,8 +312,19 @@ class PaymentTransaction(models.Model):
                 quotation = tx.sale_order_ids.filtered(lambda so: so.state in ('draft', 'sent'))
                 if quotation and quotation._is_confirmation_amount_reached():
                     if tx.provider_code == 'adyen' and tx.fees > 0:
-                        # tx._add_fee_line_to_sale_order()
                         tx.with_company(tx.company_id)._add_fee_line_to_sale_order()
+                        fee_product = self.env.ref(
+                            "sync_payment_adyen_charge.product_product_payment_fees",
+                            raise_if_not_found=False,
+                        )
+                        # The fee is now on the order and will be invoiced with it,
+                        # so the payment must not book it a second time.
+                        tx.card_fee_on_order = bool(
+                            fee_product
+                            and quotation.order_line.filtered(
+                                lambda line: line.product_id == fee_product
+                            )
+                        )
                     quotation.with_context(send_email=True).action_confirm()
                     confirmed_orders |= quotation
         return confirmed_orders

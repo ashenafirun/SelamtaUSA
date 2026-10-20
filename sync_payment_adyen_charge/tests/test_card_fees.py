@@ -255,3 +255,150 @@ class TestCardFees(AdyenCommon, AccountPaymentCommon):
         self.assertEqual(self._fee_booked(payment), 15.0)
         receivable = payment.move_id.line_ids.filtered(lambda l: l.account_type == "asset_receivable")
         self.assertEqual(receivable.credit, 500.0, "only the amount itself is credited to the customer")
+
+    def test_online_saved_card_charges_fee_once(self):
+        invoice = self._invoice(1000.0)
+        tx = self._create_transaction(
+            "token",
+            reference="tok-online-1",
+            amount=500.0,
+            currency_id=self.company_currency.id,
+            payment_method_id=self.card.id,
+            token_id=self._token(self.card).id,
+            invoice_ids=[Command.set(invoice.ids)],
+        )
+        charged = []
+
+        def fake_send(tx_):
+            charged.append(tx_.amount)
+
+        with patch(ADYEN_SEND, autospec=True, side_effect=fake_send):
+            tx._send_payment_request()
+        self.assertEqual(charged, [515.0])
+        self.assertEqual(tx.amount, 500.0, "the amount is restored after the request")
+
+        tx._set_done()
+        tx._post_process()
+        self.assertEqual(tx.payment_id.amount, 515.0)
+        self.assertEqual(self._fee_booked(tx.payment_id), 15.0)
+        self.assertEqual(invoice.amount_residual, 500.0)
+
+    def test_customer_without_country_pays_domestic_fee(self):
+        self.partner.country_id = False
+        tx = self._online_tx(500.0)
+        self.assertEqual(tx.fees, 15.0)
+
+    # ---------- Register Payment without a saved card ----------
+
+    def test_wizard_without_saved_card_has_no_fee(self):
+        invoice = self._invoice(1000.0)
+        wizard = self._wizard(invoice, amount=500.0, payment_method_line_id=self.adyen_line.id)
+        self.assertEqual(wizard.card_fees, 0.0)
+        wizard.action_create_payments()
+        payment = self._last_card_payment()
+        self.assertEqual(payment.amount, 500.0)
+        self.assertEqual(self._fee_booked(payment), 0.0)
+        self.assertEqual(invoice.amount_residual, 500.0)
+
+    # ---------- refunds ----------
+
+    def _refund(self, source_tx, amount):
+        refund_tx = source_tx._create_child_transaction(amount, is_refund=True)
+        self.assertEqual(refund_tx.fees, 0.0, "a refund never carries a new fee")
+        refund_tx._set_done()
+        refund_tx._post_process()
+        return refund_tx.payment_id
+
+    def _fee_reversed(self, payment):
+        return sum(
+            payment.move_id.line_ids.filtered(lambda l: l.account_id == self.fee_account).mapped("debit")
+        )
+
+    def _customer_balance(self):
+        receivable = self.partner.with_company(self.env.company).property_account_receivable_id
+        lines = self.env["account.move.line"].search([
+            ("partner_id", "=", self.partner.commercial_partner_id.id),
+            ("account_id", "=", receivable.id),
+            ("parent_state", "=", "posted"),
+        ])
+        return sum(lines.mapped("balance"))
+
+    def test_full_refund_takes_back_fee(self):
+        invoice = self._invoice(1000.0)
+        self._charge(invoice, self._token(self.card), amount=500.0)
+        source_tx = self._last_card_payment().payment_transaction_id
+        self.assertEqual(self._customer_balance(), 500.0)
+
+        refund = self._refund(source_tx, 515.0)
+        self.assertEqual(refund.amount, 515.0, "the card gets back amount + fee")
+        self.assertEqual(self._fee_reversed(refund), 15.0)
+        self.assertEqual(self._customer_balance(), 1000.0, "the customer owes the 500 again, not 515")
+
+    def test_partial_refunds_take_back_fee_share(self):
+        invoice = self._invoice(1000.0)
+        self._charge(invoice, self._token(self.card), amount=500.0)
+        source_tx = self._last_card_payment().payment_transaction_id
+
+        first = self._refund(source_tx, 206.0)  # 40% of 515
+        self.assertEqual(self._fee_reversed(first), 6.0)
+        second = self._refund(source_tx, 309.0)  # the rest
+        self.assertEqual(self._fee_reversed(second), 9.0)
+        self.assertEqual(self._customer_balance(), 1000.0)
+
+    def test_online_payment_refund_takes_back_fee(self):
+        tx = self._online_tx(500.0)
+        tx._set_done()
+        tx._post_process()
+        refund = self._refund(tx, 515.0)
+        self.assertEqual(self._fee_reversed(refund), 15.0)
+        self.assertEqual(self._customer_balance(), 0.0)
+
+    def test_partial_capture_child_has_no_fee(self):
+        tx = self._online_tx(500.0)
+        child = tx._create_child_transaction(200.0)
+        self.assertEqual(child.fees, 0.0)
+
+    # ---------- sale orders ----------
+
+    def _order(self, amount):
+        product = self.env["product.product"].create({
+            "name": "Order goods", "list_price": amount, "taxes_id": [Command.clear()],
+        })
+        return self.env["sale.order"].create({
+            "partner_id": self.partner.id,
+            "order_line": [Command.create({
+                "product_id": product.id, "product_uom_qty": 1, "price_unit": amount, "tax_id": [],
+            })],
+        })
+
+    def _order_tx(self, order, amount, reference):
+        return self._create_transaction(
+            "direct",
+            reference=reference,
+            amount=amount,
+            currency_id=self.company_currency.id,
+            payment_method_id=self.card.id,
+            sale_order_ids=[Command.set(order.ids)],
+        )
+
+    def test_checkout_fee_goes_on_order(self):
+        order = self._order(500.0)
+        tx = self._order_tx(order, 500.0, "so-checkout-1")
+        tx._set_done()
+        tx._post_process()
+        self.assertEqual(order.state, "sale")
+        self.assertTrue(tx.card_fee_on_order)
+        self.assertEqual(order.amount_total, 515.0, "the fee is a line on the order")
+        self.assertEqual(tx.payment_id.amount, 515.0)
+        self.assertEqual(self._fee_booked(tx.payment_id), 0.0, "not booked twice")
+
+    def test_payment_on_confirmed_order_books_fee_on_payment(self):
+        order = self._order(500.0)
+        order.action_confirm()
+        tx = self._order_tx(order, 500.0, "so-confirmed-1")
+        tx._set_done()
+        tx._post_process()
+        self.assertFalse(tx.card_fee_on_order)
+        self.assertEqual(order.amount_total, 500.0)
+        self.assertEqual(tx.payment_id.amount, 515.0)
+        self.assertEqual(self._fee_booked(tx.payment_id), 15.0)
