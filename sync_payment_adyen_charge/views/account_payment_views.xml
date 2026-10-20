@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Payments > New: show the card fee that confirming will add to the charge. -->
+    <record id="view_account_payment_form_inherit_card_fee" model="ir.ui.view">
+        <field name="name">account.payment.form.inherit.card.fee</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="account_payment.view_account_payment_form_inherit_payment"/>
+        <field name="arch" type="xml">
+            <field name="payment_token_id" position="after">
+                <field name="card_fee_preview" invisible="not card_fee_preview"/>
+            </field>
+        </field>
+    </record>
+</odoo>

@@ -198,8 +198,56 @@ class TestCardFees(AdyenCommon, AccountPaymentCommon):
             "payment_token_id": token.id,
         })
 
-    def test_standalone_card_payment_is_refused(self):
+    def _post_standalone(self, payment, decline=False):
+        charged = []
+
+        def fake_send(tx):
+            charged.append(tx.amount)
+            if decline:
+                tx._set_error("Refused")
+            else:
+                tx._set_done()
+
+        with patch(ADYEN_SEND, autospec=True, side_effect=fake_send):
+            payment.action_post()
+        return charged
+
+    def test_standalone_card_payment_books_fee(self):
         payment = self._standalone_payment(self._token(self.card))
+        self.assertEqual(payment.card_fee_preview, 15.0, "the form shows the fee before confirming")
+        charged = self._post_standalone(payment)
+
+        self.assertEqual(charged, [515.0], "the card is charged amount + 3%, once")
+        self.assertEqual(payment.card_fee_preview, 0.0)
+        self.assertEqual(payment.amount, 515.0)
+        self.assertIn(payment.state, ("in_process", "paid"))
+        self.assertEqual(payment.move_id.state, "posted")
+        self.assertEqual(self._fee_booked(payment), 15.0)
+        receivable = payment.move_id.line_ids.filtered(lambda l: l.account_type == "asset_receivable")
+        self.assertEqual(receivable.credit, 500.0, "only the amount itself is credited to the customer")
+        tx = payment.payment_transaction_id
+        self.assertEqual((tx.amount, tx.fees), (515.0, 15.0))
+        self.assertTrue(tx.card_fee_on_payment)
+
+    def test_standalone_card_payment_declined(self):
+        payment = self._standalone_payment(self._token(self.card))
+        self._post_standalone(payment, decline=True)
+        self.assertEqual(payment.state, "canceled")
+        self.assertFalse(payment.move_id)
+        self.assertEqual(payment.amount, 500.0, "shown as typed")
+        self.assertEqual(self._customer_balance(), 0.0)
+
+    def test_standalone_card_payment_refund_takes_back_fee(self):
+        payment = self._standalone_payment(self._token(self.card))
+        self._post_standalone(payment)
+        refund = self._refund(payment.payment_transaction_id, 515.0)
+        self.assertEqual(self._fee_reversed(refund), 15.0)
+        self.assertEqual(self._customer_balance(), 0.0)
+
+    def test_standalone_card_payment_with_existing_entry_is_refused(self):
+        """Fallback: a hand-entered payment we can't add the fee to is not charged."""
+        payment = self._standalone_payment(self._token(self.card))
+        payment._generate_journal_entry()
         with patch(ADYEN_SEND, autospec=True) as send:
             with self.assertRaises(UserError):
                 payment.action_post()
