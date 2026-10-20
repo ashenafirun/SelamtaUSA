@@ -2,7 +2,7 @@
 
 {
     "name": "Payment Ayden Charge",
-    "version": "18.0.1.6",
+    "version": "18.0.1.7",
     "summary": "Payment Ayden Charge",
     "sequence": 21,
     "description": """
