@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta LTL: Roadrunner Freight',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.0.1',
     'category': 'Inventory/Delivery',
     'summary': 'Roadrunner Freight API connection for Selamta LTL shipments: rates, BOL, pickup, tracking, delivery receipts',
     'description': """

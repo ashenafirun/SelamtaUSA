@@ -184,6 +184,7 @@ class TestTForce(TransactionCase):
         messages = ' '.join(shipment.message_ids.mapped('body'))
         self.assertIn('RURAL POINT', messages)
         self.assertIn('TEST environment', messages)
+        self.assertNotIn('&lt;br', messages)
 
     def test_track_and_documents_on_delivery(self):
         self.shipment.write({'pro_number': '062108025', 'state': 'in_transit'})

@@ -22,6 +22,7 @@ import logging
 from datetime import date, timedelta
 
 import requests
+from markupsafe import Markup
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
@@ -499,7 +500,7 @@ class DeliveryCarrier(models.Model):
                    'pickup; tracking fills it in.', booking=booking, status=reservation)]
         if rate.get('quote_number'):
             notes.append(_('Quote %s: give it to Daylight if the bill differs.', rate['quote_number']))
-        shipment.message_post(body='<br/>'.join(notes))
+        shipment.message_post(body=Markup('<br/>').join(notes))
         documents = []
         try:
             _account, username, password = self._dylt_login()

@@ -11,6 +11,7 @@ import logging
 from datetime import timedelta
 
 import requests
+from markupsafe import Markup
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
@@ -463,7 +464,7 @@ class DeliveryCarrier(models.Model):
         shipment.write({'tforce_bol_id': str(detail.get('bolId') or '') or False,
                         'tforce_origin_terminal': detail.get('originServiceCenter') or False})
         if notes:
-            shipment.message_post(body='<br/>'.join(notes))
+            shipment.message_post(body=Markup('<br/>').join(notes))
         if self.tforce_environment != 'production':
             shipment.message_post(body=_('Booked in the TForce TEST environment: nothing will be picked up.'))
         return {
