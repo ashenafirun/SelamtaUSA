@@ -14,6 +14,9 @@ _logger = logging.getLogger(__name__)
 CUBIC_INCHES_PER_FOOT = 1728.0
 DEFAULT_TOLERANCE = 1.0
 INSIDE_DELIVERY_CODE = 'INSIDE_DEL'
+# Labels printed per handling unit: one on each of two sides of a pallet, one per box.
+# Change with system parameters selamta_ltl.pallet_label_copies / box_label_copies.
+DEFAULT_LABEL_COPIES = {'pallet': 2, 'box': 1}
 
 
 class LtlShipment(models.Model):
@@ -579,6 +582,41 @@ class LtlShipment(models.Model):
     def action_print_bol(self):
         self._check_units_complete()
         return self.env.ref('selamta_ltl.action_report_ltl_bol').report_action(self)
+
+    def action_print_labels(self):
+        for shipment in self:
+            if not shipment.unit_ids:
+                raise UserError(_('Add the pallets or boxes on %s first.', shipment.name))
+        return self.env.ref('selamta_ltl.action_report_ltl_label').report_action(self)
+
+    @api.model
+    def _label_copies(self, unit_type):
+        default = DEFAULT_LABEL_COPIES.get(unit_type, 1)
+        value = self.env['ir.config_parameter'].sudo().get_param(
+            'selamta_ltl.%s_label_copies' % unit_type, default)
+        try:
+            return max(int(value), 1)
+        except (TypeError, ValueError):
+            return default
+
+    def _label_pieces(self):
+        """One entry per label to print: every pallet and box is numbered (1 of N over
+        the whole shipment); a pallet gets two identical labels, a box one."""
+        self.ensure_one()
+        pieces = []
+        total = self.total_units
+        number = 0
+        for unit in self.unit_ids.sorted('sequence'):
+            copies = self._label_copies(unit.unit_type)
+            kind = _('PALLET') if unit.unit_type == 'pallet' else _('BOX')
+            for _piece in range(unit.quantity or 0):
+                number += 1
+                for copy in range(1, copies + 1):
+                    pieces.append({
+                        'unit': unit, 'kind': kind, 'number': number, 'total': total,
+                        'copy': copy, 'copies': copies,
+                    })
+        return pieces
 
     def action_view_pickings(self):
         self.ensure_one()

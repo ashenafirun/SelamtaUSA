@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 4 x 6 in thermal labels (101.6 x 152.4 mm), portrait. -->
+    <record id="paperformat_ltl_label_4x6" model="report.paperformat">
+        <field name="name">Label 4x6 in (LTL)</field>
+        <field name="format">custom</field>
+        <field name="page_width">102</field>
+        <field name="page_height">152</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">2</field>
+        <field name="margin_bottom">0</field>
+        <field name="margin_left">2</field>
+        <field name="margin_right">2</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="disable_shrinking" eval="True"/>
+        <field name="dpi">96</field>
+    </record>
+
+    <record id="action_report_ltl_label" model="ir.actions.report">
+        <field name="name">Pallet and box labels (4x6)</field>
+        <field name="model">selamta.ltl.shipment</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">selamta_ltl.report_ltl_label</field>
+        <field name="report_file">selamta_ltl.report_ltl_label</field>
+        <field name="print_report_name">'Labels %s' % (object.pro_number or object.bol_reference)</field>
+        <field name="binding_model_id" ref="model_selamta_ltl_shipment"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_ltl_label_4x6"/>
+    </record>
+
+    <template id="report_ltl_label_one">
+        <!-- doc: shipment; piece: dict from _label_pieces() -->
+        <t t-set="to" t-value="doc.partner_id"/>
+        <t t-set="unit" t-value="piece['unit']"/>
+        <div class="ltl-label">
+            <table class="ll-row">
+                <tr>
+                    <td style="width: 58%;">
+                        <div class="ll-cap">FROM</div>
+                        <div class="ll-small"><strong t-out="doc.shipper_id.commercial_partner_id.name"/></div>
+                        <div class="ll-small" t-out="doc.shipper_id.street"/>
+                        <div class="ll-small"><t t-out="doc.shipper_id.city"/>, <t t-out="doc.shipper_id.state_id.code"/> <t t-out="doc.shipper_id.zip"/></div>
+                    </td>
+                    <td style="width: 42%; border-left: 1.5px solid #000;">
+                        <div class="ll-cap">CARRIER</div>
+                        <div class="ll-carrier" t-out="doc.carrier_id.name or ''"/>
+                        <div class="ll-small" t-if="doc.carrier_id.ltl_scac">SCAC <t t-out="doc.carrier_id.ltl_scac"/></div>
+                    </td>
+                </tr>
+            </table>
+
+            <div class="ll-block">
+                <div class="ll-cap">SHIP TO</div>
+                <div class="ll-to-name" t-out="to.commercial_partner_id.name if to.parent_id else to.name"/>
+                <div class="ll-to-street"><t t-out="to.street"/><t t-if="to.street2">, <t t-out="to.street2"/></t></div>
+                <div class="ll-to-city"><t t-out="to.city"/>, <t t-out="to.state_id.code"/> <t t-out="(to.zip or '')[:5]"/></div>
+                <div class="ll-small" t-if="to.phone or to.mobile">Phone: <t t-out="to.phone or to.mobile"/></div>
+            </div>
+
+            <div class="ll-block" t-if="doc.consolidated and unit.for_text">
+                <div class="ll-cap">ORDERS ON THIS <t t-out="piece['kind']"/></div>
+                <div class="ll-for" t-out="unit.for_text"/>
+            </div>
+
+            <div class="ll-block ll-center">
+                <t t-if="doc.pro_number">
+                    <div class="ll-cap">PRO</div>
+                    <div class="ll-pro" t-out="doc.pro_number"/>
+                    <div t-field="doc.pro_number"
+                         t-options="{'widget': 'barcode', 'symbology': 'Code128', 'width': 800, 'height': 160, 'img_style': 'width: 88mm; height: 22mm;'}"/>
+                </t>
+                <t t-else="">
+                    <div class="ll-cap">PRO: ____________________</div>
+                    <div class="ll-pro" style="font-size: 18pt;" t-out="doc.bol_reference"/>
+                    <div t-field="doc.bol_reference"
+                         t-options="{'widget': 'barcode', 'symbology': 'Code128', 'width': 800, 'height': 160, 'img_style': 'width: 70mm; height: 14mm;'}"/>
+                </t>
+            </div>
+
+            <table class="ll-row">
+                <tr>
+                    <td style="width: 50%;">
+                        <div class="ll-cap">BOL</div>
+                        <div class="ll-mid" t-out="doc.bol_reference"/>
+                    </td>
+                    <td style="width: 50%; border-left: 1.5px solid #000;">
+                        <div class="ll-cap">ORDER / PO</div>
+                        <div class="ll-small" t-out="(doc.order_refs or '')[:60]"/>
+                    </td>
+                </tr>
+            </table>
+
+            <div class="ll-count">
+                <t t-out="piece['kind']"/> <t t-out="piece['number']"/> OF <t t-out="piece['total']"/>
+            </div>
+        </div>
+    </template>
+
+    <template id="report_ltl_label">
+        <t t-call="web.html_container">
+            <t t-call="web.basic_layout">
+                <style>
+                    .ltl-label { width: 97mm; height: 144mm; overflow: hidden; border: 2px solid #000;
+                                 font-family: Arial, Helvetica, sans-serif; color: #000; box-sizing: border-box; }
+                    .ll-break { page-break-before: always; }
+                    .ll-row { width: 100%; border-collapse: collapse; border-bottom: 1.5px solid #000; }
+                    .ll-row td { vertical-align: top; padding: 1.5mm 2mm; }
+                    .ll-block { border-bottom: 1.5px solid #000; padding: 1.5mm 2mm; }
+                    .ll-center { text-align: center; }
+                    .ll-cap { font-size: 7.5pt; font-weight: bold; letter-spacing: 0.5px; }
+                    .ll-small { font-size: 8.5pt; line-height: 1.2; }
+                    .ll-mid { font-size: 14pt; font-weight: bold; }
+                    .ll-carrier { font-size: 16pt; font-weight: bold; line-height: 1.1; }
+                    .ll-to-name { font-size: 21pt; font-weight: bold; line-height: 1.1; }
+                    .ll-to-street { font-size: 13pt; line-height: 1.2; }
+                    .ll-to-city { font-size: 21pt; font-weight: bold; line-height: 1.2; }
+                    .ll-for { font-size: 9.5pt; line-height: 1.2; }
+                    .ll-pro { font-size: 32pt; font-weight: bold; letter-spacing: 1px; line-height: 1.1; }
+                    .ll-count { font-size: 40pt; font-weight: bold; text-align: center; padding: 5mm 0 3mm 0; }
+                </style>
+                <t t-foreach="docs" t-as="doc">
+                    <t t-foreach="doc._label_pieces()" t-as="piece">
+                        <div t-att-class="'ll-break' if not (doc_first and piece_first) else ''">
+                            <t t-call="selamta_ltl.report_ltl_label_one"/>
+                        </div>
+                    </t>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>
