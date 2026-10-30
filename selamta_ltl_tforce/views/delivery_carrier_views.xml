@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_delivery_carrier_form_tforce" model="ir.ui.view">
+        <field name="name">delivery.carrier.form.tforce</field>
+        <field name="model">delivery.carrier</field>
+        <field name="inherit_id" ref="delivery.view_delivery_carrier_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="TForce" name="tforce" invisible="delivery_type != 'tforce'">
+                    <div class="alert alert-warning" role="alert" invisible="tforce_environment == 'production'">
+                        Test (CIE) environment: rates and BOLs come from TForce's test system and nothing
+                        is really booked or picked up. Switch to Production when the tests are done.
+                    </div>
+                    <group>
+                        <group string="Connection">
+                            <field name="tforce_environment" widget="radio"/>
+                            <field name="tforce_client_id" groups="base.group_system"/>
+                            <field name="tforce_client_secret" password="True" groups="base.group_system"/>
+                            <field name="tforce_token_url" groups="base.group_system"/>
+                            <field name="tforce_scope" groups="base.group_system"/>
+                            <button name="action_tforce_test_connection" type="object" string="Test sign-in"
+                                    class="btn-secondary" groups="base.group_system" colspan="2"/>
+                        </group>
+                        <group string="Booking">
+                            <field name="tforce_service_code"/>
+                            <field name="tforce_bol_format"/>
+                            <field name="tforce_label_type"/>
+                            <field name="tforce_schedule_pickup"/>
+                            <field name="tforce_ready_time" invisible="not tforce_schedule_pickup"/>
+                            <field name="tforce_open_time" invisible="not tforce_schedule_pickup"/>
+                            <field name="tforce_close_time" invisible="not tforce_schedule_pickup"/>
+                            <field name="tforce_contact_name" invisible="not tforce_schedule_pickup"/>
+                            <field name="tforce_contact_email" invisible="not tforce_schedule_pickup"/>
+                            <field name="tforce_contact_phone" invisible="not tforce_schedule_pickup"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_ltl_shipment_form_tforce" model="ir.ui.view">
+        <field name="name">selamta.ltl.shipment.form.tforce</field>
+        <field name="model">selamta.ltl.shipment</field>
+        <field name="inherit_id" ref="selamta_ltl.view_ltl_shipment_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='pickup_number']" position="after">
+                <field name="tforce_bol_id" invisible="not tforce_bol_id"/>
+                <field name="tforce_origin_terminal" invisible="not tforce_origin_terminal"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
