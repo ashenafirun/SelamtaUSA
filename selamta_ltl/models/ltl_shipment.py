@@ -770,6 +770,10 @@ class LtlShipment(models.Model):
         ]
         self.write({
             'carrier_id': carrier.id,
+            # Keep the pickup window staff set; changing the carrier would otherwise reset it
+            # to the carrier's defaults right before booking.
+            'pickup_ready_time': self.pickup_ready_time,
+            'pickup_close_time': self.pickup_close_time,
             'quote_source': source,
             'quoted_amount': rate.get('total') or 0.0,
             'quote_number': rate.get('quote_number') or False,

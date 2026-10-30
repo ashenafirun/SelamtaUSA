@@ -450,6 +450,12 @@ class TestLtl(AccountTestInvoicingCommon):
             shipment.action_confirm_booking()
         shipment.write({'pickup_ready_time': 13.5, 'pickup_close_time': 17.0})
         self.assertIn('ready 1:30 PM, dock closes 5:00 PM', ' '.join(shipment._bol_pickup_lines()))
+        # Choosing a rate (same or another carrier) keeps the window staff set.
+        shipment._apply_quote({'total': 300.0}, self.c_aaa, 'website')
+        self.assertEqual((shipment.carrier_id, shipment.pickup_ready_time, shipment.pickup_close_time),
+                         (self.c_aaa, 13.5, 17.0))
+        shipment._apply_quote({'total': 290.0}, self.c_tforce, 'website')
+        self.assertEqual((shipment.pickup_ready_time, shipment.pickup_close_time), (13.5, 17.0))
         saturday = fields.Date.add(monday, days=5)
         shipment.ship_date = saturday
         self.assertIn('Saturday', shipment.pickup_warning)
