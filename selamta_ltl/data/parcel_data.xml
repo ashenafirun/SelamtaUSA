@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Our standard parcel box, in this database's units (only created once). -->
+    <function model="stock.package.type" name="_ltl_ensure_parcel_box"/>
+</odoo>
