@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta LTL: AAA Cooper',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.0.1',
     'category': 'Inventory/Delivery',
     'summary': 'AAA Cooper web services for Selamta LTL shipments: rate estimates, pickup requests, tracking, documents',
     'description': """
