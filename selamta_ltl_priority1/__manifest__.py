@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta LTL: Priority1',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.0.1',
     'category': 'Inventory/Delivery',
     'summary': 'Priority1 API connection for Selamta LTL shipments: multi-carrier quotes, dispatch, tracking, documents',
     'description': """
@@ -17,6 +17,7 @@ Connects Priority1 (freight broker) to Selamta LTL shipments through Priority1's
   A dispatch is a real pickup, so booking stays off until it is switched on.
 * Tracking every two hours by Priority1 BOL number: status, PRO once the carrier assigns
   it, delivered date; on delivery the delivery receipt.
+* Cancel: the shipment's Cancel button cancels the dispatched load with Priority1 first.
 * Bills: Priority1 bills under its own invoice numbers; link them to shipments by hand (or
   by our BOL number when Priority1 shows it).
 

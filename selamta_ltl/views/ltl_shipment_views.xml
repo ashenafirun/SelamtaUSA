@@ -29,7 +29,8 @@
                     <button name="action_open_rate_shop" type="object" string="Re-shop rates"
                             invisible="state != 'booked'"/>
                     <button name="action_cancel" type="object" string="Cancel"
-                            invisible="state in ('cancel', 'delivered')"/>
+                            invisible="state in ('cancel', 'delivered')"
+                            confirm="Cancel this shipment? A booked pickup is also cancelled with the carrier when its connection can do that; otherwise call the carrier."/>
                     <button name="action_reset_to_draft" type="object" string="Reset to not booked"
                             invisible="state != 'cancel'"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,booked,in_transit,delivered"/>

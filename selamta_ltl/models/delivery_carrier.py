@@ -22,6 +22,9 @@ class DeliveryCarrier(models.Model):
     ``<type>_ltl_documents(shipment)``
         Return a list of ``(file name, bytes)``: delivery receipt, weight & inspection
         certificate, invoice image...
+    ``<type>_ltl_cancel(shipment)``
+        Cancel the booked pickup with the carrier; raise UserError when the carrier refuses.
+        Without it, Cancel only cancels the shipment in Odoo and staff call the carrier.
 
     Shipping methods without a connection still work: book on the carrier's website and
     type the PRO on the shipment.
@@ -61,7 +64,7 @@ class DeliveryCarrier(models.Model):
 
     def ltl_can(self, operation):
         """True when this shipping method's connection supports the operation
-        ('rate', 'book', 'track' or 'documents')."""
+        ('rate', 'book', 'track', 'documents' or 'cancel')."""
         self.ensure_one()
         return bool(self._ltl_method(operation))
 
@@ -80,3 +83,7 @@ class DeliveryCarrier(models.Model):
     def ltl_documents(self, shipment):
         method = self._ltl_method('documents')
         return method(shipment) if method else []
+
+    def ltl_cancel(self, shipment):
+        method = self._ltl_method('cancel')
+        return method(shipment) if method else False

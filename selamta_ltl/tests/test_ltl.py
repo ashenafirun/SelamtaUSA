@@ -530,3 +530,15 @@ class TestLtl(AccountTestInvoicingCommon):
         self.assertEqual(shipment.carrier_id, self.c_aaa)
         self.assertEqual(shipment.vendor_id, self.aaa)
         self.assertEqual(shipment.quoted_amount, 350.0)
+
+    def test_cancel_without_carrier_connection_says_to_call(self):
+        shipment = self._shipment(self.c_aaa, pro='111222333', quoted=300)
+        shipment.write({'state': 'booked', 'pickup_number': 'PU55'})
+        action = shipment.action_cancel()
+        self.assertEqual(shipment.state, 'cancel')
+        self.assertEqual(action['params']['type'], 'warning')
+        self.assertIn('Call the carrier', action['params']['message'])
+        self.assertIn('pickup number PU55', ' '.join(shipment.message_ids.mapped('body')))
+        draft = self._shipment(self.c_aaa)
+        self.assertTrue(draft.action_cancel())  # nothing booked: nothing to call about
+        self.assertEqual(draft.state, 'cancel')
