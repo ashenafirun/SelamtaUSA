@@ -5,7 +5,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from odoo import fields
-from odoo.exceptions import UserError
+from odoo.exceptions import RedirectWarning, UserError
 from odoo.tests import TransactionCase, tagged
 
 MODULE = 'odoo.addons.selamta_ltl_priority1.models.delivery_carrier'
@@ -274,7 +274,19 @@ class TestPriority1(TransactionCase):
 
     def test_cancel_refused_keeps_shipment_booked(self):
         self.shipment.write({'state': 'booked', 'p1_shipment_id': '15260611'})
-        self.answers['/v2/ltl/shipments/cancel'] = FakeResponse(400, {'message': 'Shipment already picked up'})
-        with self.assertRaisesRegex(UserError, 'already picked up'):
+        self.answers['/v2/ltl/shipments/cancel'] = FakeResponse(403, {'message': 'Forbidden'})
+        with self.assertRaises(RedirectWarning) as caught:
             self.shipment.action_cancel()
+        message, action_id, button, context = caught.exception.args
+        self.assertIn('does not allow our API key', message)
+        self.assertIn('still booked', message)
+        self.assertEqual(button, 'Cancel in Odoo only')
+        self.assertEqual(context['active_ids'], self.shipment.ids)
         self.assertEqual(self.shipment.state, 'booked')
+        # After cancelling by phone: the offered action cancels in Odoo only, without calling Priority1.
+        calls = len(self.calls)
+        self.env['ir.actions.server'].browse(action_id).with_context(
+            active_model=self.shipment._name, active_ids=self.shipment.ids, active_id=self.shipment.id).run()
+        self.assertEqual(self.shipment.state, 'cancel')
+        self.assertEqual(len(self.calls), calls)
+        self.assertIn('cancelled with Priority1 outside Odoo', ' '.join(self.shipment.message_ids.mapped('body')))

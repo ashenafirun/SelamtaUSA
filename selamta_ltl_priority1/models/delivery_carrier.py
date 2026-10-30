@@ -123,9 +123,12 @@ class DeliveryCarrier(models.Model):
         except requests.RequestException as error:
             raise UserError(_('Could not reach Priority1: %s', error)) from error
         data = self._p1_json(response)
-        if response.status_code in (401, 403):
-            raise UserError(_('Priority1 refused the API key (%(status)s). Check the key on the %(name)s '
-                              'shipping method.', status=response.status_code, name=self.name))
+        if response.status_code == 401:
+            raise UserError(_('Priority1 refused the API key (401). Check the key on the %s shipping method.',
+                              self.name))
+        if response.status_code == 403:
+            raise UserError(_('Priority1 does not allow our API key to do this (403: %(message)s). Ask '
+                              'Priority1 to enable it for the key.', message=self._p1_error(data, response)))
         if response.status_code >= 400:
             raise UserError(_('Priority1 answered %(status)s: %(message)s',
                               status=response.status_code, message=self._p1_error(data, response)))
