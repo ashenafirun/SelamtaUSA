@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_delivery_carrier_form_ltl" model="ir.ui.view">
+        <field name="name">delivery.carrier.form.ltl</field>
+        <field name="model">delivery.carrier</field>
+        <field name="inherit_id" ref="delivery.view_delivery_carrier_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="LTL freight" name="ltl">
+                    <group>
+                        <group>
+                            <field name="ltl_enabled"/>
+                            <field name="ltl_scac" invisible="not ltl_enabled"/>
+                        </group>
+                        <group invisible="not ltl_enabled">
+                            <field name="ltl_vendor_id" required="ltl_enabled"/>
+                            <field name="ltl_match_on"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_delivery_carrier_list_ltl" model="ir.ui.view">
+        <field name="name">delivery.carrier.list.ltl</field>
+        <field name="model">delivery.carrier</field>
+        <field name="inherit_id" ref="delivery.view_delivery_carrier_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='delivery_type']" position="after">
+                <field name="ltl_enabled" optional="show"/>
+                <field name="ltl_vendor_id" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

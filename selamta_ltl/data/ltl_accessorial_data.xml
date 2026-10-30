@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Our codes; each carrier connection maps them to the carrier's own codes. Keywords
+         match the delivery services on the customer's contact. -->
+    <record id="accessorial_liftgate_delivery" model="selamta.ltl.accessorial">
+        <field name="name">Liftgate at delivery</field>
+        <field name="code">LIFTGATE_DEL</field>
+        <field name="sequence">10</field>
+        <field name="keywords">liftgate</field>
+    </record>
+    <record id="accessorial_residential_delivery" model="selamta.ltl.accessorial">
+        <field name="name">Residential delivery</field>
+        <field name="code">RESIDENTIAL_DEL</field>
+        <field name="sequence">20</field>
+        <field name="keywords">residential</field>
+    </record>
+    <record id="accessorial_limited_access_delivery" model="selamta.ltl.accessorial">
+        <field name="name">Limited access delivery</field>
+        <field name="code">LIMITED_ACCESS_DEL</field>
+        <field name="sequence">30</field>
+        <field name="keywords">limited access</field>
+    </record>
+    <record id="accessorial_inside_delivery" model="selamta.ltl.accessorial">
+        <field name="name">Inside delivery</field>
+        <field name="code">INSIDE_DEL</field>
+        <field name="sequence">40</field>
+        <field name="keywords">inside delivery</field>
+    </record>
+    <record id="accessorial_appointment" model="selamta.ltl.accessorial">
+        <field name="name">Delivery appointment</field>
+        <field name="code">APPOINTMENT_DEL</field>
+        <field name="sequence">50</field>
+        <field name="keywords">appointment</field>
+    </record>
+    <record id="accessorial_notify" model="selamta.ltl.accessorial">
+        <field name="name">Call before delivery</field>
+        <field name="code">NOTIFY_DEL</field>
+        <field name="sequence">60</field>
+        <field name="keywords">call before,notify</field>
+    </record>
+    <record id="accessorial_liftgate_pickup" model="selamta.ltl.accessorial">
+        <field name="name">Liftgate at pickup</field>
+        <field name="code">LIFTGATE_PU</field>
+        <field name="sequence">70</field>
+    </record>
+</odoo>

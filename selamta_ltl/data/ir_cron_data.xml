@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="cron_ltl_match_bills" model="ir.cron">
+        <field name="name">LTL: match carrier bills to shipments</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_ltl_match_bills()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
+    <record id="cron_ltl_update_tracking" model="ir.cron">
+        <field name="name">LTL: update tracking from connected carriers</field>
+        <field name="model_id" ref="model_selamta_ltl_shipment"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_update_tracking()</field>
+        <field name="interval_number">2</field>
+        <field name="interval_type">hours</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>
