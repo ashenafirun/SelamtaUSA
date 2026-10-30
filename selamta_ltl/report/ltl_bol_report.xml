@@ -63,6 +63,8 @@
                         <div>BOL number: <strong style="font-size: 16px;" t-out="doc.bol_reference"/></div>
                         <div>Date: <strong t-out="doc.ship_date" t-options="{'widget': 'date'}"/></div>
                         <div t-if="doc.pro_number">PRO: <strong style="font-size: 16px;" t-out="doc.pro_number"/></div>
+                        <div t-if="doc.pro_number" t-field="doc.pro_number"
+                             t-options="{'widget': 'barcode', 'symbology': 'Code128', 'width': 600, 'height': 100, 'img_style': 'width: 62mm; height: 11mm; margin-top: 2px;'}"/>
                     </td>
                 </tr>
             </table>

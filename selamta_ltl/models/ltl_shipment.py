@@ -23,7 +23,7 @@ DEFAULT_LABEL_COPIES = {'pallet': 2, 'box': 1}
 class LtlShipment(models.Model):
     _name = 'selamta.ltl.shipment'
     _description = 'LTL shipment'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread.main.attachment', 'mail.activity.mixin']
     _order = 'ship_date desc, id desc'
 
     name = fields.Char(
@@ -787,6 +787,29 @@ class LtlShipment(models.Model):
                 vals[key] = result[key]
         self.write(vals)
         self._attach_documents(result.get('documents') or [], _('Booked with %s', self.carrier_id.name))
+        self._attach_own_bol()
+
+    def _attach_own_bol(self):
+        """Attach our BOL (with the PRO, pickup window and instruction boxes) as the
+        shipment's main document, so it is the one printed for the driver. The carrier's
+        own BOL stays attached as the carrier copy. Never fails a booking."""
+        self.ensure_one()
+        try:
+            pdf, _type = self.env['ir.actions.report']._render_qweb_pdf(
+                'selamta_ltl.report_ltl_bol', self.ids)
+        except Exception as error:  # the booking is already made at the carrier
+            _logger.warning('Could not attach the BOL for %s: %s', self.name, error)
+            return self.env['ir.attachment']
+        attachment = self.env['ir.attachment'].create({
+            'name': 'BOL %s.pdf' % (self.pro_number or self.bol_reference),
+            'raw': pdf,
+            'mimetype': 'application/pdf',
+            'res_model': self._name,
+            'res_id': self.id,
+        })
+        self.message_main_attachment_id = attachment
+        self.message_post(body=_('BOL to print for the driver attached.'), attachment_ids=attachment.ids)
+        return attachment
 
     def _attach_documents(self, documents, note):
         self.ensure_one()

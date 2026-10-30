@@ -449,7 +449,7 @@ class DeliveryCarrier(models.Model):
         documents = []
         for image in ((detail.get('documents') or {}).get('image') or []):
             if image.get('data'):
-                kind = 'BOL' if image.get('type') == '20' else 'Labels'
+                kind = 'eBOL (carrier copy)' if image.get('type') == '20' else 'labels'
                 documents.append(('TForce %s %s.pdf' % (kind, pro or shipment.name), base64.b64decode(image['data'])))
         notes = []
         for rate_detail in detail.get('rateDetail') or []:
