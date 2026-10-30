@@ -402,10 +402,17 @@ class LtlShipment(models.Model):
 
     @api.model
     def _units_from_pickings(self, pickings):
-        """Handling unit lines: one per package (pallet or box), plus one pallet line for
-        anything not packed. Length, width and pallet/box come from the package type;
-        weight from the package. Height is left for staff to measure when the package
-        type has none."""
+        """Handling unit lines for the delivery orders.
+
+        * A package whose package type is marked as an LTL pallet or box (Inventory >
+          Configuration > Package Types) becomes its own line, with that type's length and
+          width and the package's weight. Such a package can hold several delivery orders.
+        * Everything else (cases packed by product packaging, loose products) goes on one
+          pallet line per delivery order with its total weight. Staff then set how many
+          pallets it is and measure them.
+        Lines start without height (and without length/width when the type has none):
+        the class is worked out once they are measured.
+        """
         to_inch = self.env.ref('uom.product_uom_inch')
         to_lb = self.env.ref('uom.product_uom_lb')
         product_tmpl = self.env['product.template']
@@ -418,23 +425,22 @@ class LtlShipment(models.Model):
         def pounds(value):
             return float_round(weight_uom._compute_quantity(value or 0.0, to_lb, round=False), 0)
 
+        def line_qty(ml):
+            return ml.product_uom_id._compute_quantity(ml.quantity, ml.product_id.uom_id, round=False)
+
         units = []
         nmfc_item, nmfc_sub = self._default_nmfc()
-        # One line per package. A package (pallet) can carry more than one delivery order,
-        # even orders for different customers: it then lists all of them.
-        lines = pickings.move_line_ids.filtered('result_package_id')
-        for package in lines.result_package_id:
-            package_lines = lines.filtered(lambda ml, pkg=package: ml.result_package_id == pkg)
+        all_lines = pickings.move_line_ids
+        ltl_lines = all_lines.filtered(lambda ml: ml.result_package_id.package_type_id.ltl_unit_type)
+        for package in ltl_lines.result_package_id:
+            package_lines = ltl_lines.filtered(lambda ml, pkg=package: ml.result_package_id == pkg)
             package_type = package.package_type_id
-            weight = package.shipping_weight
-            if not weight:
-                weight = (package_type.base_weight or 0.0) + sum(
-                    ml.product_uom_id._compute_quantity(ml.quantity, ml.product_id.uom_id) * ml.product_id.weight
-                    for ml in package_lines)
+            weight = package.shipping_weight or (package_type.base_weight or 0.0) + sum(
+                line_qty(ml) * ml.product_id.weight for ml in package_lines)
             units.append({
                 'quantity': 1,
-                'unit_type': package_type.ltl_unit_type or 'pallet',
-                'package_type_id': package_type.id or False,
+                'unit_type': package_type.ltl_unit_type,
+                'package_type_id': package_type.id,
                 'package_id': package.id,
                 'picking_ids': [(6, 0, package_lines.picking_id.ids)],
                 'length': inches(package_type.packaging_length),
@@ -445,19 +451,26 @@ class LtlShipment(models.Model):
                 'nmfc_item': nmfc_item,
                 'nmfc_sub': nmfc_sub,
             })
-        # Anything not packed: one pallet line per delivery order. Staff combine lines when
-        # two orders share a pallet.
         for picking in pickings:
-            loose = picking.move_ids.filtered(
-                lambda m: m.state != 'cancel' and not m.move_line_ids.result_package_id)
-            if loose:
-                weight = sum(m.product_qty * m.product_id.weight for m in loose)
+            weight = 0.0
+            products = self.env['product.product']
+            for move in picking.move_ids.filtered(lambda m: m.state != 'cancel'):
+                if move.move_line_ids:
+                    qty = sum(line_qty(ml) for ml in move.move_line_ids - ltl_lines)
+                else:
+                    qty = move.product_qty
+                if qty > 0:
+                    weight += qty * move.product_id.weight
+                    products |= move.product_id
+            other_packages = (picking.move_line_ids - ltl_lines).result_package_id
+            weight += sum(other_packages.mapped('package_type_id.base_weight'))
+            if products:
                 units.append({
                     'picking_ids': [(6, 0, picking.ids)],
                     'quantity': 1,
                     'unit_type': 'pallet',
                     'weight': pounds(weight),
-                    'description': self._describe(loose.product_id),
+                    'description': self._describe(products),
                     'nmfc_item': nmfc_item,
                     'nmfc_sub': nmfc_sub,
                 })

@@ -304,6 +304,30 @@ class TestLtl(AccountTestInvoicingCommon):
             'selamta_ltl.report_ltl_bol', shipment.ids)[0].decode()
         self.assertIn('Test Market (S00401); Neighbor Store (S00402)', html)
 
+    def test_cases_packed_by_packaging_become_one_pallet_line(self):
+        # Cases put in packages without an LTL package type (how product packaging splits
+        # deliveries) must not each become a pallet.
+        picking = self._delivery(self.customer, 6, 'S00601')
+        picking.action_confirm()
+        stock = self.env['stock.warehouse'].search(
+            [('company_id', '=', self.env.company.id)], limit=1).lot_stock_id
+        self.env['stock.quant']._update_available_quantity(picking.move_ids.product_id, stock, 100)
+        picking.action_assign()
+        line = picking.move_line_ids
+        line.quantity = 2
+        for qty in (2, 2):
+            line.copy({'quantity': qty})
+        for ml in picking.move_line_ids:
+            ml.result_package_id = self.env['stock.quant.package'].create({})
+        self.assertEqual(len(picking.move_line_ids.result_package_id), 3)
+        shipment = self.env['selamta.ltl.shipment']._create_from_pickings(picking)
+        self.assertEqual(len(shipment.unit_ids), 1)
+        weight_uom = self.env['product.template']._get_weight_uom_id_from_ir_config_parameter()
+        expected = weight_uom._compute_quantity(60.0, self.env.ref('uom.product_uom_lb'), round=False)
+        self.assertAlmostEqual(shipment.unit_ids.weight, round(expected), places=0)
+        self.assertEqual(shipment.unit_ids.unit_type, 'pallet')
+        self.assertFalse(shipment.unit_ids.height)
+
     def test_combine_two_order_lines_on_one_pallet(self):
         neighbor = self._neighbor()
         ours = self._delivery(self.customer, 10, 'S00501')

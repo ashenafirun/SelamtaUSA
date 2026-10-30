@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta LTL Freight',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.0.1',
     'category': 'Inventory/Delivery',
     'summary': 'Book LTL freight from delivery orders, print the BOL, and check every carrier bill against its quote',
     'description': """
@@ -20,9 +20,11 @@ Foundation for booking LTL freight directly with each carrier, replacing Freight
   19 Jul 2025; editable, and an NMFC item can have its own subs). Not taken from the
   product. Staff can override a unit's class; the shipment then shows the calculated one
   next to it.
-* Handling units are filled in from the packages on the delivery order: pallet or box and
-  length and width from the package type (Inventory > Configuration > Package Types),
-  weight from the package. Pallet height is measured and typed per pallet.
+* Handling units: a package whose package type is marked as an LTL pallet or box
+  (Inventory > Configuration > Package Types) becomes its own line, with the type's length
+  and width. Everything else (cases packed by product packaging, loose products) goes on
+  one pallet line per delivery order with its total weight; staff set how many pallets it
+  is and measure them. Pallet height is always measured and typed.
 * Accessorials ordered are filled in from the customer's delivery services (Liftgate,
   Residential, Limited Access...) and printed on the BOL, with NO INSIDE DELIVERY when
   inside delivery was not ordered and the customer's receiving hours.
