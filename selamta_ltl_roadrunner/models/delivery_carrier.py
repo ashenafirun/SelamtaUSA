@@ -28,6 +28,7 @@ from datetime import date
 from urllib.parse import quote_plus
 
 import requests
+from markupsafe import Markup
 from lxml import etree
 
 from odoo import _, api, fields, models
@@ -72,6 +73,8 @@ CHARGE_NAMES = {
     'FSC': 'Fuel surcharge',
     'FSB': 'Beyond fuel surcharge',
     'LHS': 'Linehaul surcharge',
+    'HND': 'Linehaul surcharge',
+    'AS': 'Linehaul, rated at the next weight break',
     'LGD': 'Liftgate at delivery',
     'LGP': 'Liftgate at pickup',
     'RSD': 'Residential delivery',
@@ -550,7 +553,7 @@ class DeliveryCarrier(models.Model):
         if self.rrts_environment != 'production':
             notes.append(_('Booked in the Roadrunner TEST system: nothing will be picked up.'))
         if notes:
-            shipment.message_post(body='<br/>'.join(notes))
+            shipment.message_post(body=Markup('<br/>').join(notes))
         result = {
             'pro_number': pro or False,
             'pickup_number': (str(data.get('PickUpNumber') or '')).strip() or False,

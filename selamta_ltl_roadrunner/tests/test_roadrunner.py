@@ -234,6 +234,7 @@ class TestRoadrunner(TransactionCase):
         self.assertEqual(shipment.message_main_attachment_id.name, 'BOL 589084565.pdf')
         messages = ' '.join(shipment.message_ids.mapped('body'))
         self.assertIn('TEST system', messages)
+        self.assertNotIn('&lt;br', messages)  # line breaks, not escaped tags
 
     def test_booking_errors_and_production(self):
         self.answers['bolrequest'] = FakeResponse(200, {'HasError': True, 'ErrorMessage': 'Ship date is in the past'})

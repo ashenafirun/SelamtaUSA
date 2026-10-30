@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta LTL: Daylight Transport',
-    'version': '18.0.1.0.1',
+    'version': '18.0.1.0.2',
     'category': 'Inventory/Delivery',
     'summary': 'Daylight Transport API connection for Selamta LTL shipments: rates, pickup booking, tracking, delivery receipts',
     'description': """
