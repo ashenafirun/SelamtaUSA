@@ -121,7 +121,8 @@
                         <page string="Services and instructions" name="services">
                             <group>
                                 <field name="accessorial_ids" widget="many2many_tags"/>
-                                <field name="special_instructions" placeholder="Printed on the BOL, e.g. dock door, contact name"/>
+                                <field name="special_instructions" placeholder="Printed in the Delivery Instructions box, e.g. use back door, call Abel 30 min before"/>
+                                <field name="pickup_instructions" placeholder="Printed in the Pickup Instructions box, e.g. freight at dock door 2"/>
                             </group>
                         </page>
                         <page string="Quote" name="quote">
