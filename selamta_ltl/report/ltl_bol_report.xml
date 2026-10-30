@@ -44,6 +44,13 @@
                 .bol { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
                 .bol th { background: #e6e6e6; text-align: left; font-size: 11px; text-transform: uppercase; }
                 .bol .num { text-align: right; }
+                .bol-instr { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 6px; }
+                .bol-instr th { background: #1f3b57; color: #fff; text-align: center; font-size: 13px;
+                                letter-spacing: 2px; text-transform: uppercase; padding: 4px; border: 2.5px solid #000; border-bottom: none; }
+                .bol-instr td.instr { border: 2.5px solid #000; border-top: none; padding: 7px 9px; vertical-align: top;
+                                      font-size: 14px; font-weight: bold; line-height: 1.45; height: 70px; }
+                .bol-instr td.instr-delivery { text-transform: uppercase; }
+                .bol-instr td.gap { width: 10px; border: none; padding: 0; }
                 .box { display: inline-block; width: 12px; height: 12px; border: 1px solid #000; margin-right: 4px; text-align: center; line-height: 11px; font-size: 11px; }
             </style>
             <table class="bol">
@@ -66,7 +73,6 @@
                     <td><t t-call="selamta_ltl.report_ltl_bol_address"><t t-set="partner" t-value="doc.shipper_id"/></t></td>
                     <td>
                         <t t-call="selamta_ltl.report_ltl_bol_address"><t t-set="partner" t-value="doc.partner_id"/></t>
-                        <div t-if="doc.receiving_hours"><strong>Receiving hours: </strong><t t-out="doc.receiving_hours"/></div>
                         <div t-if="doc.consolidated" style="margin-top: 3px;"><strong>One stop, orders for: </strong><t t-out="', '.join(doc.customer_ids.mapped('name'))"/>. The For column shows whose orders are on each pallet.</div>
                     </td>
                 </tr>
@@ -81,8 +87,6 @@
                     <td>
                         <div><strong t-out="doc.carrier_id.name or ''"/>
                             <t t-if="doc.carrier_id.ltl_scac"> (SCAC <t t-out="doc.carrier_id.ltl_scac"/>)</t></div>
-                        <div t-if="doc.quote_number">Quote number: <t t-out="doc.quote_number"/></div>
-                        <div t-if="doc.pickup_number">Pickup confirmation: <t t-out="doc.pickup_number"/></div>
                         <div t-if="doc.order_refs">Customer order / PO: <t t-out="doc.order_refs"/></div>
                     </td>
                     <td>
@@ -99,22 +103,26 @@
                 </tr>
             </table>
 
-            <table class="bol">
-                <tr><th>Services ordered</th></tr>
+            <table class="bol-instr">
                 <tr>
-                    <td>
-                        <t t-if="doc.accessorial_ids">
-                            <t t-foreach="doc.accessorial_ids" t-as="service">
-                                <span class="box">X</span><t t-out="service.name"/><span style="margin-right: 12px;"/>
-                            </t>
-                        </t>
-                        <t t-else="">None.</t>
-                        <div t-if="not doc.inside_delivery_ordered" style="font-weight: bold; margin-top: 3px;">NO INSIDE DELIVERY.</div>
-                        <div style="margin-top: 3px;">Only the services listed above are ordered. Any other service or charge needs the shipper's written approval before it is performed.</div>
-                        <div t-if="doc.special_instructions" style="margin-top: 3px; white-space: pre-line;"><strong>Instructions: </strong><t t-out="doc.special_instructions"/></div>
+                    <th style="width: 50%;">Pickup instructions</th>
+                    <td class="gap"/>
+                    <th style="width: 50%;">Delivery instructions</th>
+                </tr>
+                <tr>
+                    <td class="instr">
+                        <div t-foreach="doc._bol_pickup_lines()" t-as="line" t-out="line"/>
+                    </td>
+                    <td class="gap"/>
+                    <td class="instr instr-delivery">
+                        <div t-foreach="doc._bol_delivery_lines()" t-as="line" t-out="line"/>
                     </td>
                 </tr>
             </table>
+            <div style="font-size: 10.5px; margin: -2px 0 8px 0;">
+                Only the services listed under the instructions are ordered. Any other service or charge
+                needs the shipper's written approval before it is performed.
+            </div>
 
             <table class="bol">
                 <tr>

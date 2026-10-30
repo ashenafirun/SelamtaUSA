@@ -161,7 +161,7 @@ class TestTForce(TransactionCase):
         bol = [c for c in self.calls if c['url'].endswith('/shipping/bol/create')][0]['json']
         self.assertEqual(bol['handlingUnitOne'], {'quantity': 2, 'typeCode': 'PLT'})
         self.assertEqual(bol['references'][0], {'number': self.shipment.name, 'type': 'BL'})
-        self.assertIn('NO INSIDE DELIVERY', bol['instructions']['delivery'])
+        self.assertEqual(bol['instructions']['delivery'], 'LIFTGATE AT DELIVERY, NO INSIDE DELIVERY')
         self.assertEqual(bol['pickupRequest']['requester']['email'], 'dock@example.com')
         self.assertEqual(bol['pickupRequest']['pickup']['time'], '10:00:00')
         self.assertEqual(bol['shipTo']['phone'], {'number': '7045550199'})

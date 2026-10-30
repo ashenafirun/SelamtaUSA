@@ -438,8 +438,16 @@ class TestLtl(AccountTestInvoicingCommon):
             'selamta_ltl.report_ltl_bol', shipment.ids)[0].decode()
         self.assertIn(shipment.name, html)
         self.assertIn('246813579', html)
+        self.assertIn('Pickup instructions', html)
+        self.assertIn('Delivery instructions', html)
         self.assertIn('NO INSIDE DELIVERY', html)
-        self.assertIn('Liftgate at delivery', html)
+        self.assertIn('LIFTGATE AT DELIVERY', html)
+        self.assertEqual(shipment._bol_delivery_lines()[:2], ['LIFTGATE AT DELIVERY', 'NO INSIDE DELIVERY'])
+        shipment.write({'pickup_number': 'WBU41464319', 'quote_number': '800389657',
+                        'pickup_instructions': 'Freight at door 2'})
+        pickup = shipment._bol_pickup_lines()
+        self.assertEqual(pickup[:2], ['Pickup number: WBU41464319', 'Carrier quote number: 800389657'])
+        self.assertEqual(pickup[-1], 'Freight at door 2')
         self.assertIn('>85<', html)
 
     def test_rate_shop_and_booking_through_connection(self):

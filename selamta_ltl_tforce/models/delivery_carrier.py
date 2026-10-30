@@ -296,13 +296,6 @@ class DeliveryCarrier(models.Model):
         units = shipment.unit_ids
         pallets = sum(units.filtered(lambda u: u.unit_type == 'pallet').mapped('quantity'))
         boxes = sum(units.filtered(lambda u: u.unit_type != 'pallet').mapped('quantity'))
-        instructions = []
-        if shipment.special_instructions:
-            instructions.append(shipment.special_instructions.replace('\n', ' '))
-        if shipment.receiving_hours:
-            instructions.append(_('Receiving hours: %s', shipment.receiving_hours))
-        if not shipment.inside_delivery_ordered:
-            instructions.append(_('NO INSIDE DELIVERY'))
         request = {
             'requestOptions': {
                 'serviceCode': self.tforce_service_code,
@@ -332,8 +325,12 @@ class DeliveryCarrier(models.Model):
                 request['references'].append({'number': sale.client_order_ref[:35], 'type': 'PO'})
             if picking.origin:
                 request['references'].append({'number': picking.origin[:35], 'type': 'SO'})
-        if instructions:
-            request['instructions'] = {'delivery': ' / '.join(instructions)[:300]}
+        delivery_lines = shipment._bol_delivery_lines()
+        if delivery_lines:
+            request['instructions'] = {'delivery': ', '.join(delivery_lines)[:300]}
+        if shipment.pickup_instructions:
+            request.setdefault('instructions', {})['pickup'] = ' '.join(
+                shipment.pickup_instructions.split())[:200]
         options = self._tforce_service_options(shipment)
         if options:
             request['serviceOptions'] = options

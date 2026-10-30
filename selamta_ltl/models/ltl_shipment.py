@@ -97,7 +97,13 @@ class LtlShipment(models.Model):
         'selamta.ltl.accessorial', string='Services ordered',
         help='Extra services ordered from the carrier. Anything not listed is not authorized '
              'and is printed that way on the BOL.')
-    special_instructions = fields.Text()
+    special_instructions = fields.Text(
+        'Delivery instructions',
+        help='Printed in the Delivery Instructions box on the BOL, after the services ordered, '
+             'e.g. dock door or who to call.')
+    pickup_instructions = fields.Text(
+        help='Printed in the Pickup Instructions box on the BOL, after the pickup number and '
+             'quote number, e.g. dock hours or where the freight is.')
     inside_delivery_ordered = fields.Boolean(compute='_compute_inside_delivery_ordered')
 
     unit_ids = fields.One2many(
@@ -494,6 +500,37 @@ class LtlShipment(models.Model):
         params = self.env['ir.config_parameter'].sudo()
         return (params.get_param('selamta_ltl.default_nmfc_item') or False,
                 params.get_param('selamta_ltl.default_nmfc_sub') or False)
+
+    def _bol_pickup_lines(self):
+        """Lines for the Pickup Instructions box on the BOL."""
+        self.ensure_one()
+        lines = []
+        if self.pickup_number:
+            lines.append(_('Pickup number: %s', self.pickup_number))
+        if self.quote_number:
+            lines.append(_('Carrier quote number: %s', self.quote_number))
+        if self.ship_date:
+            lines.append(_('Pickup date: %s', self.ship_date.strftime('%m/%d/%Y')))
+        for service in self.accessorial_ids.filtered(lambda a: a.code.endswith('_PU')):
+            lines.append(service.name.upper())
+        if self.pickup_instructions:
+            lines.extend(l.strip() for l in self.pickup_instructions.splitlines() if l.strip())
+        return lines
+
+    def _bol_delivery_lines(self):
+        """Lines for the Delivery Instructions box on the BOL (and the carrier's own BOL):
+        the delivery services ordered, NO INSIDE DELIVERY unless it was ordered, receiving
+        hours, then the delivery instructions typed on the shipment."""
+        self.ensure_one()
+        lines = [service.name.upper() for service in
+                 self.accessorial_ids.filtered(lambda a: not a.code.endswith('_PU'))]
+        if not self.inside_delivery_ordered:
+            lines.append(_('NO INSIDE DELIVERY'))
+        if self.receiving_hours:
+            lines.append(_('Receiving hours: %s', self.receiving_hours))
+        if self.special_instructions:
+            lines.extend(l.strip() for l in self.special_instructions.splitlines() if l.strip())
+        return lines
 
     @api.depends('accessorial_ids.code')
     def _compute_inside_delivery_ordered(self):
