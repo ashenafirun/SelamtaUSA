@@ -42,6 +42,12 @@ class LtlShipment(models.Model):
 
     picking_ids = fields.One2many('stock.picking', 'ltl_shipment_id', 'Delivery orders')
     picking_count = fields.Integer(compute='_compute_picking_count')
+    customer_ids = fields.Many2many(
+        'res.partner', string='Customers', compute='_compute_customers',
+        help='The customers whose orders are on this shipment.')
+    consolidated = fields.Boolean(
+        'Several customers', compute='_compute_customers',
+        help='Orders for more than one customer, dropped at one place.')
     order_refs = fields.Char(
         'Order references', compute='_compute_order_refs',
         help='Sales orders and customer PO numbers of the delivery orders on this shipment.')
@@ -124,6 +130,13 @@ class LtlShipment(models.Model):
     def _compute_picking_count(self):
         for shipment in self:
             shipment.picking_count = len(shipment.picking_ids)
+
+    @api.depends('picking_ids.partner_id.commercial_partner_id')
+    def _compute_customers(self):
+        for shipment in self:
+            customers = shipment.picking_ids.mapped('partner_id.commercial_partner_id')
+            shipment.customer_ids = customers
+            shipment.consolidated = len(customers) > 1
 
     @api.depends('picking_ids.origin', 'picking_ids.sale_id.client_order_ref')
     def _compute_order_refs(self):
@@ -271,35 +284,62 @@ class LtlShipment(models.Model):
     # ------------------------------------------------------------------ build from deliveries
 
     @api.model
-    def _create_from_pickings(self, pickings):
-        """One shipment for the given delivery orders, with handling units from their
-        packages."""
+    def _address_key(self, partner):
+        """What makes two delivery addresses the same place."""
+        def clean(value):
+            return ' '.join((value or '').lower().replace('.', '').replace(',', '').split())
+        return (clean(partner.street), clean(partner.street2), clean(partner.city),
+                partner.state_id.id, clean(partner.zip)[:5], partner.country_id.id)
+
+    @api.model
+    def _needs_drop_choice(self, pickings, shipment=None):
+        """True when the deliveries (and the shipment they would join) are not all going
+        to the same address, so someone has to say where the truck delivers."""
+        partners = pickings.filtered(lambda p: p.state != 'cancel').mapped('partner_id')
+        if shipment:
+            partners |= shipment.partner_id
+        return len({self._address_key(p) for p in partners}) > 1
+
+    @api.model
+    def _create_from_pickings(self, pickings, consignee=None):
+        """Put the delivery orders on one LTL shipment, with handling units from their
+        packages, and return it.
+
+        * If one of them is already on a shipment that has not been picked up, the others
+          join that shipment.
+        * Deliveries can be for different customers when the truck drops them all at one
+          place (customers next to each other, or one receiving for another). When the
+          addresses differ, ``consignee`` says where the truck delivers.
+        """
         pickings = pickings.filtered(lambda p: p.state != 'cancel')
         if not pickings:
             raise UserError(_('Select at least one delivery order that is not cancelled.'))
-        already = pickings.filtered('ltl_shipment_id')
-        if already:
+        existing = pickings.mapped('ltl_shipment_id')
+        if len(existing) > 1:
             raise UserError(_(
-                'These delivery orders are already on an LTL shipment: %s',
-                ', '.join(already.mapped('name'))))
-        consignees = pickings.mapped('partner_id.commercial_partner_id')
-        if len(consignees) > 1:
+                'These delivery orders are already on different LTL shipments: %s',
+                ', '.join(existing.mapped('name'))))
+        if existing and existing.state not in ('draft', 'booked'):
             raise UserError(_(
-                'One LTL shipment goes to one customer. These delivery orders go to: %s',
-                ', '.join(consignees.mapped('display_name'))))
+                '%s has already been picked up; book the other deliveries on a new shipment.',
+                existing.name))
+        new = pickings.filtered(lambda p: not p.ltl_shipment_id)
+        if not consignee and self._needs_drop_choice(pickings, existing or None):
+            raise UserError(_(
+                'These deliveries go to different addresses. Choose where the truck delivers.'))
+        if existing:
+            if new:
+                existing._add_pickings(new, consignee)
+            return existing
+
         first = pickings[0]
-        consignee = first.partner_id
+        consignee = consignee or first.partner_id
         warehouse_partner = first.picking_type_id.warehouse_id.partner_id
-        services = self.env['selamta.ltl.accessorial']
-        business = consignee.commercial_partner_id
-        if 'selamta_delivery_service_ids' in business._fields:
-            services = services._from_service_names(
-                business.selamta_delivery_service_ids.mapped('name'))
         vals = {
             'partner_id': consignee.id,
             'shipper_id': (warehouse_partner or first.company_id.partner_id).id,
             'company_id': first.company_id.id,
-            'accessorial_ids': [(6, 0, services.ids)],
+            'accessorial_ids': [(6, 0, self._accessorials_for(consignee).ids)],
             'unit_ids': [(0, 0, unit) for unit in self._units_from_pickings(pickings)],
         }
         carrier = pickings.mapped('carrier_id').filtered('ltl_enabled')[:1]
@@ -309,6 +349,56 @@ class LtlShipment(models.Model):
         pickings.write({'ltl_shipment_id': shipment.id})
         shipment._sync_pickings()
         return shipment
+
+    def _add_pickings(self, pickings, consignee=None):
+        """Add more delivery orders (and their pallets/boxes) to this shipment."""
+        self.ensure_one()
+        if self.state not in ('draft', 'booked'):
+            raise UserError(_('%s has already been picked up.', self.name))
+        pickings = pickings.filtered(lambda p: p.state != 'cancel' and p.ltl_shipment_id != self)
+        taken = pickings.filtered('ltl_shipment_id')
+        if taken:
+            raise UserError(_(
+                'These delivery orders are already on another LTL shipment: %s',
+                ', '.join(taken.mapped('name'))))
+        if not pickings:
+            return self
+        if not consignee and self._needs_drop_choice(pickings, self):
+            raise UserError(_(
+                'These deliveries go to a different address than %s. Choose where the truck delivers.',
+                self.name))
+        last = max(self.unit_ids.mapped('sequence') or [0])
+        units = self._units_from_pickings(pickings)
+        for unit in units:
+            unit['sequence'] += last
+        vals = {'unit_ids': [(0, 0, unit) for unit in units]}
+        if consignee and consignee != self.partner_id:
+            vals['partner_id'] = consignee.id
+            vals['accessorial_ids'] = [(6, 0, self._accessorials_for(consignee).ids)]
+        was_booked = self.state == 'booked'
+        self.write(vals)
+        pickings.write({'ltl_shipment_id': self.id})
+        self._sync_pickings()
+        note = _('Added %s to this shipment.', ', '.join(pickings.mapped('name')))
+        if was_booked:
+            note += ' ' + _(
+                'It was already booked with fewer pallets: tell the carrier about the extra '
+                'freight (or re-shop) before pickup, and print the BOL again.')
+            self.activity_schedule(
+                'mail.mail_activity_data_todo', summary=_('Update the carrier: freight added'),
+                note=note)
+        self.message_post(body=note)
+        return self
+
+    @api.model
+    def _accessorials_for(self, consignee):
+        """Services the delivery location needs, from its delivery services on the contact."""
+        services = self.env['selamta.ltl.accessorial']
+        business = consignee.commercial_partner_id
+        if 'selamta_delivery_service_ids' in business._fields:
+            services = services._from_service_names(
+                business.selamta_delivery_service_ids.mapped('name'))
+        return services
 
     @api.model
     def _units_from_pickings(self, pickings):
@@ -342,6 +432,7 @@ class LtlShipment(models.Model):
                     'unit_type': package_type.ltl_unit_type or 'pallet',
                     'package_type_id': package_type.id or False,
                     'package_id': package.id,
+                    'picking_id': picking.id,
                     'length': inches(package_type.packaging_length),
                     'width': inches(package_type.width),
                     'height': inches(package_type.height),
@@ -355,6 +446,7 @@ class LtlShipment(models.Model):
             if loose:
                 weight = sum(m.product_qty * m.product_id.weight for m in loose)
                 units.append({
+                    'picking_id': picking.id,
                     'quantity': 1,
                     'unit_type': 'pallet',
                     'weight': pounds(weight),
@@ -386,6 +478,32 @@ class LtlShipment(models.Model):
             shipment.inside_delivery_ordered = INSIDE_DELIVERY_CODE in shipment.accessorial_ids.mapped('code')
 
     # ------------------------------------------------------------------ actions
+
+    def _open_form(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('LTL shipment'),
+            'res_model': self._name,
+            'res_id': self.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+    def action_add_deliveries(self):
+        self.ensure_one()
+        if self.state not in ('draft', 'booked'):
+            raise UserError(_('%s has already been picked up.', self.name))
+        wizard = self.env['selamta.ltl.drop.wizard'].create({
+            'shipment_id': self.id, 'partner_id': self.partner_id.id})
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Add deliveries to %s', self.name),
+            'res_model': 'selamta.ltl.drop.wizard',
+            'res_id': wizard.id,
+            'view_mode': 'form',
+            'target': 'new',
+        }
 
     def action_open_rate_shop(self):
         self.ensure_one()
@@ -578,6 +696,11 @@ class LtlShipmentUnit(models.Model):
         help='Number of identical pallets or boxes on this line (same size and weight each).')
     package_type_id = fields.Many2one('stock.package.type', 'Package type')
     package_id = fields.Many2one('stock.quant.package', 'Package')
+    picking_id = fields.Many2one(
+        'stock.picking', 'Delivery order', index=True, ondelete='set null',
+        help='The delivery order this pallet or box belongs to.')
+    customer_id = fields.Many2one(
+        'res.partner', 'For customer', related='picking_id.partner_id.commercial_partner_id')
     description = fields.Char(required=True, default=lambda self: _('Freight'))
     length = fields.Float('L (in)', digits=(16, 1), help='Length of one pallet or box, inches.')
     width = fields.Float('W (in)', digits=(16, 1), help='Width of one pallet or box, inches.')

@@ -10,7 +10,11 @@ Foundation for booking LTL freight directly with each carrier, replacing Freight
 * LTL shipment record on every delivery order (Inventory > Operations > LTL Shipments):
   consignee, carrier, who bills us, quote number and itemized quoted charges, PRO, BOL
   and pickup numbers, handling units with dimensions, weight, NMFC item and class.
-* Several delivery orders to the same customer can go on one shipment.
+* Several delivery orders on one shipment (one BOL, one PRO, one carrier bill): orders for
+  the same customer, and orders for different customers dropped at one place (customers
+  next to each other, or one receiving for another). When the addresses differ, staff
+  choose where the truck delivers and the BOL shows which pallets are for which customer.
+  A delivery that is ready later can be added to a shipment until it is picked up.
 * Freight class per pallet or box, calculated from its own dimensions and weight
   (density, pounds per cubic foot) with the NMFC density scale (13-tier scale effective
   19 Jul 2025; editable, and an NMFC item can have its own subs). Not taken from the
@@ -48,6 +52,7 @@ carrier's website and the PRO is typed in.
         'data/ir_cron_data.xml',
         'report/ltl_bol_report.xml',
         'wizard/ltl_rate_wizard_views.xml',
+        'wizard/ltl_drop_wizard_views.xml',
         'views/ltl_shipment_views.xml',
         'views/ltl_config_views.xml',
         'views/stock_package_type_views.xml',

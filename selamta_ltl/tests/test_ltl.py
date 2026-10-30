@@ -209,6 +209,98 @@ class TestLtl(AccountTestInvoicingCommon):
 
     # ------------------------------------------------------------------ deliveries, BOL, rate shop
 
+    def _delivery(self, partner, qty=10, origin=False):
+        product = self.env['product.product'].create({
+            'name': 'Shiro %s' % qty, 'is_storable': True, 'weight': 10.0})
+        warehouse = self.env['stock.warehouse'].search(
+            [('company_id', '=', self.env.company.id)], limit=1)
+        customers = self.env.ref('stock.stock_location_customers')
+        return self.env['stock.picking'].create({
+            'picking_type_id': warehouse.out_type_id.id,
+            'partner_id': partner.id,
+            'origin': origin,
+            'location_id': warehouse.lot_stock_id.id,
+            'location_dest_id': customers.id,
+            'move_ids': [(0, 0, {
+                'name': product.name, 'product_id': product.id, 'product_uom_qty': qty,
+                'product_uom': product.uom_id.id,
+                'location_id': warehouse.lot_stock_id.id, 'location_dest_id': customers.id,
+            })],
+        })
+
+    def _neighbor(self, street='2 Main St'):
+        return self.env['res.partner'].create({
+            'name': 'Neighbor Store', 'is_company': True, 'street': street,
+            'city': 'Atlanta', 'zip': '30303', 'country_id': self.env.ref('base.us').id,
+        })
+
+    def test_two_deliveries_same_customer_one_shipment(self):
+        first = self._delivery(self.customer, 10, 'S00101')
+        second = self._delivery(self.customer, 20, 'S00102')
+        (first | second).action_ltl_shipment()
+        shipment = first.ltl_shipment_id
+        self.assertEqual(second.ltl_shipment_id, shipment)
+        self.assertEqual(len(shipment.unit_ids), 2)
+        self.assertEqual(shipment.unit_ids.mapped('picking_id'), first | second)
+        self.assertIn('S00101', shipment.order_refs)
+        self.assertIn('S00102', shipment.order_refs)
+        self.assertFalse(shipment.consolidated)
+        shipment.pro_number = '777000111'
+        self.assertEqual(set((first | second).mapped('carrier_tracking_ref')), {'777000111'})
+        shipment.write({'carrier_id': self.c_tforce.id, 'quoted_amount': 300})
+        bill = self._bill(self.tforce, '777000111', 300)  # one carrier bill for both orders
+        self.assertEqual(bill.ltl_shipment_ids, shipment)
+        self.assertEqual(shipment.bill_status, 'ok')
+
+    def test_two_customers_dropped_at_one_place(self):
+        neighbor = self._neighbor()
+        ours = self._delivery(self.customer, 10, 'S00201')
+        theirs = self._delivery(neighbor, 20, 'S00202')
+        action = (ours | theirs).action_ltl_shipment()
+        self.assertEqual(action['res_model'], 'selamta.ltl.drop.wizard')
+        wizard = self.env['selamta.ltl.drop.wizard'].browse(action['res_id'])
+        self.assertTrue(wizard.different_addresses)
+        wizard.partner_id = neighbor
+        wizard.action_confirm()
+        shipment = ours.ltl_shipment_id
+        self.assertEqual(theirs.ltl_shipment_id, shipment)
+        self.assertEqual(shipment.partner_id, neighbor)
+        self.assertTrue(shipment.consolidated)
+        self.assertEqual(shipment.customer_ids, self.customer | neighbor)
+        self.assertEqual(ours.partner_id, self.customer)  # the delivery order keeps its customer
+        shipment.unit_ids.write({'length': 48, 'width': 40, 'height': 50})
+        html = self.env['ir.actions.report']._render_qweb_html(
+            'selamta_ltl.report_ltl_bol', shipment.ids)[0].decode()
+        self.assertIn('One stop, orders for', html)
+        self.assertIn('Test Market (S00201)', html)
+        self.assertIn('Neighbor Store (S00202)', html)
+
+    def test_different_addresses_need_a_drop_choice(self):
+        other = self._delivery(self._neighbor('9 Far Rd'), 10)
+        mine = self._delivery(self.customer, 10)
+        with self.assertRaises(Exception):
+            self.env['selamta.ltl.shipment']._create_from_pickings(mine | other)
+
+    def test_add_delivery_later(self):
+        first = self._delivery(self.customer, 10, 'S00301')
+        first.action_ltl_shipment()
+        shipment = first.ltl_shipment_id
+        shipment.unit_ids.write({'length': 48, 'width': 40, 'height': 50})
+        shipment.carrier_id = self.c_tforce
+        shipment.action_confirm_booking()
+        later = self._delivery(self.customer, 15, 'S00302')
+        action = shipment.action_add_deliveries()
+        wizard = self.env['selamta.ltl.drop.wizard'].browse(action['res_id'])
+        wizard.picking_ids = later
+        wizard.action_confirm()
+        self.assertEqual(later.ltl_shipment_id, shipment)
+        self.assertEqual(len(shipment.unit_ids), 2)
+        self.assertTrue(shipment.activity_ids)  # booked already: reminder to tell the carrier
+        shipment.action_mark_picked_up()
+        too_late = self._delivery(self.customer, 5)
+        with self.assertRaises(Exception):
+            shipment._add_pickings(too_late)
+
     def test_from_delivery_order(self):
         product = self.env['product.product'].create({
             'name': 'Berbere 1 lb', 'is_storable': True, 'weight': 10.0})

@@ -12,3 +12,4 @@ access_ltl_density_user,ltl.density user,model_selamta_ltl_density_scale,base.gr
 access_ltl_density_manager,ltl.density manager,model_selamta_ltl_density_scale,stock.group_stock_manager,1,1,1,1
 access_ltl_rate_wizard,ltl.rate.wizard,model_selamta_ltl_rate_wizard,stock.group_stock_user,1,1,1,1
 access_ltl_rate_wizard_line,ltl.rate.wizard.line,model_selamta_ltl_rate_wizard_line,stock.group_stock_user,1,1,1,1
+access_ltl_drop_wizard,ltl.drop.wizard,model_selamta_ltl_drop_wizard,stock.group_stock_user,1,1,1,1

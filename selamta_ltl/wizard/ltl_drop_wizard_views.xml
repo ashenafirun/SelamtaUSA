@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_ltl_drop_wizard_form" model="ir.ui.view">
+        <field name="name">selamta.ltl.drop.wizard.form</field>
+        <field name="model">selamta.ltl.drop.wizard</field>
+        <field name="arch" type="xml">
+            <form string="LTL shipment">
+                <field name="shipment_id" invisible="1"/>
+                <field name="different_addresses" invisible="1"/>
+                <field name="address_ids" invisible="1"/>
+                <p class="text-muted" invisible="not shipment_id">
+                    Add the delivery orders going on this truck. Their pallets and boxes are added
+                    to the shipment.
+                </p>
+                <field name="picking_ids" nolabel="1" options="{'no_create': True}">
+                    <list>
+                        <field name="name"/>
+                        <field name="origin"/>
+                        <field name="partner_id" string="Customer / address"/>
+                        <field name="scheduled_date"/>
+                    </list>
+                </field>
+                <div class="alert alert-warning" role="alert" invisible="not different_addresses">
+                    These deliveries go to different addresses. One shipment means one stop:
+                    choose where the truck delivers. The BOL will show which pallets are for
+                    which customer.
+                </div>
+                <group invisible="not different_addresses">
+                    <field name="partner_id" required="different_addresses"
+                           domain="[('id', 'in', address_ids)]" options="{'no_create': True}"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="Put on one shipment"
+                            class="btn-primary"/>
+                    <button string="Cancel" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

@@ -67,6 +67,7 @@
                     <td>
                         <t t-call="selamta_ltl.report_ltl_bol_address"><t t-set="partner" t-value="doc.partner_id"/></t>
                         <div t-if="doc.receiving_hours"><strong>Receiving hours: </strong><t t-out="doc.receiving_hours"/></div>
+                        <div t-if="doc.consolidated" style="margin-top: 3px;"><strong>One stop, orders for: </strong><t t-out="', '.join(doc.customer_ids.mapped('name'))"/>. The For column shows which pallets are for which customer.</div>
                     </td>
                 </tr>
             </table>
@@ -120,6 +121,7 @@
                     <th class="num">Count</th>
                     <th>Type</th>
                     <th>Description</th>
+                    <th t-if="doc.consolidated">For</th>
                     <th class="num">L x W x H (in), each</th>
                     <th class="num">Weight (lb)</th>
                     <th class="num">Cube (ft³)</th>
@@ -130,6 +132,7 @@
                     <td class="num" t-out="unit.quantity"/>
                     <td t-out="dict(unit._fields['unit_type'].selection).get(unit.unit_type)"/>
                     <td t-out="unit.description"/>
+                    <td t-if="doc.consolidated"><t t-out="unit.customer_id.name or ''"/><t t-if="unit.picking_id.origin"> (<t t-out="unit.picking_id.origin"/>)</t></td>
                     <td class="num"><t t-out="'%g x %g x %g' % (unit.length, unit.width, unit.height)"/></td>
                     <td class="num" t-out="'{:,.0f}'.format(unit.weight)"/>
                     <td class="num" t-out="'{:,.2f}'.format(unit.cube)"/>
@@ -138,7 +141,7 @@
                 </tr>
                 <tr>
                     <td class="num"><strong t-out="doc.total_units"/></td>
-                    <td colspan="3"><strong>Total</strong> (density <t t-out="'{:,.2f}'.format(doc.density)"/> lb/ft³)</td>
+                    <td t-att-colspan="4 if doc.consolidated else 3"><strong>Total</strong> (density <t t-out="'{:,.2f}'.format(doc.density)"/> lb/ft³)</td>
                     <td class="num"><strong t-out="'{:,.0f}'.format(doc.total_weight)"/></td>
                     <td class="num"><strong t-out="'{:,.2f}'.format(doc.total_cube)"/></td>
                     <td colspan="2"/>
