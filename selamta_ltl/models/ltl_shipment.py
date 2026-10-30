@@ -100,6 +100,11 @@ class LtlShipment(models.Model):
         'Carrier BOL number', copy=False, tracking=True,
         help='Only when the carrier or broker gives the load its own BOL number.')
     bol_reference = fields.Char('BOL number', compute='_compute_bol_reference')
+    print_carrier_name = fields.Char(
+        'Carrier on documents', compute='_compute_print_carrier',
+        help='Carrier name printed on the BOL and labels. A broker connection (Priority1) '
+             'prints the carrier that actually picks up.')
+    print_carrier_scac = fields.Char('SCAC on documents', compute='_compute_print_carrier')
     bol_digits = fields.Char(compute='_compute_digits', store=True, index=True)
     pickup_number = fields.Char('Pickup confirmation', copy=False)
     tracking_status = fields.Char('Carrier status', copy=False)
@@ -247,6 +252,12 @@ class LtlShipment(models.Model):
         for shipment in self:
             shipment.pro_digits = digits_only(shipment.pro_number) or False
             shipment.bol_digits = digits_only(shipment.bol_number or shipment.name) or False
+
+    @api.depends('carrier_id.name', 'carrier_id.ltl_scac')
+    def _compute_print_carrier(self):
+        for shipment in self:
+            shipment.print_carrier_name = shipment.carrier_id.name or False
+            shipment.print_carrier_scac = shipment.carrier_id.ltl_scac or False
 
     @api.depends('bol_number', 'name')
     def _compute_bol_reference(self):
