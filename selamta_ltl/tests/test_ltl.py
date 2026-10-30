@@ -412,6 +412,24 @@ class TestLtl(AccountTestInvoicingCommon):
         self.assertAlmostEqual(unit.length, round(length_uom._compute_quantity(48, to_inch, round=False), 1))
         self.assertEqual(unit.unit_type, 'pallet')
 
+    def test_labels_two_per_pallet_one_per_box(self):
+        shipment = self._shipment(self.c_tforce, pro='246813579', quantity=2)
+        shipment.unit_ids = [(0, 0, {'quantity': 3, 'unit_type': 'box', 'description': 'Coffee',
+                                     'length': 24, 'width': 16, 'height': 12, 'weight': 150})]
+        pieces = shipment._label_pieces()
+        self.assertEqual(len(pieces), 2 * 2 + 3 * 1)  # 2 pallets x 2 labels + 3 boxes x 1
+        self.assertEqual([p['number'] for p in pieces], [1, 1, 2, 2, 3, 4, 5])
+        self.assertEqual({p['total'] for p in pieces}, {5})
+        html = self.env['ir.actions.report']._render_qweb_html(
+            'selamta_ltl.report_ltl_label', shipment.ids)[0].decode()
+        self.assertEqual(html.count('class="ltl-label"'), 7)
+        self.assertIn('PALLET 2 OF 5', ' '.join(html.split()))
+        self.assertIn('BOX 5 OF 5', ' '.join(html.split()))
+        self.assertIn('246813579', html)
+        self.assertIn('data:image/png;base64', html)  # PRO barcode
+        self.env['ir.config_parameter'].sudo().set_param('selamta_ltl.pallet_label_copies', '1')
+        self.assertEqual(len(shipment._label_pieces()), 5)
+
     def test_bol_renders(self):
         shipment = self._shipment(self.c_tforce, pro='246813579', quoted=300)
         shipment.accessorial_ids = self.env.ref('selamta_ltl.accessorial_liftgate_delivery')

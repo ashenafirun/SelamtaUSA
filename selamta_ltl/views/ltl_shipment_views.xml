@@ -13,6 +13,9 @@
                             help="Use after booking on the carrier's website or by phone; enter the PRO first."/>
                     <button name="action_print_bol" type="object" string="Print BOL"
                             invisible="state == 'cancel'"/>
+                    <button name="action_print_labels" type="object" string="Print labels"
+                            invisible="state == 'cancel'"
+                            help="4x6 labels: two per pallet, one per box, numbered 1 of N."/>
                     <button name="action_add_deliveries" type="object" string="Add deliveries"
                             invisible="state not in ('draft', 'booked')"/>
                     <button name="action_mark_picked_up" type="object" string="Picked up"

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta LTL Freight',
-    'version': '18.0.1.0.1',
+    'version': '18.0.1.1.0',
     'category': 'Inventory/Delivery',
     'summary': 'Book LTL freight from delivery orders, print the BOL, and check every carrier bill against its quote',
     'description': """
@@ -32,6 +32,9 @@ Foundation for booking LTL freight directly with each carrier, replacing Freight
   quotes they got by phone or on a carrier website, side by side. Picking a rate saves the
   quote; for an API carrier it books the shipment.
 * Straight bill of lading (US Letter) printed from the shipment.
+* 4x6 shipping labels: two per pallet (one for each side) and one per box, numbered
+  1 of N over the shipment, with consignee, carrier, PRO barcode (BOL number until there
+  is a PRO), order references and, on shared drops, whose orders are on that pallet.
 * Carrier bill check: a vendor bill from an LTL carrier is matched to its shipment by PRO
   (or BOL number for carriers that bill on the BOL), using the rules from the 2026 freight
   audit: digits only, exact first, then a check digit on either side, then a leading 1.
@@ -53,6 +56,7 @@ carrier's website and the PRO is typed in.
         'data/ltl_density_scale_data.xml',
         'data/ir_cron_data.xml',
         'report/ltl_bol_report.xml',
+        'report/ltl_label_report.xml',
         'wizard/ltl_rate_wizard_views.xml',
         'wizard/ltl_drop_wizard_views.xml',
         'views/ltl_shipment_views.xml',
