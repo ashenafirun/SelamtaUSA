@@ -64,6 +64,9 @@ DOCUMENT_TYPES = [
     ('Invoice', 'R+L invoice'),
 ]
 PUBLIC_TRACKING_URL = 'https://www.rlcarriers.com/'
+# Rate quote charge lines that are subtotals or the total, not charges.
+SUBTOTAL_TYPES = {'GROSS', 'DISCNF', 'NET'}
+SUBTOTAL_TITLES = ('gross charge', 'discounted freight charge', 'net charge')
 
 
 class DeliveryCarrier(models.Model):
@@ -419,7 +422,7 @@ class DeliveryCarrier(models.Model):
                                 'amount': self._rlc_money(level.get('Charge'))})
             difference = round(total - sum(c['amount'] for c in charges), 2)
             if abs(difference) >= 0.01:
-                charges.append({'code': 'OTHER', 'name': _('Fuel and other charges (difference to R+L total)'),
+                charges.append({'code': 'OTHER', 'name': _('Other (difference to R+L total)'),
                                 'amount': difference})
             code = level.get('Code') or 'STD'
             name = level.get('Name') or level.get('Title') or _('Standard Service')
@@ -440,31 +443,43 @@ class DeliveryCarrier(models.Model):
         return rates
 
     def _rlc_charge_lines(self, quote, standard):
-        """Charge lines for standard service. R+L lists per-class linehaul lines and gives the
-        gross charge and our discount separately; whatever else is in the net charge (fuel,
-        services) becomes the difference line."""
+        """Charge lines for standard service, adding up to the net charge.
+
+        A real R+L answer (30 Oct 2026, Decatur GA -> Alexandria VA) lists: one "Class: 85" line
+        per item, DEFICIT "Deficit Weight", GROSS "Gross Charge" (subtotal), DISCNT "R+L Discount
+        Saves This Much" (positive amount), DISCNF "Discounted Freight Charge" (subtotal), FUEL,
+        LIFT and NET "Net Charge" (total). Subtotals and the total are skipped and the discount
+        is made negative. Older answers list only the class lines and give the gross charge and
+        discount separately; those are filled in from the service level and CustomerDiscounts."""
         lines = []
         for charge in quote.get('Charges') or []:
             amount = self._rlc_money(charge.get('Amount'))
             if not amount:
                 continue
             title = (charge.get('Title') or '').strip()
-            if title.lower().startswith('class'):
-                name = _('Linehaul before discount, %(title)s, %(weight)s lb', title=title.lower(),
-                         weight=charge.get('Weight') or '-')
+            kind = (charge.get('Type') or '').strip().upper()
+            lowered = title.lower()
+            if kind in SUBTOTAL_TYPES or any(word in lowered for word in SUBTOTAL_TITLES):
+                continue
+            if lowered.startswith('class'):
+                name = _('Linehaul before discount, class %(cls)s, %(weight)s lb',
+                         cls=title.split(':', 1)[-1].strip(), weight=charge.get('Weight') or '-')
                 code = 'LINEHAUL'
+            elif kind.startswith('DISC') or 'discount' in lowered:
+                name, code, amount = _('Discount'), 'DISC', -abs(amount)
+            elif kind == 'DEFICIT' or 'deficit' in lowered:
+                name, code = _('Deficit weight (rated at the next weight break)'), 'DEFICIT'
             else:
-                name = title or charge.get('Type') or _('Charge')
-                code = (charge.get('Type') or title or 'CHARGE')[:20]
+                name = title or kind or _('Charge')
+                code = (kind or title or 'CHARGE')[:20]
             lines.append({'code': code, 'name': name, 'amount': amount})
         total = self._rlc_money(standard.get('NetCharge'))
         if abs(round(total - sum(line['amount'] for line in lines), 2)) < 0.01:
             return lines  # the lines already add up to the net charge
-        has_discount = any(line['amount'] < 0 or 'disc' in line['name'].lower()
-                           for line in lines if line['code'] != 'LINEHAUL')
+        has_discount = any(line['code'] == 'DISC' for line in lines)
         if not has_discount:
             gross = self._rlc_money(standard.get('Charge'))
-            linehaul = sum(line['amount'] for line in lines if line['code'] == 'LINEHAUL')
+            linehaul = sum(line['amount'] for line in lines if line['code'] in ('LINEHAUL', 'DEFICIT'))
             if gross and abs(round(gross - linehaul, 2)) >= 0.01:
                 lines.append({'code': 'MIN', 'name': _('Gross charge adjustment (minimum charge or weight break)'),
                               'amount': round(gross - linehaul, 2)})

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta LTL: R+L Carriers',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.0.1',
     'category': 'Inventory/Delivery',
     'summary': 'R+L Carriers API for Selamta LTL shipments: rate quotes, BOL with pickup, tracking, documents',
     'description': """
