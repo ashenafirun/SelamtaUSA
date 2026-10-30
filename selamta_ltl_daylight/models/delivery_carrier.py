@@ -15,7 +15,7 @@ host api.dylt.com, portal dylt-portalapi.apigee.io).
   currentStatus, actualDeliveryDate, statHistArr.
 * GET /image/{probill}/{dr|wic|bol|invoice}/pdf, /image/booking/{bookingNumber}/bol.
 
-There is no test system: a pickup booked through the API is a real pickup, so booking is
+Daylight offers no test system for customers: a pickup booked through the API is a real pickup, so booking is
 off until it is switched on on the shipping method.
 """
 import logging
@@ -39,6 +39,7 @@ MAX_PALLETS_PER_ITEM = 10  # rate quote limit
 MAX_NOTE = 100             # pickup note line
 RATE_DATE_BUSINESS_DAYS = 4
 DOCUMENT_TYPES = [('dr', 'Delivery receipt'), ('wic', 'Weight and inspection')]
+NO_DAYLIGHT_CODE = '-'     # Daylight code meaning "Daylight has no such charge"
 
 
 class DeliveryCarrier(models.Model):
@@ -61,7 +62,7 @@ class DeliveryCarrier(models.Model):
     dylt_password = fields.Char('MyDaylight password', groups='base.group_system', copy=False)
     dylt_book_pickups = fields.Boolean(
         'Book pickups through the API',
-        help='Daylight has no test system: with this on, choosing Daylight in the rate shop '
+        help='Daylight offers no test system for customers: with this on, choosing Daylight in the rate shop '
              'schedules a real pickup. With it off, the quote is saved and the pickup is booked '
              'on MyDaylight.')
     dylt_contact_name = fields.Char('Daylight pickup contact', help='Shipper contact on the pickup request.')
@@ -256,6 +257,8 @@ class DeliveryCarrier(models.Model):
             if not service.dylt_code:
                 missing.append(service.name)
                 continue
+            if service.dylt_code.strip() == NO_DAYLIGHT_CODE:
+                continue  # Daylight has no such charge; it is printed on our BOL only
             accessorials.append({
                 'accName': 'P' if service.code.endswith('_PU') else 'D',
                 'accId': service.dylt_code.strip(),
@@ -358,7 +361,29 @@ class DeliveryCarrier(models.Model):
             request['notes'] = {'note': ', '.join(lines)[:MAX_NOTE]}
         if accessorials:
             request['accessorials'] = {'accessorial': accessorials}
+        request['shipReferences'] = {'shipReference': self._dylt_references(shipment)}
         return {'dyltPickupReqs': {'dyltPickupReq': request}}
+
+    @api.model
+    def _dylt_references(self, shipment):
+        """Reference Matrix: B bill of lading, Q quote number (Daylight asks for it on the
+        pickup), P purchase order, R shipper's reference (our sales order)."""
+        references, seen = [], set()
+
+        def add(kind, number):
+            number = (number or '').strip()
+            if number and (kind, number) not in seen:
+                seen.add((kind, number))
+                references.append({'referenceType': kind, 'referenceNumber': number[:30]})
+
+        add('B', shipment.bol_reference)
+        if shipment.carrier_id == self and shipment.quote_source == 'api':
+            add('Q', shipment.quote_number)
+        for picking in shipment.picking_ids:
+            sale = picking.sale_id if 'sale_id' in picking._fields else False
+            add('P', sale.client_order_ref if sale else False)
+            add('R', picking.origin)
+        return references
 
     # ------------------------------------------------------------------ responses
 

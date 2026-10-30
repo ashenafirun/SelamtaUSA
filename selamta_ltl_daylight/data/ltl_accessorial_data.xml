@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Daylight codes for our standard services (only where none is set yet). -->
+    <function model="selamta.ltl.accessorial" name="_dylt_set_default_codes"/>
+</odoo>
