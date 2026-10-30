@@ -271,8 +271,11 @@ class DeliveryCarrier(models.Model):
         if not quote_id:
             raise UserError(_('This Priority1 rate has no quote ID; get rates again.'))
         ship_date = shipment.ship_date or fields.Date.context_today(self)
-        delivery_date = fields.Date.to_date((rate.get('p1_delivery_date') or '')[:10] or False) \
-            or ship_date + timedelta(days=max(rate.get('transit_days') or 1, 1))
+        # Priority1's quoted delivery date can be counted from the day of the quote, not the
+        # pickup date; never ask for delivery before pickup plus the transit days.
+        earliest = self._p1_add_business_days(ship_date, max(rate.get('transit_days') or 1, 1))
+        quoted = fields.Date.to_date((rate.get('p1_delivery_date') or '')[:10] or False)
+        delivery_date = max(quoted, earliest) if quoted else earliest
         company = shipment.company_id
         request = {
             'quoteId': int(quote_id) if str(quote_id).isdigit() else quote_id,
@@ -305,6 +308,15 @@ class DeliveryCarrier(models.Model):
         if pickup_lines:
             request['pickupNote'] = ', '.join(pickup_lines)[:250]
         return request
+
+    @api.model
+    def _p1_add_business_days(self, start, days):
+        current = start
+        while days > 0:
+            current += timedelta(days=1)
+            if current.weekday() < 5:
+                days -= 1
+        return current
 
     @api.model
     def _p1_identifiers(self, shipment):
@@ -370,7 +382,7 @@ class DeliveryCarrier(models.Model):
             carrier = (quote.get('carrierName') or _('Unknown carrier')).strip()
             service = _('%(carrier)s via Priority1', carrier=carrier)
             level = quote.get('serviceLevelDescription') or quote.get('serviceLevel')
-            if level and str(level).lower() not in ('standard', 'normal'):
+            if level and 'standard' not in str(level).lower() and str(level).lower() != 'normal':
                 service = '%s - %s' % (service, level)
             rates.append({
                 'service': service,
@@ -500,6 +512,14 @@ class DeliveryCarrier(models.Model):
             if content:
                 documents.append((name, content))
         return documents
+
+    def priority1_ltl_cancel(self, shipment):
+        self.ensure_one()
+        if not shipment.p1_shipment_id or not str(shipment.p1_shipment_id).isdigit():
+            raise UserError(_('%s has no Priority1 shipment ID; cancel it with Priority1 by phone, then '
+                              'cancel it here.', shipment.name))
+        self._p1_call('/v2/ltl/shipments/cancel', {'id': int(shipment.p1_shipment_id)})
+        return True
 
     # ------------------------------------------------------------------ Odoo delivery hooks
 

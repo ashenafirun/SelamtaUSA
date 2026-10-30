@@ -182,7 +182,9 @@ class TestPriority1(TransactionCase):
         self.assertEqual(body['quoteId'], 21108)
         self.assertEqual(body['pickupWindow'], {'date': self.shipment.ship_date.strftime('%m/%d/%Y'),
                                                 'startTime': '13:30', 'endTime': '17:00'})
-        self.assertEqual(body['deliveryWindow']['date'], '11/05/2026')  # Priority1's delivery date
+        earliest = self.carrier._p1_add_business_days(self.shipment.ship_date, 2)
+        expected = max(earliest, fields.Date.to_date('2026-11-05'))
+        self.assertEqual(body['deliveryWindow']['date'], expected.strftime('%m/%d/%Y'))  # never before pickup + transit
         origin = body['originLocation']
         self.assertEqual(origin['address']['addressLine2'], 'Ste C')
         self.assertEqual(origin['contact'], {'companyName': self.env.company.partner_id.name,
@@ -249,3 +251,30 @@ class TestPriority1(TransactionCase):
         action = self.carrier.action_p1_test_connection()
         self.assertIn('2 quotes', action['params']['message'])
         self.assertIn('Saia via Priority1', action['params']['message'])
+
+    def test_service_label_and_delivery_window_after_pickup(self):
+        answer = dict(RATE_ANSWER, rateQuotes=[dict(quote(1, 'Roadrunner', 'RDFS', 400.0, days=4),
+                                                    serviceLevelDescription='Standard Rate',
+                                                    deliveryDate='2020-01-01T00:00:00')])
+        self.answers['/v2/ltl/quotes/rates'] = FakeResponse(200, answer)
+        rate = self.carrier.ltl_rate(self.shipment)[0]
+        self.assertEqual(rate['service'], 'Roadrunner via Priority1')  # "Standard Rate" not repeated
+        request = self.carrier._p1_dispatch_request(self.shipment, rate)
+        expected = self.carrier._p1_add_business_days(self.shipment.ship_date, 4)
+        self.assertEqual(request['deliveryWindow']['date'], expected.strftime('%m/%d/%Y'))
+
+    def test_cancel_with_priority1(self):
+        self.shipment.write({'state': 'booked', 'bol_number': '60116495862', 'p1_shipment_id': '15260611'})
+        self.answers['/v2/ltl/shipments/cancel'] = FakeResponse(200, {'id': 15260611, 'success': True})
+        self.assertTrue(self.carrier.ltl_can('cancel'))  # even with dispatch off
+        self.assertTrue(self.shipment.action_cancel())
+        self.assertEqual(self._calls_to('/shipments/cancel')[0]['json'], {'id': 15260611})
+        self.assertEqual(self.shipment.state, 'cancel')
+        self.assertIn('Pickup cancelled with Priority1', ' '.join(self.shipment.message_ids.mapped('body')))
+
+    def test_cancel_refused_keeps_shipment_booked(self):
+        self.shipment.write({'state': 'booked', 'p1_shipment_id': '15260611'})
+        self.answers['/v2/ltl/shipments/cancel'] = FakeResponse(400, {'message': 'Shipment already picked up'})
+        with self.assertRaisesRegex(UserError, 'already picked up'):
+            self.shipment.action_cancel()
+        self.assertEqual(self.shipment.state, 'booked')
