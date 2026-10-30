@@ -420,33 +420,40 @@ class LtlShipment(models.Model):
 
         units = []
         nmfc_item, nmfc_sub = self._default_nmfc()
+        # One line per package. A package (pallet) can carry more than one delivery order,
+        # even orders for different customers: it then lists all of them.
+        lines = pickings.move_line_ids.filtered('result_package_id')
+        for package in lines.result_package_id:
+            package_lines = lines.filtered(lambda ml, pkg=package: ml.result_package_id == pkg)
+            package_type = package.package_type_id
+            weight = package.shipping_weight
+            if not weight:
+                weight = (package_type.base_weight or 0.0) + sum(
+                    ml.product_uom_id._compute_quantity(ml.quantity, ml.product_id.uom_id) * ml.product_id.weight
+                    for ml in package_lines)
+            units.append({
+                'quantity': 1,
+                'unit_type': package_type.ltl_unit_type or 'pallet',
+                'package_type_id': package_type.id or False,
+                'package_id': package.id,
+                'picking_ids': [(6, 0, package_lines.picking_id.ids)],
+                'length': inches(package_type.packaging_length),
+                'width': inches(package_type.width),
+                'height': inches(package_type.height),
+                'weight': pounds(weight),
+                'description': self._describe(package_lines.product_id),
+                'nmfc_item': nmfc_item,
+                'nmfc_sub': nmfc_sub,
+            })
+        # Anything not packed: one pallet line per delivery order. Staff combine lines when
+        # two orders share a pallet.
         for picking in pickings:
-            packages = picking.move_line_ids.result_package_id
-            for package in packages:
-                package_type = package.package_type_id
-                weight = package.shipping_weight or package.with_context(picking_id=picking.id).weight
-                products = picking.move_line_ids.filtered(
-                    lambda ml, pkg=package: ml.result_package_id == pkg).product_id
-                units.append({
-                    'quantity': 1,
-                    'unit_type': package_type.ltl_unit_type or 'pallet',
-                    'package_type_id': package_type.id or False,
-                    'package_id': package.id,
-                    'picking_id': picking.id,
-                    'length': inches(package_type.packaging_length),
-                    'width': inches(package_type.width),
-                    'height': inches(package_type.height),
-                    'weight': pounds(weight),
-                    'description': self._describe(products),
-                    'nmfc_item': nmfc_item,
-                    'nmfc_sub': nmfc_sub,
-                })
             loose = picking.move_ids.filtered(
                 lambda m: m.state != 'cancel' and not m.move_line_ids.result_package_id)
             if loose:
                 weight = sum(m.product_qty * m.product_id.weight for m in loose)
                 units.append({
-                    'picking_id': picking.id,
+                    'picking_ids': [(6, 0, picking.ids)],
                     'quantity': 1,
                     'unit_type': 'pallet',
                     'weight': pounds(weight),
@@ -696,11 +703,16 @@ class LtlShipmentUnit(models.Model):
         help='Number of identical pallets or boxes on this line (same size and weight each).')
     package_type_id = fields.Many2one('stock.package.type', 'Package type')
     package_id = fields.Many2one('stock.quant.package', 'Package')
-    picking_id = fields.Many2one(
-        'stock.picking', 'Delivery order', index=True, ondelete='set null',
-        help='The delivery order this pallet or box belongs to.')
-    customer_id = fields.Many2one(
-        'res.partner', 'For customer', related='picking_id.partner_id.commercial_partner_id')
+    picking_ids = fields.Many2many(
+        'stock.picking', 'selamta_ltl_unit_picking_rel', 'unit_id', 'picking_id',
+        'Orders on it',
+        help='The delivery orders on this pallet or box. One pallet can carry several orders, '
+             'also for different customers.')
+    customer_ids = fields.Many2many(
+        'res.partner', string='For', compute='_compute_for_text')
+    for_text = fields.Char(
+        'For customers', compute='_compute_for_text',
+        help='Customer and order of everything on this pallet, as printed on the BOL.')
     description = fields.Char(required=True, default=lambda self: _('Freight'))
     length = fields.Float('L (in)', digits=(16, 1), help='Length of one pallet or box, inches.')
     width = fields.Float('W (in)', digits=(16, 1), help='Width of one pallet or box, inches.')
@@ -727,6 +739,18 @@ class LtlShipmentUnit(models.Model):
         FREIGHT_CLASSES, 'Class', compute='_compute_freight_class', store=True,
         help='Class printed on the BOL: the override if set, otherwise the calculated class.')
     class_note = fields.Char(compute='_compute_freight_class', store=True)
+
+    @api.depends('picking_ids.partner_id.commercial_partner_id', 'picking_ids.origin')
+    def _compute_for_text(self):
+        for unit in self:
+            unit.customer_ids = unit.picking_ids.mapped('partner_id.commercial_partner_id')
+            parts = []
+            for customer in unit.customer_ids:
+                orders = unit.picking_ids.filtered(
+                    lambda p, c=customer: p.partner_id.commercial_partner_id == c)
+                refs = ', '.join(o.origin or o.name for o in orders)
+                parts.append('%s (%s)' % (customer.name, refs) if refs else customer.name)
+            unit.for_text = '; '.join(parts) or False
 
     @api.onchange('package_type_id')
     def _onchange_package_type_id(self):

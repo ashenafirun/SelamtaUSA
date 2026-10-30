@@ -89,9 +89,10 @@
                                     <field name="unit_type"/>
                                     <field name="package_type_id" optional="show" options="{'no_create': True}"/>
                                     <field name="description"/>
-                                    <field name="picking_id" optional="show" options="{'no_create': True}"
+                                    <field name="picking_ids" widget="many2many_tags" optional="show"
+                                           options="{'no_create': True}"
                                            domain="[('ltl_shipment_id', '=', parent.id)]"/>
-                                    <field name="customer_id" optional="show"/>
+                                    <field name="customer_ids" widget="many2many_tags" optional="show"/>
                                     <field name="length"/>
                                     <field name="width"/>
                                     <field name="height"/>

@@ -241,7 +241,7 @@ class TestLtl(AccountTestInvoicingCommon):
         shipment = first.ltl_shipment_id
         self.assertEqual(second.ltl_shipment_id, shipment)
         self.assertEqual(len(shipment.unit_ids), 2)
-        self.assertEqual(shipment.unit_ids.mapped('picking_id'), first | second)
+        self.assertEqual(shipment.unit_ids.mapped('picking_ids'), first | second)
         self.assertIn('S00101', shipment.order_refs)
         self.assertIn('S00102', shipment.order_refs)
         self.assertFalse(shipment.consolidated)
@@ -274,6 +274,47 @@ class TestLtl(AccountTestInvoicingCommon):
         self.assertIn('One stop, orders for', html)
         self.assertIn('Test Market (S00201)', html)
         self.assertIn('Neighbor Store (S00202)', html)
+
+    def test_one_pallet_with_two_customers_orders(self):
+        neighbor = self._neighbor()
+        ours = self._delivery(self.customer, 10, 'S00401')
+        theirs = self._delivery(neighbor, 20, 'S00402')
+        (ours | theirs).action_confirm()
+        stock = self.env['stock.warehouse'].search(
+            [('company_id', '=', self.env.company.id)], limit=1).lot_stock_id
+        for move in (ours | theirs).move_ids:
+            self.env['stock.quant']._update_available_quantity(move.product_id, stock, 100)
+        (ours | theirs).action_assign()
+        pallet_type = self.env['stock.package.type'].create({
+            'name': 'Pallet', 'ltl_unit_type': 'pallet', 'base_weight': 20.0})
+        pallet = self.env['stock.quant.package'].create({'package_type_id': pallet_type.id})
+        (ours | theirs).move_line_ids.write({'result_package_id': pallet.id})
+        shipment = self.env['selamta.ltl.shipment']._create_from_pickings(ours | theirs, consignee=neighbor)
+        self.assertEqual(len(shipment.unit_ids), 1)  # one pallet, both orders
+        unit = shipment.unit_ids
+        self.assertEqual(unit.picking_ids, ours | theirs)
+        self.assertEqual(unit.customer_ids, self.customer | neighbor)
+        self.assertIn('Test Market (S00401)', unit.for_text)
+        self.assertIn('Neighbor Store (S00402)', unit.for_text)
+        weight_uom = self.env['product.template']._get_weight_uom_id_from_ir_config_parameter()
+        expected = weight_uom._compute_quantity(20 + 10 * 10 + 20 * 10, self.env.ref('uom.product_uom_lb'), round=False)
+        self.assertAlmostEqual(unit.weight, round(expected), places=0)
+        unit.write({'length': 48, 'width': 40, 'height': 50})
+        html = self.env['ir.actions.report']._render_qweb_html(
+            'selamta_ltl.report_ltl_bol', shipment.ids)[0].decode()
+        self.assertIn('Test Market (S00401); Neighbor Store (S00402)', html)
+
+    def test_combine_two_order_lines_on_one_pallet(self):
+        neighbor = self._neighbor()
+        ours = self._delivery(self.customer, 10, 'S00501')
+        theirs = self._delivery(neighbor, 20, 'S00502')
+        shipment = self.env['selamta.ltl.shipment']._create_from_pickings(ours | theirs, consignee=self.customer)
+        self.assertEqual(len(shipment.unit_ids), 2)  # loose freight: one line per order
+        keep, extra = shipment.unit_ids.sorted('sequence')
+        keep.write({'picking_ids': [(6, 0, (ours | theirs).ids)], 'weight': 660})
+        extra.unlink()
+        self.assertEqual(shipment.unit_ids.customer_ids, self.customer | neighbor)
+        self.assertEqual(shipment.total_weight, 660)
 
     def test_different_addresses_need_a_drop_choice(self):
         other = self._delivery(self._neighbor('9 Far Rd'), 10)
