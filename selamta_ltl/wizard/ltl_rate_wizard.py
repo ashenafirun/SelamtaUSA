@@ -108,6 +108,7 @@ class LtlRateWizardLine(models.TransientModel):
         rate = self._rate()
         shipment._apply_quote(rate, self.carrier_id, self.source)
         if self.source == 'api' and self.carrier_id.ltl_can('book'):
+            shipment._check_pickup()
             result = self.carrier_id.ltl_book(shipment, rate) or {}
             shipment._apply_booking(result)
         else:

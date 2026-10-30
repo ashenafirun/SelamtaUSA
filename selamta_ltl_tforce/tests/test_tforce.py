@@ -164,6 +164,9 @@ class TestTForce(TransactionCase):
         self.assertEqual(bol['instructions']['delivery'], 'LIFTGATE AT DELIVERY, NO INSIDE DELIVERY')
         self.assertEqual(bol['pickupRequest']['requester']['email'], 'dock@example.com')
         self.assertEqual(bol['pickupRequest']['pickup']['time'], '10:00:00')
+        self.assertEqual(bol['pickupRequest']['pickup']['openTime'], '08:00:00')
+        self.assertEqual(bol['pickupRequest']['pickup']['closeTime'], '16:00:00')
+        self.assertEqual(bol['pickupRequest']['pickup']['date'], str(self.shipment.ship_date))
         self.assertEqual(bol['shipTo']['phone'], {'number': '7045550199'})
         self.assertEqual(bol['documents']['image'], [{'type': '20', 'format': '01'}])
         shipment = self.shipment
@@ -217,6 +220,13 @@ class TestTForce(TransactionCase):
         with self.assertRaisesRegex(UserError, 'phone number'):
             self.carrier.ltl_book(self.shipment, {'total': 1})
         self.assertFalse([c for c in self.calls if c['url'].endswith('/shipping/bol/create')])
+
+    def test_pickup_window_from_shipment(self):
+        self.shipment.write({'pickup_ready_time': 13.5, 'pickup_close_time': 17.0})
+        request = self.carrier._tforce_bol_request(self.shipment)
+        pickup = request['pickupRequest']['pickup']
+        self.assertEqual((pickup['time'], pickup['openTime'], pickup['closeTime']),
+                         ('13:30:00', '08:00:00', '17:00:00'))
 
     def test_production_version(self):
         self.carrier.tforce_environment = 'production'

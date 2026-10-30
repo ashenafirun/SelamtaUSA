@@ -11,6 +11,9 @@
                         <group>
                             <field name="ltl_enabled"/>
                             <field name="ltl_scac" invisible="not ltl_enabled"/>
+                            <field name="ltl_dock_open_time" widget="float_time" invisible="not ltl_enabled"/>
+                            <field name="ltl_ready_time" widget="float_time" invisible="not ltl_enabled"/>
+                            <field name="ltl_close_time" widget="float_time" invisible="not ltl_enabled"/>
                         </group>
                         <group invisible="not ltl_enabled">
                             <field name="ltl_vendor_id" required="ltl_enabled"/>

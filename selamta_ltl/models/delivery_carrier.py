@@ -46,6 +46,14 @@ class DeliveryCarrier(models.Model):
              'bills. GlobalTranz bills on the BOL number; Priority1 and R+L bills carry '
              'their own invoice number, so those are linked by hand.')
     ltl_scac = fields.Char('SCAC', help='Carrier code printed on the BOL, e.g. XPOL, UPGF.')
+    ltl_dock_open_time = fields.Float(
+        'Dock opens', default=8.0, help='When our dock opens for this carrier (sent with pickups).')
+    ltl_ready_time = fields.Float(
+        'Freight usually ready at', default=10.0,
+        help='Filled in on new shipments as the pickup ready time; change it per shipment.')
+    ltl_close_time = fields.Float(
+        'Dock usually closes at', default=16.0,
+        help='Filled in on new shipments as the time the dock closes; change it per shipment.')
 
     def _ltl_method(self, operation):
         self.ensure_one()

@@ -95,9 +95,6 @@ class DeliveryCarrier(models.Model):
     tforce_schedule_pickup = fields.Boolean(
         'Schedule pickup when booking', default=True,
         help='Ask TForce for a pickup in the same call that creates the BOL.')
-    tforce_ready_time = fields.Char('Freight ready at', default='10:00', help='24h time, e.g. 10:00')
-    tforce_open_time = fields.Char('Dock opens', default='08:00')
-    tforce_close_time = fields.Char('Dock closes', default='16:00')
     tforce_contact_name = fields.Char('Pickup contact name')
     tforce_contact_email = fields.Char('Pickup contact email')
     tforce_contact_phone = fields.Char('Pickup contact phone')
@@ -351,9 +348,9 @@ class DeliveryCarrier(models.Model):
             request['pickupRequest'] = {
                 'pickup': {
                     'date': fields.Date.to_string(shipment.ship_date or fields.Date.context_today(self)),
-                    'time': self._tforce_time(self.tforce_ready_time, '10:00'),
-                    'openTime': self._tforce_time(self.tforce_open_time, '08:00'),
-                    'closeTime': self._tforce_time(self.tforce_close_time, '16:00'),
+                    'time': self._tforce_time(shipment.pickup_ready_time),
+                    'openTime': self._tforce_time(min(self.ltl_dock_open_time, shipment.pickup_ready_time)),
+                    'closeTime': self._tforce_time(shipment.pickup_close_time),
                 },
                 'requester': {
                     'companyName': (company.name or '')[:200],
@@ -366,14 +363,13 @@ class DeliveryCarrier(models.Model):
         return request
 
     @api.model
-    def _tforce_time(self, value, default):
-        value = (value or default).strip()
-        parts = value.split(':')
-        try:
-            hour, minute = int(parts[0]), int(parts[1]) if len(parts) > 1 else 0
-        except ValueError:
-            hour, minute = [int(p) for p in default.split(':')]
-        return '%02d:%02d:00' % (hour, minute)
+    def _tforce_time(self, hours):
+        """10.5 -> '10:30:00'."""
+        hours = hours or 0.0
+        hour, minute = int(hours), int(round((hours - int(hours)) * 60))
+        if minute == 60:
+            hour, minute = hour + 1, 0
+        return '%02d:%02d:00' % (min(hour, 23), minute)
 
     @api.model
     def _tforce_charges(self, rate_detail):

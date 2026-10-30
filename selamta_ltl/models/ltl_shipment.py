@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import base64
+from datetime import timedelta
 import logging
 from collections import defaultdict
 
@@ -70,7 +71,17 @@ class LtlShipment(models.Model):
     freight_terms = fields.Selection(
         [('prepaid', 'Prepaid'), ('collect', 'Collect'), ('third_party', 'Third party')],
         default='prepaid', required=True)
-    ship_date = fields.Date('Pickup date', default=fields.Date.context_today, tracking=True)
+    ship_date = fields.Date(
+        'Pickup date', default=lambda self: self._default_ship_date(), tracking=True,
+        help='The day the carrier picks up. Sent with the rate request and the pickup booking.')
+    pickup_ready_time = fields.Float(
+        'Ready at', compute='_compute_pickup_times', store=True, readonly=False, tracking=True,
+        help='When the freight is ready for the driver. Filled in from the carrier; change it '
+             'before booking if needed.')
+    pickup_close_time = fields.Float(
+        'Dock closes', compute='_compute_pickup_times', store=True, readonly=False, tracking=True,
+        help='Latest time the driver can pick up. Filled in from the carrier.')
+    pickup_warning = fields.Char(compute='_compute_pickup_warning')
     delivered_date = fields.Date('Delivered on', tracking=True, copy=False)
 
     quote_source = fields.Selection(
@@ -166,6 +177,64 @@ class LtlShipment(models.Model):
             if business and 'selamta_receiving_hours' in business._fields:
                 hours = business.selamta_receiving_hours or False
             shipment.receiving_hours = hours
+
+    @api.depends('carrier_id')
+    def _compute_pickup_times(self):
+        for shipment in self:
+            carrier = shipment.carrier_id
+            if carrier:
+                shipment.pickup_ready_time = carrier.ltl_ready_time
+                shipment.pickup_close_time = carrier.ltl_close_time
+            else:
+                shipment.pickup_ready_time = shipment.pickup_ready_time or 10.0
+                shipment.pickup_close_time = shipment.pickup_close_time or 16.0
+
+    @api.depends('ship_date', 'pickup_ready_time', 'pickup_close_time', 'state')
+    def _compute_pickup_warning(self):
+        today = fields.Date.context_today(self)
+        for shipment in self:
+            warning = False
+            if shipment.state == 'draft' and shipment.ship_date:
+                if shipment.ship_date < today:
+                    warning = _('The pickup date is in the past.')
+                elif shipment.ship_date.weekday() >= 5:
+                    warning = _('The pickup date is a %s: most LTL carriers do not pick up on weekends.',
+                                shipment.ship_date.strftime('%A'))
+            if shipment.pickup_close_time <= shipment.pickup_ready_time:
+                warning = _('The dock closes before the freight is ready: check the pickup times.')
+            shipment.pickup_warning = warning
+
+    @api.model
+    def _default_ship_date(self):
+        """Today, or the next weekday when it is the weekend or already past 3 PM."""
+        now = fields.Datetime.context_timestamp(self, fields.Datetime.now())
+        day = now.date()
+        if now.hour >= 15:
+            day += timedelta(days=1)
+        while day.weekday() >= 5:
+            day += timedelta(days=1)
+        return day
+
+    @api.model
+    def _format_time(self, hours):
+        """10.5 -> '10:30 AM'."""
+        hours = hours or 0.0
+        hour, minute = int(hours), int(round((hours - int(hours)) * 60))
+        if minute == 60:
+            hour, minute = hour + 1, 0
+        suffix = 'AM' if hour % 24 < 12 else 'PM'
+        return '%d:%02d %s' % ((hour % 12) or 12, minute, suffix)
+
+    def _check_pickup(self):
+        """Before booking: a pickup date that is not in the past and a sensible window."""
+        today = fields.Date.context_today(self)
+        for shipment in self:
+            if not shipment.ship_date:
+                raise UserError(_('Set the pickup date on %s.', shipment.name))
+            if shipment.ship_date < today:
+                raise UserError(_('The pickup date on %s is in the past.', shipment.name))
+            if shipment.pickup_close_time <= shipment.pickup_ready_time:
+                raise UserError(_('On %s the dock closes before the freight is ready.', shipment.name))
 
     @api.depends('carrier_id')
     def _compute_vendor_id(self):
@@ -510,7 +579,10 @@ class LtlShipment(models.Model):
         if self.quote_number:
             lines.append(_('Carrier quote number: %s', self.quote_number))
         if self.ship_date:
-            lines.append(_('Pickup date: %s', self.ship_date.strftime('%m/%d/%Y')))
+            lines.append(_('Pickup %(day)s %(date)s, ready %(ready)s, dock closes %(close)s',
+                           day=self.ship_date.strftime('%a'), date=self.ship_date.strftime('%m/%d/%Y'),
+                           ready=self._format_time(self.pickup_ready_time),
+                           close=self._format_time(self.pickup_close_time)))
         for service in self.accessorial_ids.filtered(lambda a: a.code.endswith('_PU')):
             lines.append(service.name.upper())
         if self.pickup_instructions:
@@ -597,6 +669,7 @@ class LtlShipment(models.Model):
         for shipment in self:
             if not shipment.carrier_id:
                 raise UserError(_('Choose the carrier on %s before confirming.', shipment.name))
+            shipment._check_pickup()
             shipment._check_units_complete()
             shipment.state = 'booked'
 
