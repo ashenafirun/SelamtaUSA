@@ -38,6 +38,25 @@ PICKUP_OPTIONS = {
 }
 # Our pallet/box -> TForce packaging codes.
 COMMODITY_PACKAGING = {'pallet': 'PLT', 'box': 'BOX'}
+# Rate lines: subtotals left out, discounts shown negative, friendlier names.
+SKIP_CHARGES = {'AFTR_DSCNT', 'DSCNT_RATE'}
+NEGATIVE_CHARGES = {'DSCNT'}
+CHARGE_NAMES = {
+    'LND_GROSS': 'Linehaul before discount',
+    'DSCNT': 'Discount',
+    'FUEL_SUR': 'Fuel surcharge',
+    'LIFD': 'Liftgate at delivery',
+    'LIFO': 'Liftgate at pickup',
+    'INDE': 'Inside delivery',
+    'INPU': 'Inside pickup',
+    'RESD': 'Residential delivery',
+    'RESP': 'Residential pickup',
+    'LADL': 'Limited access delivery',
+    'LAPU': 'Limited access pickup',
+    'NTFN': 'Notify before delivery',
+    'HICST': 'High cost service area',
+    'EXLI': 'Extreme length',
+}
 TRACKING_STATE = {'005': 'in_transit', '006': 'in_transit', '011': 'delivered'}
 DOCUMENT_CATEGORIES = ['DR', 'WGHT', 'BOL', 'INVC']
 DOCUMENT_NAMES = {
@@ -361,16 +380,33 @@ class DeliveryCarrier(models.Model):
 
     @api.model
     def _tforce_charges(self, rate_detail):
+        """TForce's rate lines as charges that add up to the total: gross linehaul, the
+        discount as a negative amount, then fuel and each accessorial. TForce also sends
+        the discount percentage and the after-discount subtotal; those are left out so the
+        lines sum to the total."""
         charges = []
         for line in rate_detail.get('rate') or []:
-            if (line.get('unit') or 'USD').upper() != 'USD':
-                continue  # percentages such as the discount rate
+            code = line.get('code') or ''
+            if (line.get('unit') or 'USD').upper() != 'USD' or code in SKIP_CHARGES:
+                continue
             try:
                 amount = float(line.get('value') or 0.0)
             except (TypeError, ValueError):
                 continue
-            charges.append({'code': line.get('code'), 'name': line.get('description') or line.get('code'),
+            if code in NEGATIVE_CHARGES:
+                amount = -abs(amount)
+            charges.append({'code': code, 'name': CHARGE_NAMES.get(code) or line.get('description') or code,
                             'amount': amount})
+        total = ((rate_detail.get('shipmentCharges') or {}).get('total') or {}).get('value')
+        try:
+            total = float(total)
+        except (TypeError, ValueError):
+            total = None
+        if charges and total is not None:
+            difference = round(total - sum(c['amount'] for c in charges), 2)
+            if abs(difference) >= 0.01:
+                charges.append({'code': 'OTHER', 'name': _('Other (difference to TForce total)'),
+                                'amount': difference})
         return charges
 
     @api.model

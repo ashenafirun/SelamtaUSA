@@ -29,8 +29,10 @@ RATE_ANSWER = {
         'rate': [
             {'code': 'DSCNT', 'description': 'Discount', 'value': '900.00', 'unit': 'USD'},
             {'code': 'DSCNT_RATE', 'description': 'Discount Rate', 'value': '75.00', 'unit': '%'},
-            {'code': 'LIFD', 'description': 'LIFT_GATE_DL', 'value': '60.00', 'unit': 'USD'},
+            {'code': 'LIFD', 'description': 'LIFT_GATE_DL', 'value': '60.40', 'unit': 'USD'},
             {'code': 'FUEL_SUR', 'description': 'Fuel Surcharge Fee', 'value': '52.10', 'unit': 'USD'},
+            {'code': 'LND_GROSS', 'description': 'LND_GROSS', 'value': '1200.00', 'unit': 'USD'},
+            {'code': 'AFTR_DSCNT', 'description': 'AFTR_DSCNT', 'value': '300.00', 'unit': 'USD'},
         ],
         'shipmentCharges': {'total': {'value': '412.50', 'currency': 'USD'}},
         'timeInTransit': {'value': '2', 'unit': 'DAY'},
@@ -131,7 +133,11 @@ class TestTForce(TransactionCase):
         self.assertEqual(rates[0]['total'], 412.5)
         self.assertEqual(rates[0]['transit_days'], 2)
         self.assertEqual(rates[0]['quote_number'], 'Q123456')
-        self.assertEqual([c['code'] for c in rates[0]['charges']], ['DSCNT', 'LIFD', 'FUEL_SUR'])
+        charges = rates[0]['charges']
+        self.assertEqual([c['code'] for c in charges], ['DSCNT', 'LIFD', 'FUEL_SUR', 'LND_GROSS'])
+        self.assertEqual(charges[0]['amount'], -900.0)  # discount shown negative
+        self.assertAlmostEqual(sum(c['amount'] for c in charges), 412.5)  # lines add up to the total
+        self.assertEqual(charges[1]['name'], 'Liftgate at delivery')
 
     def test_token_reused_and_refreshed_after_401(self):
         self.answers['/rating/getRate'] = FakeResponse(200, RATE_ANSWER)
