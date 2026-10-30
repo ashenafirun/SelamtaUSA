@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_ltl_shipment_form" model="ir.ui.view">
+        <field name="name">selamta.ltl.shipment.form</field>
+        <field name="model">selamta.ltl.shipment</field>
+        <field name="arch" type="xml">
+            <form string="LTL shipment">
+                <header>
+                    <button name="action_open_rate_shop" type="object" string="Get rates"
+                            class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_confirm_booking" type="object" string="Confirm booking"
+                            invisible="state != 'draft' or not carrier_id"
+                            help="Use after booking on the carrier's website or by phone; enter the PRO first."/>
+                    <button name="action_print_bol" type="object" string="Print BOL"
+                            invisible="state == 'cancel'"/>
+                    <button name="action_mark_picked_up" type="object" string="Picked up"
+                            invisible="state != 'booked'"/>
+                    <button name="action_mark_delivered" type="object" string="Delivered"
+                            invisible="state != 'in_transit'"/>
+                    <button name="action_update_tracking" type="object" string="Update tracking"
+                            invisible="state not in ('booked', 'in_transit')"/>
+                    <button name="action_fetch_documents" type="object" string="Get carrier documents"
+                            invisible="state not in ('in_transit', 'delivered')"/>
+                    <button name="action_open_rate_shop" type="object" string="Re-shop rates"
+                            invisible="state != 'booked'"/>
+                    <button name="action_cancel" type="object" string="Cancel"
+                            invisible="state in ('cancel', 'delivered')"/>
+                    <button name="action_reset_to_draft" type="object" string="Reset to not booked"
+                            invisible="state != 'cancel'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,booked,in_transit,delivered"/>
+                </header>
+                <div class="alert alert-warning mb-0" role="alert" invisible="not class_warning">
+                    <strong>Class check: </strong><field name="class_warning" class="d-inline"/>
+                </div>
+                <div class="alert alert-danger mb-0" role="alert" invisible="bill_status != 'over'">
+                    <strong>Billed over quote: </strong>
+                    <field name="billed_amount" class="d-inline"/> billed against
+                    <field name="quoted_amount" class="d-inline"/> quoted
+                    (<field name="variance" class="d-inline"/>).
+                </div>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_pickings" type="object" class="oe_stat_button"
+                                icon="fa-truck" invisible="not picking_count">
+                            <field name="picking_count" widget="statinfo" string="Deliveries"/>
+                        </button>
+                        <button name="action_view_bills" type="object" class="oe_stat_button"
+                                icon="fa-file-text-o" invisible="not bill_count">
+                            <field name="bill_count" widget="statinfo" string="Carrier bills"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Load">
+                            <field name="partner_id" readonly="state not in ('draft', 'booked')"/>
+                            <field name="receiving_hours" invisible="not receiving_hours"/>
+                            <field name="shipper_id" readonly="state not in ('draft', 'booked')"/>
+                            <field name="ship_date"/>
+                            <field name="order_refs" invisible="not order_refs"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group string="Carrier">
+                            <field name="carrier_id" options="{'no_create': True}"
+                                   readonly="state not in ('draft', 'booked')"/>
+                            <field name="vendor_id"/>
+                            <field name="freight_terms"/>
+                            <field name="pro_number"/>
+                            <field name="bol_reference"/>
+                            <field name="bol_number" invisible="not bol_number"/>
+                            <field name="pickup_number"/>
+                            <field name="tracking_status" invisible="not tracking_status"/>
+                            <field name="delivered_date" invisible="state != 'delivered'"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Pallets and boxes" name="units">
+                            <field name="unit_ids" readonly="state not in ('draft', 'booked')">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="quantity"/>
+                                    <field name="unit_type"/>
+                                    <field name="package_type_id" optional="show" options="{'no_create': True}"/>
+                                    <field name="description"/>
+                                    <field name="length"/>
+                                    <field name="width"/>
+                                    <field name="height"/>
+                                    <field name="weight" sum="Total"/>
+                                    <field name="cube" sum="Total" optional="show"/>
+                                    <field name="density" optional="show"/>
+                                    <field name="density_class" optional="show"/>
+                                    <field name="class_override" optional="show"/>
+                                    <field name="freight_class" decoration-warning="class_note"/>
+                                    <field name="nmfc_item" optional="show"/>
+                                    <field name="nmfc_sub" optional="hide"/>
+                                    <field name="package_id" optional="hide"/>
+                                    <field name="class_note" column_invisible="True"/>
+                                </list>
+                            </field>
+                            <group class="oe_subtotal_footer">
+                                <field name="total_units"/>
+                                <field name="total_weight"/>
+                                <field name="total_cube"/>
+                                <field name="density"/>
+                            </group>
+                        </page>
+                        <page string="Services and instructions" name="services">
+                            <group>
+                                <field name="accessorial_ids" widget="many2many_tags"/>
+                                <field name="special_instructions" placeholder="Printed on the BOL, e.g. dock door, contact name"/>
+                            </group>
+                        </page>
+                        <page string="Quote" name="quote">
+                            <group>
+                                <group>
+                                    <field name="quoted_amount"/>
+                                    <field name="quote_number"/>
+                                    <field name="quote_source"/>
+                                </group>
+                                <group>
+                                    <field name="quote_expires"/>
+                                    <field name="transit_days"/>
+                                </group>
+                            </group>
+                            <field name="charge_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="code" optional="show"/>
+                                    <field name="name"/>
+                                    <field name="amount" sum="Total"/>
+                                    <field name="currency_id" column_invisible="True"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Carrier bills" name="bills">
+                            <group>
+                                <group>
+                                    <field name="quoted_amount" string="Quoted"/>
+                                    <field name="billed_amount"/>
+                                </group>
+                                <group>
+                                    <field name="variance"/>
+                                    <field name="variance_percent" widget="float" digits="[16, 1]"/>
+                                    <field name="bill_status"/>
+                                </group>
+                            </group>
+                            <field name="bill_ids" options="{'no_create': True}"
+                                   context="{'default_move_type': 'in_invoice'}">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="partner_id"/>
+                                    <field name="ref"/>
+                                    <field name="invoice_date"/>
+                                    <field name="amount_total" sum="Total"/>
+                                    <field name="state"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_ltl_shipment_list" model="ir.ui.view">
+        <field name="name">selamta.ltl.shipment.list</field>
+        <field name="model">selamta.ltl.shipment</field>
+        <field name="arch" type="xml">
+            <list string="LTL shipments" decoration-muted="state == 'cancel'"
+                  decoration-danger="bill_status == 'over'">
+                <field name="name"/>
+                <field name="ship_date"/>
+                <field name="partner_id"/>
+                <field name="carrier_id"/>
+                <field name="vendor_id" optional="hide"/>
+                <field name="pro_number"/>
+                <field name="total_units" optional="show"/>
+                <field name="total_weight" optional="show" sum="Total"/>
+                <field name="quoted_amount" sum="Total"/>
+                <field name="billed_amount" sum="Total"/>
+                <field name="variance" sum="Total"/>
+                <field name="bill_status" widget="badge"
+                       decoration-success="bill_status == 'ok'"
+                       decoration-danger="bill_status == 'over'"
+                       decoration-info="bill_status == 'under'"
+                       decoration-warning="bill_status == 'no_quote'"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'booked'"
+                       decoration-warning="state == 'in_transit'"
+                       decoration-success="state == 'delivered'"/>
+                <field name="currency_id" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ltl_shipment_search" model="ir.ui.view">
+        <field name="name">selamta.ltl.shipment.search</field>
+        <field name="model">selamta.ltl.shipment</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="pro_number"/>
+                <field name="partner_id"/>
+                <field name="carrier_id"/>
+                <field name="vendor_id"/>
+                <filter name="not_booked" string="Not booked" domain="[('state', '=', 'draft')]"/>
+                <filter name="open" string="Booked or in transit" domain="[('state', 'in', ('booked', 'in_transit'))]"/>
+                <filter name="delivered" string="Delivered" domain="[('state', '=', 'delivered')]"/>
+                <separator/>
+                <filter name="over" string="Billed over quote" domain="[('bill_status', '=', 'over')]"/>
+                <filter name="no_quote" string="Billed, no quote" domain="[('bill_status', '=', 'no_quote')]"/>
+                <filter name="not_billed" string="Not billed yet"
+                        domain="[('bill_status', '=', 'not_billed'), ('state', 'in', ('in_transit', 'delivered'))]"/>
+                <filter name="class_check" string="Class to check" domain="[('class_warning', '!=', False)]"/>
+                <separator/>
+                <filter name="ship_date" string="Pickup date" date="ship_date"/>
+                <group expand="0" string="Group by">
+                    <filter name="group_carrier" string="Carrier" context="{'group_by': 'carrier_id'}"/>
+                    <filter name="group_vendor" string="Bills come from" context="{'group_by': 'vendor_id'}"/>
+                    <filter name="group_bill_status" string="Bill check" context="{'group_by': 'bill_status'}"/>
+                    <filter name="group_month" string="Month" context="{'group_by': 'ship_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ltl_shipment" model="ir.actions.act_window">
+        <field name="name">LTL shipments</field>
+        <field name="res_model">selamta.ltl.shipment</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_ltl_shipment_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No LTL shipments yet</p>
+            <p>Open a delivery order and click <b>LTL shipment</b>. Its pallets and boxes are
+               filled in from the packages; measure each one so the class can be worked out.</p>
+        </field>
+    </record>
+
+    <record id="action_ltl_bill_check" model="ir.actions.act_window">
+        <field name="name">LTL bill check</field>
+        <field name="res_model">selamta.ltl.shipment</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_ltl_shipment_search"/>
+        <field name="context">{'search_default_over': 1, 'search_default_group_vendor': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No carrier bill over its quote</p>
+            <p>Carrier bills are matched to shipments by PRO when they are confirmed, and daily.</p>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,14 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_ltl_shipment_stock_user,ltl.shipment stock user,model_selamta_ltl_shipment,stock.group_stock_user,1,1,1,0
+access_ltl_shipment_stock_manager,ltl.shipment stock manager,model_selamta_ltl_shipment,stock.group_stock_manager,1,1,1,1
+access_ltl_shipment_account,ltl.shipment billing,model_selamta_ltl_shipment,account.group_account_invoice,1,1,0,0
+access_ltl_unit_stock_user,ltl.unit stock user,model_selamta_ltl_shipment_unit,stock.group_stock_user,1,1,1,1
+access_ltl_unit_account,ltl.unit billing,model_selamta_ltl_shipment_unit,account.group_account_invoice,1,0,0,0
+access_ltl_charge_stock_user,ltl.charge stock user,model_selamta_ltl_shipment_charge,stock.group_stock_user,1,1,1,1
+access_ltl_charge_account,ltl.charge billing,model_selamta_ltl_shipment_charge,account.group_account_invoice,1,0,0,0
+access_ltl_accessorial_user,ltl.accessorial user,model_selamta_ltl_accessorial,base.group_user,1,0,0,0
+access_ltl_accessorial_manager,ltl.accessorial manager,model_selamta_ltl_accessorial,stock.group_stock_manager,1,1,1,1
+access_ltl_density_user,ltl.density user,model_selamta_ltl_density_scale,base.group_user,1,0,0,0
+access_ltl_density_manager,ltl.density manager,model_selamta_ltl_density_scale,stock.group_stock_manager,1,1,1,1
+access_ltl_rate_wizard,ltl.rate.wizard,model_selamta_ltl_rate_wizard,stock.group_stock_user,1,1,1,1
+access_ltl_rate_wizard_line,ltl.rate.wizard.line,model_selamta_ltl_rate_wizard_line,stock.group_stock_user,1,1,1,1

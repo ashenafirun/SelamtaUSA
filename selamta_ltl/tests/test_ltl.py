@@ -1,0 +1,314 @@
+# -*- coding: utf-8 -*-
+from unittest.mock import patch
+
+from odoo import fields
+from odoo.tests import tagged
+
+from odoo.addons.account.tests.common import AccountTestInvoicingCommon
+
+
+@tagged('post_install', '-at_install')
+class TestLtl(AccountTestInvoicingCommon):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        env = cls.env
+        Partner = env['res.partner']
+        cls.tforce = Partner.create({'name': 'TForce Freight', 'is_company': True})
+        cls.aaa = Partner.create({'name': 'AAA Cooper', 'is_company': True})
+        cls.gtz = Partner.create({'name': 'GlobalTranz', 'is_company': True})
+        cls.p1 = Partner.create({'name': 'Priority1', 'is_company': True})
+        cls.customer = Partner.create({
+            'name': 'Test Market', 'is_company': True, 'street': '1 Main St',
+            'city': 'Atlanta', 'zip': '30303', 'country_id': env.ref('base.us').id,
+        })
+        freight_product = env['product.product'].create({'name': 'Freight', 'type': 'service'})
+
+        def carrier(name, vendor, match_on='pro'):
+            return env['delivery.carrier'].create({
+                'name': name, 'product_id': freight_product.id, 'ltl_enabled': True,
+                'ltl_vendor_id': vendor.id, 'ltl_match_on': match_on,
+            })
+
+        cls.c_tforce = carrier('TForce', cls.tforce)
+        cls.c_aaa = carrier('AAA Cooper', cls.aaa)
+        cls.c_gtz = carrier('GlobalTranz', cls.gtz, 'bol')
+        cls.c_p1 = carrier('Priority1 / XPO', cls.p1, 'manual')
+
+    # ------------------------------------------------------------------ helpers
+
+    def _shipment(self, carrier, pro=False, quoted=0.0, **units):
+        unit = {'quantity': 1, 'unit_type': 'pallet', 'description': 'Spices',
+                'length': 48, 'width': 40, 'height': 60, 'weight': 900}
+        unit.update(units)
+        return self.env['selamta.ltl.shipment'].create({
+            'partner_id': self.customer.id,
+            'carrier_id': carrier.id,
+            'pro_number': pro,
+            'quoted_amount': quoted,
+            'unit_ids': [(0, 0, unit)],
+        })
+
+    def _bill(self, vendor, ref, amount, move_type='in_invoice', post=True):
+        bill = self.env['account.move'].create({
+            'move_type': move_type,
+            'partner_id': vendor.id,
+            'invoice_date': fields.Date.today(),
+            'ref': ref,
+            'invoice_line_ids': [(0, 0, {
+                'name': 'Freight', 'quantity': 1, 'price_unit': amount, 'tax_ids': [(6, 0, [])],
+            })],
+        })
+        if post:
+            bill.action_post()
+        return bill
+
+    # ------------------------------------------------------------------ class from dimensions
+
+    def test_class_from_pallet_dimensions(self):
+        shipment = self._shipment(self.c_tforce)  # 48x40x60 in, 900 lb
+        unit = shipment.unit_ids
+        self.assertAlmostEqual(unit.cube, 66.67, places=2)
+        self.assertAlmostEqual(unit.density, 13.5, places=2)
+        self.assertEqual(unit.density_class, '85')  # 12 to <15 lb/ft3
+        self.assertEqual(unit.freight_class, '85')
+        self.assertFalse(unit.class_note)
+        self.assertFalse(shipment.class_warning)
+
+        unit.write({'height': 48, 'weight': 1000})  # 53.33 ft3 -> 18.75 lb/ft3
+        self.assertEqual(unit.freight_class, '70')
+
+    def test_density_scale_edges(self):
+        scale = self.env['selamta.ltl.density.scale']
+        self.assertEqual(scale._class_for_density(0.5), '400')
+        self.assertEqual(scale._class_for_density(15.0), '70')
+        self.assertEqual(scale._class_for_density(14.99), '85')
+        self.assertEqual(scale._class_for_density(50.0), '50')
+        self.assertFalse(scale._class_for_density(0))
+
+    def test_box_and_count(self):
+        shipment = self._shipment(self.c_tforce, unit_type='box', quantity=4,
+                                  length=24, width=20, height=20, weight=300)
+        unit = shipment.unit_ids
+        self.assertAlmostEqual(unit.cube, 22.22, places=2)  # 4 x 24x20x20 in
+        self.assertAlmostEqual(unit.density, 13.5, places=2)  # 300 lb / 22.22 ft3
+        self.assertEqual(unit.freight_class, '85')
+
+    def test_class_override_notes(self):
+        shipment = self._shipment(self.c_tforce)  # measures 13.5 -> class 85
+        unit = shipment.unit_ids
+        unit.class_override = '70'
+        self.assertEqual(unit.freight_class, '70')
+        self.assertIn('reclass', unit.class_note)
+        self.assertTrue(shipment.class_warning)
+        unit.class_override = '100'
+        self.assertIn('higher class', unit.class_note)
+        unit.class_override = '85'
+        self.assertFalse(unit.class_note)
+
+    def test_nmfc_item_own_scale(self):
+        Scale = self.env['selamta.ltl.density.scale']
+        Scale.create([
+            {'nmfc_item': '99999', 'min_density': 0, 'freight_class': '100'},
+            {'nmfc_item': '99999', 'min_density': 13.5, 'freight_class': '77.5'},
+        ])
+        shipment = self._shipment(self.c_tforce, nmfc_item='99999', height=58)  # 13.97 lb/ft3
+        self.assertEqual(shipment.unit_ids.freight_class, '77.5')
+
+    def test_missing_dimensions(self):
+        shipment = self._shipment(self.c_tforce, height=0)
+        self.assertFalse(shipment.unit_ids.freight_class)
+        self.assertIn('measure', shipment.unit_ids.class_note)
+        with self.assertRaises(Exception):
+            shipment.action_confirm_booking()
+
+    # ------------------------------------------------------------------ bill matching
+
+    def test_match_exact_and_variance(self):
+        shipment = self._shipment(self.c_tforce, pro='123456789', quoted=500)
+        bill = self._bill(self.tforce, '123456789', 560)
+        self.assertEqual(bill.ltl_shipment_ids, shipment)
+        self.assertEqual(shipment.billed_amount, 560)
+        self.assertEqual(shipment.variance, 60)
+        self.assertEqual(shipment.bill_status, 'over')
+        self.assertEqual(bill.ltl_variance, 60)
+
+    def test_match_within_tolerance(self):
+        shipment = self._shipment(self.c_tforce, pro='223456789', quoted=500)
+        self._bill(self.tforce, '223456789', 500.75)
+        self.assertEqual(shipment.bill_status, 'ok')
+
+    def test_match_check_digit_on_booking(self):
+        shipment = self._shipment(self.c_aaa, pro='77637580-0', quoted=400)
+        bill = self._bill(self.aaa, '77637580', 400)
+        self.assertEqual(bill.ltl_shipment_ids, shipment)
+        self.assertIn('check digit on booking', bill.ltl_match_note)
+
+    def test_match_dash_and_leading_one(self):
+        dashed = self._shipment(self.c_tforce, pro='476103633', quoted=100)
+        bill = self._bill(self.tforce, '476-103633', 100)
+        self.assertEqual(bill.ltl_shipment_ids, dashed)
+        short = self._shipment(self.c_tforce, pro='23456700', quoted=100)
+        bill2 = self._bill(self.tforce, '123456700', 100)
+        self.assertEqual(bill2.ltl_shipment_ids, short)
+        self.assertIn('leading 1 on bill', bill2.ltl_match_note)
+
+    def test_exact_wins_over_check_digit(self):
+        exact = self._shipment(self.c_tforce, pro='888888888', quoted=100)
+        self._shipment(self.c_tforce, pro='8888888881', quoted=100)
+        bill = self._bill(self.tforce, '888888888', 100)
+        self.assertEqual(bill.ltl_shipment_ids, exact)
+
+    def test_ambiguous_is_left_alone(self):
+        self._shipment(self.c_tforce, pro='555555551', quoted=100)
+        self._shipment(self.c_tforce, pro='555555552', quoted=100)
+        bill = self._bill(self.tforce, '55555555', 100)
+        self.assertFalse(bill.ltl_shipment_ids)
+        self.assertIn('Several', bill.ltl_match_note)
+
+    def test_other_vendor_and_cancelled_not_matched(self):
+        self._shipment(self.c_tforce, pro='333333333', quoted=100)
+        bill = self._bill(self.aaa, '333333333', 100)
+        self.assertFalse(bill.ltl_shipment_ids)
+        cancelled = self._shipment(self.c_aaa, pro='444444444', quoted=100)
+        cancelled.action_cancel()
+        bill2 = self._bill(self.aaa, '444444444', 100)
+        self.assertFalse(bill2.ltl_shipment_ids)
+
+    def test_match_on_bol_number(self):
+        shipment = self._shipment(self.c_gtz, quoted=250)
+        bill = self._bill(self.gtz, shipment.name, 250)
+        self.assertEqual(bill.ltl_shipment_ids, shipment)
+        self.assertEqual(shipment.bill_status, 'ok')
+
+    def test_manual_vendor_not_auto_matched(self):
+        self._shipment(self.c_p1, pro='666666666', quoted=300)
+        bill = self._bill(self.p1, '666666666', 300)
+        self.assertFalse(bill.ltl_shipment_ids)
+
+    def test_statement_split_and_refund(self):
+        first = self._shipment(self.c_aaa, pro='710000001', quoted=100)
+        second = self._shipment(self.c_aaa, pro='710000002', quoted=300)
+        statement = self._bill(self.aaa, 'STATEMENT', 480, post=False)
+        statement.ltl_shipment_ids = [(6, 0, (first | second).ids)]
+        statement.action_post()
+        self.assertAlmostEqual(first.billed_amount, 120)
+        self.assertAlmostEqual(second.billed_amount, 360)
+        credit = self._bill(self.aaa, '710000001', 20, move_type='in_refund')
+        self.assertEqual(credit.ltl_shipment_ids, first)
+        self.assertAlmostEqual(first.billed_amount, 100)
+        self.assertEqual(first.bill_status, 'ok')
+
+    def test_cron_matches_draft_bills(self):
+        shipment = self._shipment(self.c_tforce, pro='909090909', quoted=200)
+        bill = self._bill(self.tforce, '909090909', 200, post=False)
+        self.assertFalse(bill.ltl_shipment_ids)
+        self.env['account.move']._cron_ltl_match_bills()
+        self.assertEqual(bill.ltl_shipment_ids, shipment)
+
+    # ------------------------------------------------------------------ deliveries, BOL, rate shop
+
+    def test_from_delivery_order(self):
+        product = self.env['product.product'].create({
+            'name': 'Berbere 1 lb', 'is_storable': True, 'weight': 10.0})
+        warehouse = self.env['stock.warehouse'].search(
+            [('company_id', '=', self.env.company.id)], limit=1)
+        picking = self.env['stock.picking'].create({
+            'picking_type_id': warehouse.out_type_id.id,
+            'partner_id': self.customer.id,
+            'location_id': warehouse.lot_stock_id.id,
+            'location_dest_id': self.env.ref('stock.stock_location_customers').id,
+            'move_ids': [(0, 0, {
+                'name': product.name, 'product_id': product.id, 'product_uom_qty': 20,
+                'product_uom': product.uom_id.id,
+                'location_id': warehouse.lot_stock_id.id,
+                'location_dest_id': self.env.ref('stock.stock_location_customers').id,
+            })],
+        })
+        picking.carrier_id = self.c_tforce
+        picking.action_ltl_shipment()
+        shipment = picking.ltl_shipment_id
+        self.assertTrue(shipment)
+        self.assertEqual(shipment.carrier_id, self.c_tforce)
+        self.assertEqual(len(shipment.unit_ids), 1)
+        weight_uom = self.env['product.template']._get_weight_uom_id_from_ir_config_parameter()
+        expected = weight_uom._compute_quantity(200.0, self.env.ref('uom.product_uom_lb'), round=False)
+        self.assertAlmostEqual(shipment.unit_ids.weight, round(expected), places=0)
+        self.assertEqual(shipment.unit_ids.unit_type, 'pallet')
+        shipment.pro_number = '135792468'
+        self.assertEqual(picking.carrier_tracking_ref, '135792468')
+        # Same delivery again opens the same shipment.
+        picking.action_ltl_shipment()
+        self.assertEqual(self.env['selamta.ltl.shipment'].search_count(
+            [('picking_ids', 'in', picking.ids)]), 1)
+
+    def test_package_type_fills_unit(self):
+        package_type = self.env['stock.package.type'].create({
+            'name': 'GMA pallet', 'ltl_unit_type': 'pallet',
+            'packaging_length': 48, 'width': 40, 'height': 0,
+        })
+        unit = self.env['selamta.ltl.shipment.unit'].new({'package_type_id': package_type.id})
+        unit._onchange_package_type_id()
+        to_inch = self.env.ref('uom.product_uom_inch')
+        length_uom = self.env['product.template']._get_length_uom_id_from_ir_config_parameter()
+        self.assertAlmostEqual(unit.length, round(length_uom._compute_quantity(48, to_inch, round=False), 1))
+        self.assertEqual(unit.unit_type, 'pallet')
+
+    def test_bol_renders(self):
+        shipment = self._shipment(self.c_tforce, pro='246813579', quoted=300)
+        shipment.accessorial_ids = self.env.ref('selamta_ltl.accessorial_liftgate_delivery')
+        html = self.env['ir.actions.report']._render_qweb_html(
+            'selamta_ltl.report_ltl_bol', shipment.ids)[0].decode()
+        self.assertIn(shipment.name, html)
+        self.assertIn('246813579', html)
+        self.assertIn('NO INSIDE DELIVERY', html)
+        self.assertIn('Liftgate at delivery', html)
+        self.assertIn('>85<', html)
+
+    def test_rate_shop_and_booking_through_connection(self):
+        shipment = self._shipment(self.c_tforce)
+        Carrier = type(self.env['delivery.carrier'])
+
+        def fake_rate(carrier, shipment):
+            if carrier == self.c_tforce:
+                return [{'total': 412.5, 'transit_days': 2, 'quote_number': 'Q1',
+                         'charges': [{'code': 'GFC', 'name': 'Linehaul', 'amount': 412.5}]}]
+            return [{'total': 999.0, 'transit_days': 1}]
+
+        def fake_book(carrier, shipment, rate):
+            return {'pro_number': '900000001', 'pickup_number': 'PU77',
+                    'documents': [('BOL.pdf', b'%PDF-1.4 test')]}
+
+        with patch.object(Carrier, 'fixed_ltl_rate', fake_rate, create=True), \
+                patch.object(Carrier, 'fixed_ltl_book', fake_book, create=True):
+            action = shipment.action_open_rate_shop()
+            wizard = self.env['selamta.ltl.rate.wizard'].browse(action['res_id'])
+            cheapest = wizard.line_ids.sorted('total')[0]
+            self.assertEqual(cheapest.carrier_id, self.c_tforce)
+            cheapest.action_choose()
+
+        self.assertEqual(shipment.state, 'booked')
+        self.assertEqual(shipment.quoted_amount, 412.5)
+        self.assertEqual(shipment.quote_number, 'Q1')
+        self.assertEqual(shipment.pro_number, '900000001')
+        self.assertEqual(shipment.pickup_number, 'PU77')
+        self.assertEqual(len(shipment.charge_ids), 1)
+        attachments = self.env['ir.attachment'].search(
+            [('res_model', '=', shipment._name), ('res_id', '=', shipment.id)])
+        self.assertIn('BOL.pdf', attachments.mapped('name'))
+
+    def test_rate_shop_without_connections(self):
+        shipment = self._shipment(self.c_tforce)
+        action = shipment.action_open_rate_shop()
+        wizard = self.env['selamta.ltl.rate.wizard'].browse(action['res_id'])
+        self.assertFalse(wizard.line_ids)
+        self.assertTrue(wizard.message)
+        line = self.env['selamta.ltl.rate.wizard.line'].create({
+            'wizard_id': wizard.id, 'carrier_id': self.c_aaa.id, 'source': 'website',
+            'total': 350.0, 'quote_number': 'WEB-1'})
+        line.action_choose()
+        self.assertEqual(shipment.state, 'draft')
+        self.assertEqual(shipment.carrier_id, self.c_aaa)
+        self.assertEqual(shipment.vendor_id, self.aaa)
+        self.assertEqual(shipment.quoted_amount, 350.0)

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="stock_package_type_form_ltl" model="ir.ui.view">
+        <field name="name">stock.package.type.form.ltl</field>
+        <field name="model">stock.package.type</field>
+        <field name="inherit_id" ref="stock.stock_package_type_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='barcode']" position="before">
+                <field name="ltl_unit_type"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="stock_package_type_list_ltl" model="ir.ui.view">
+        <field name="name">stock.package.type.list.ltl</field>
+        <field name="model">stock.package.type</field>
+        <field name="inherit_id" ref="stock.stock_package_type_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="ltl_unit_type" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

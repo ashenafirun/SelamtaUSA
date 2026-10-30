@@ -1,0 +1,669 @@
+# -*- coding: utf-8 -*-
+import base64
+import logging
+from collections import defaultdict
+
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
+from odoo.tools import float_round
+
+from .ltl_common import FREIGHT_CLASSES, UNIT_TYPES, class_number, digits_only
+
+_logger = logging.getLogger(__name__)
+
+CUBIC_INCHES_PER_FOOT = 1728.0
+DEFAULT_TOLERANCE = 1.0
+INSIDE_DELIVERY_CODE = 'INSIDE_DEL'
+
+
+class LtlShipment(models.Model):
+    _name = 'selamta.ltl.shipment'
+    _description = 'LTL shipment'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _order = 'ship_date desc, id desc'
+
+    name = fields.Char(
+        'Reference', required=True, copy=False, readonly=True, index=True,
+        default=lambda self: _('New'),
+        help='Our shipment number. Printed as the BOL number unless the carrier or broker '
+             'assigns its own.')
+    company_id = fields.Many2one(
+        'res.company', required=True, index=True, default=lambda self: self.env.company)
+    currency_id = fields.Many2one(related='company_id.currency_id')
+    state = fields.Selection(
+        [
+            ('draft', 'Not booked'),
+            ('booked', 'Booked'),
+            ('in_transit', 'Picked up'),
+            ('delivered', 'Delivered'),
+            ('cancel', 'Cancelled'),
+        ],
+        default='draft', required=True, tracking=True, copy=False, index=True)
+
+    picking_ids = fields.One2many('stock.picking', 'ltl_shipment_id', 'Delivery orders')
+    picking_count = fields.Integer(compute='_compute_picking_count')
+    order_refs = fields.Char(
+        'Order references', compute='_compute_order_refs',
+        help='Sales orders and customer PO numbers of the delivery orders on this shipment.')
+
+    shipper_id = fields.Many2one(
+        'res.partner', 'Ship from', required=True,
+        default=lambda self: self.env.company.partner_id)
+    partner_id = fields.Many2one('res.partner', 'Consignee', required=True, tracking=True)
+    receiving_hours = fields.Char(compute='_compute_receiving_hours')
+
+    carrier_id = fields.Many2one(
+        'delivery.carrier', 'Carrier', tracking=True, domain=[('ltl_enabled', '=', True)])
+    vendor_id = fields.Many2one(
+        'res.partner', 'Bills come from', compute='_compute_vendor_id', store=True,
+        readonly=False, index=True, tracking=True,
+        help='The vendor whose bill pays for this shipment. Taken from the carrier.')
+    freight_terms = fields.Selection(
+        [('prepaid', 'Prepaid'), ('collect', 'Collect'), ('third_party', 'Third party')],
+        default='prepaid', required=True)
+    ship_date = fields.Date('Pickup date', default=fields.Date.context_today, tracking=True)
+    delivered_date = fields.Date('Delivered on', tracking=True, copy=False)
+
+    quote_source = fields.Selection(
+        [('api', 'Carrier connection'), ('website', 'Carrier website'), ('phone', 'Phone / email')],
+        'Quote from', copy=False)
+    quote_number = fields.Char(tracking=True, copy=False)
+    quote_expires = fields.Date(copy=False)
+    transit_days = fields.Integer(copy=False)
+    quoted_amount = fields.Monetary('Quoted', tracking=True, copy=False)
+    charge_ids = fields.One2many(
+        'selamta.ltl.shipment.charge', 'shipment_id', 'Quoted charges', copy=False)
+
+    pro_number = fields.Char('PRO', tracking=True, copy=False, index=True)
+    pro_digits = fields.Char(compute='_compute_digits', store=True, index=True)
+    bol_number = fields.Char(
+        'Carrier BOL number', copy=False, tracking=True,
+        help='Only when the carrier or broker gives the load its own BOL number.')
+    bol_reference = fields.Char('BOL number', compute='_compute_bol_reference')
+    bol_digits = fields.Char(compute='_compute_digits', store=True, index=True)
+    pickup_number = fields.Char('Pickup confirmation', copy=False)
+    tracking_status = fields.Char('Carrier status', copy=False)
+
+    accessorial_ids = fields.Many2many(
+        'selamta.ltl.accessorial', string='Services ordered',
+        help='Extra services ordered from the carrier. Anything not listed is not authorized '
+             'and is printed that way on the BOL.')
+    special_instructions = fields.Text()
+    inside_delivery_ordered = fields.Boolean(compute='_compute_inside_delivery_ordered')
+
+    unit_ids = fields.One2many(
+        'selamta.ltl.shipment.unit', 'shipment_id', 'Handling units', copy=True)
+    total_units = fields.Integer('Handling units', compute='_compute_totals', store=True)
+    total_weight = fields.Float('Weight (lb)', compute='_compute_totals', store=True)
+    total_cube = fields.Float('Cube (ft³)', compute='_compute_totals', store=True, digits=(16, 2))
+    density = fields.Float('Density (lb/ft³)', compute='_compute_totals', store=True, digits=(16, 2))
+    class_warning = fields.Text(compute='_compute_class_warning', store=True)
+
+    bill_ids = fields.Many2many(
+        'account.move', 'selamta_ltl_shipment_move_rel', 'shipment_id', 'move_id',
+        'Carrier bills', copy=False, domain=[('move_type', 'in', ('in_invoice', 'in_refund'))])
+    bill_count = fields.Integer(compute='_compute_bill_count')
+    billed_amount = fields.Monetary('Billed', compute='_compute_billing', store=True)
+    variance = fields.Monetary(
+        compute='_compute_billing', store=True,
+        help='Billed minus quoted. Positive means the carrier billed more than the quote.')
+    variance_percent = fields.Float('Variance %', compute='_compute_billing', store=True)
+    bill_status = fields.Selection(
+        [
+            ('not_billed', 'Not billed'),
+            ('ok', 'Billed as quoted'),
+            ('over', 'Billed over quote'),
+            ('under', 'Billed under quote'),
+            ('no_quote', 'Billed, no quote on file'),
+        ],
+        compute='_compute_billing', store=True, index=True)
+
+    # ------------------------------------------------------------------ computes
+
+    @api.depends('picking_ids')
+    def _compute_picking_count(self):
+        for shipment in self:
+            shipment.picking_count = len(shipment.picking_ids)
+
+    @api.depends('picking_ids.origin', 'picking_ids.sale_id.client_order_ref')
+    def _compute_order_refs(self):
+        for shipment in self:
+            refs = []
+            for picking in shipment.picking_ids:
+                sale = picking.sale_id if 'sale_id' in picking._fields else False
+                for ref in (picking.origin, sale and sale.client_order_ref):
+                    if ref and ref not in refs:
+                        refs.append(ref)
+            shipment.order_refs = ', '.join(refs) or False
+
+    @api.depends('partner_id')
+    def _compute_receiving_hours(self):
+        for shipment in self:
+            business = shipment.partner_id.commercial_partner_id
+            hours = False
+            if business and 'selamta_receiving_hours' in business._fields:
+                hours = business.selamta_receiving_hours or False
+            shipment.receiving_hours = hours
+
+    @api.depends('carrier_id')
+    def _compute_vendor_id(self):
+        for shipment in self:
+            vendor = shipment.carrier_id.ltl_vendor_id
+            shipment.vendor_id = vendor.commercial_partner_id if vendor else shipment.vendor_id
+
+    @api.depends('pro_number', 'bol_number', 'name')
+    def _compute_digits(self):
+        for shipment in self:
+            shipment.pro_digits = digits_only(shipment.pro_number) or False
+            shipment.bol_digits = digits_only(shipment.bol_number or shipment.name) or False
+
+    @api.depends('bol_number', 'name')
+    def _compute_bol_reference(self):
+        for shipment in self:
+            shipment.bol_reference = shipment.bol_number or shipment.name
+
+    @api.depends('unit_ids.quantity', 'unit_ids.weight', 'unit_ids.cube')
+    def _compute_totals(self):
+        for shipment in self:
+            units = shipment.unit_ids
+            shipment.total_units = sum(units.mapped('quantity'))
+            shipment.total_weight = sum(units.mapped('weight'))
+            shipment.total_cube = sum(units.mapped('cube'))
+            shipment.density = (
+                shipment.total_weight / shipment.total_cube if shipment.total_cube else 0.0)
+
+    @api.depends('unit_ids.class_note', 'unit_ids.freight_class', 'unit_ids.sequence')
+    def _compute_class_warning(self):
+        for shipment in self:
+            notes = []
+            for index, unit in enumerate(shipment.unit_ids.sorted('sequence'), start=1):
+                if unit.class_note:
+                    notes.append(_('Line %(n)s: %(note)s', n=index, note=unit.class_note))
+            shipment.class_warning = '\n'.join(notes) or False
+
+    @api.depends('bill_ids')
+    def _compute_bill_count(self):
+        for shipment in self:
+            shipment.bill_count = len(shipment.bill_ids)
+
+    @api.depends(
+        'quoted_amount', 'bill_ids.amount_total', 'bill_ids.state', 'bill_ids.move_type',
+        'bill_ids.ltl_shipment_ids', 'bill_ids.ltl_shipment_ids.quoted_amount')
+    def _compute_billing(self):
+        tolerance = self._variance_tolerance()
+        for shipment in self:
+            billed = 0.0
+            bills = shipment.bill_ids.filtered(lambda m: m.state != 'cancel')
+            for bill in bills:
+                sign = -1.0 if bill.move_type == 'in_refund' else 1.0
+                billed += sign * bill.amount_total * shipment._bill_share(bill)
+            billed = float_round(billed, precision_digits=2)
+            shipment.billed_amount = billed
+            if not bills:
+                shipment.variance = 0.0
+                shipment.variance_percent = 0.0
+                shipment.bill_status = 'not_billed'
+                continue
+            if not shipment.quoted_amount:
+                shipment.variance = 0.0
+                shipment.variance_percent = 0.0
+                shipment.bill_status = 'no_quote'
+                continue
+            variance = float_round(billed - shipment.quoted_amount, precision_digits=2)
+            shipment.variance = variance
+            shipment.variance_percent = variance / shipment.quoted_amount * 100.0
+            if abs(variance) <= tolerance:
+                shipment.bill_status = 'ok'
+            else:
+                shipment.bill_status = 'over' if variance > 0 else 'under'
+
+    def _bill_share(self, bill):
+        """Part of a bill that belongs to this shipment. A bill that covers several
+        shipments (a statement) is split in proportion to their quotes, or evenly when a
+        quote is missing."""
+        self.ensure_one()
+        shipments = bill.ltl_shipment_ids
+        if len(shipments) <= 1:
+            return 1.0
+        quoted = shipments.mapped('quoted_amount')
+        if all(q > 0 for q in quoted):
+            return self.quoted_amount / sum(quoted)
+        return 1.0 / len(shipments)
+
+    @api.model
+    def _variance_tolerance(self):
+        value = self.env['ir.config_parameter'].sudo().get_param(
+            'selamta_ltl.variance_tolerance', DEFAULT_TOLERANCE)
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return DEFAULT_TOLERANCE
+
+    # ------------------------------------------------------------------ CRUD
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if not vals.get('name') or vals.get('name') == _('New'):
+                vals['name'] = self.env['ir.sequence'].next_by_code('selamta.ltl.shipment') or _('New')
+        shipments = super().create(vals_list)
+        shipments._sync_pickings()
+        return shipments
+
+    def write(self, vals):
+        res = super().write(vals)
+        if {'pro_number', 'carrier_id'} & set(vals):
+            self._sync_pickings()
+        return res
+
+    def _sync_pickings(self):
+        """Keep the carrier and tracking reference on the delivery orders in step."""
+        for shipment in self:
+            for picking in shipment.picking_ids:
+                vals = {}
+                if shipment.carrier_id and picking.carrier_id != shipment.carrier_id:
+                    vals['carrier_id'] = shipment.carrier_id.id
+                if shipment.pro_number and picking.carrier_tracking_ref != shipment.pro_number:
+                    vals['carrier_tracking_ref'] = shipment.pro_number
+                if vals:
+                    picking.write(vals)
+
+    # ------------------------------------------------------------------ build from deliveries
+
+    @api.model
+    def _create_from_pickings(self, pickings):
+        """One shipment for the given delivery orders, with handling units from their
+        packages."""
+        pickings = pickings.filtered(lambda p: p.state != 'cancel')
+        if not pickings:
+            raise UserError(_('Select at least one delivery order that is not cancelled.'))
+        already = pickings.filtered('ltl_shipment_id')
+        if already:
+            raise UserError(_(
+                'These delivery orders are already on an LTL shipment: %s',
+                ', '.join(already.mapped('name'))))
+        consignees = pickings.mapped('partner_id.commercial_partner_id')
+        if len(consignees) > 1:
+            raise UserError(_(
+                'One LTL shipment goes to one customer. These delivery orders go to: %s',
+                ', '.join(consignees.mapped('display_name'))))
+        first = pickings[0]
+        consignee = first.partner_id
+        warehouse_partner = first.picking_type_id.warehouse_id.partner_id
+        services = self.env['selamta.ltl.accessorial']
+        business = consignee.commercial_partner_id
+        if 'selamta_delivery_service_ids' in business._fields:
+            services = services._from_service_names(
+                business.selamta_delivery_service_ids.mapped('name'))
+        vals = {
+            'partner_id': consignee.id,
+            'shipper_id': (warehouse_partner or first.company_id.partner_id).id,
+            'company_id': first.company_id.id,
+            'accessorial_ids': [(6, 0, services.ids)],
+            'unit_ids': [(0, 0, unit) for unit in self._units_from_pickings(pickings)],
+        }
+        carrier = pickings.mapped('carrier_id').filtered('ltl_enabled')[:1]
+        if carrier:
+            vals['carrier_id'] = carrier.id
+        shipment = self.create(vals)
+        pickings.write({'ltl_shipment_id': shipment.id})
+        shipment._sync_pickings()
+        return shipment
+
+    @api.model
+    def _units_from_pickings(self, pickings):
+        """Handling unit lines: one per package (pallet or box), plus one pallet line for
+        anything not packed. Length, width and pallet/box come from the package type;
+        weight from the package. Height is left for staff to measure when the package
+        type has none."""
+        to_inch = self.env.ref('uom.product_uom_inch')
+        to_lb = self.env.ref('uom.product_uom_lb')
+        product_tmpl = self.env['product.template']
+        length_uom = product_tmpl._get_length_uom_id_from_ir_config_parameter()
+        weight_uom = product_tmpl._get_weight_uom_id_from_ir_config_parameter()
+
+        def inches(value):
+            return float_round(length_uom._compute_quantity(value or 0.0, to_inch, round=False), 1)
+
+        def pounds(value):
+            return float_round(weight_uom._compute_quantity(value or 0.0, to_lb, round=False), 0)
+
+        units = []
+        nmfc_item, nmfc_sub = self._default_nmfc()
+        for picking in pickings:
+            packages = picking.move_line_ids.result_package_id
+            for package in packages:
+                package_type = package.package_type_id
+                weight = package.shipping_weight or package.with_context(picking_id=picking.id).weight
+                products = picking.move_line_ids.filtered(
+                    lambda ml, pkg=package: ml.result_package_id == pkg).product_id
+                units.append({
+                    'quantity': 1,
+                    'unit_type': package_type.ltl_unit_type or 'pallet',
+                    'package_type_id': package_type.id or False,
+                    'package_id': package.id,
+                    'length': inches(package_type.packaging_length),
+                    'width': inches(package_type.width),
+                    'height': inches(package_type.height),
+                    'weight': pounds(weight),
+                    'description': self._describe(products),
+                    'nmfc_item': nmfc_item,
+                    'nmfc_sub': nmfc_sub,
+                })
+            loose = picking.move_ids.filtered(
+                lambda m: m.state != 'cancel' and not m.move_line_ids.result_package_id)
+            if loose:
+                weight = sum(m.product_qty * m.product_id.weight for m in loose)
+                units.append({
+                    'quantity': 1,
+                    'unit_type': 'pallet',
+                    'weight': pounds(weight),
+                    'description': self._describe(loose.product_id),
+                    'nmfc_item': nmfc_item,
+                    'nmfc_sub': nmfc_sub,
+                })
+        for sequence, unit in enumerate(units, start=1):
+            unit['sequence'] = sequence * 10
+        return units
+
+    @api.model
+    def _describe(self, products):
+        names = [p.display_name for p in products[:3]]
+        text = ', '.join(names)
+        if len(products) > 3:
+            text += _(' and %s more', len(products) - 3)
+        return text[:120] or _('Freight')
+
+    @api.model
+    def _default_nmfc(self):
+        params = self.env['ir.config_parameter'].sudo()
+        return (params.get_param('selamta_ltl.default_nmfc_item') or False,
+                params.get_param('selamta_ltl.default_nmfc_sub') or False)
+
+    @api.depends('accessorial_ids.code')
+    def _compute_inside_delivery_ordered(self):
+        for shipment in self:
+            shipment.inside_delivery_ordered = INSIDE_DELIVERY_CODE in shipment.accessorial_ids.mapped('code')
+
+    # ------------------------------------------------------------------ actions
+
+    def action_open_rate_shop(self):
+        self.ensure_one()
+        if self.state not in ('draft', 'booked'):
+            raise UserError(_('Rates can only be shopped before pickup.'))
+        self._check_units_complete()
+        wizard = self.env['selamta.ltl.rate.wizard'].create({'shipment_id': self.id})
+        wizard._fetch_rates()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Rates for %s', self.name),
+            'res_model': 'selamta.ltl.rate.wizard',
+            'res_id': wizard.id,
+            'view_mode': 'form',
+            'target': 'new',
+        }
+
+    def _check_units_complete(self):
+        for shipment in self:
+            if not shipment.unit_ids:
+                raise UserError(_('Add the pallets or boxes on %s first.', shipment.name))
+            missing = shipment.unit_ids.filtered(
+                lambda u: not (u.length and u.width and u.height and u.weight))
+            if missing:
+                raise UserError(_(
+                    'Measure every pallet or box on %(name)s first: length, width, height and '
+                    'weight are needed to work out the class. Missing on: %(lines)s',
+                    name=shipment.name, lines=', '.join(missing.mapped('description'))))
+
+    def action_confirm_booking(self):
+        for shipment in self:
+            if not shipment.carrier_id:
+                raise UserError(_('Choose the carrier on %s before confirming.', shipment.name))
+            shipment._check_units_complete()
+            shipment.state = 'booked'
+
+    def action_mark_picked_up(self):
+        self.filtered(lambda s: s.state in ('draft', 'booked')).write({'state': 'in_transit'})
+
+    def action_mark_delivered(self):
+        for shipment in self.filtered(lambda s: s.state != 'cancel'):
+            shipment.write({
+                'state': 'delivered',
+                'delivered_date': shipment.delivered_date or fields.Date.context_today(shipment),
+            })
+
+    def action_cancel(self):
+        self.write({'state': 'cancel'})
+
+    def action_reset_to_draft(self):
+        self.write({'state': 'draft'})
+
+    def action_print_bol(self):
+        self._check_units_complete()
+        return self.env.ref('selamta_ltl.action_report_ltl_bol').report_action(self)
+
+    def action_view_pickings(self):
+        self.ensure_one()
+        action = self.env['ir.actions.act_window']._for_xml_id('stock.action_picking_tree_all')
+        action['domain'] = [('id', 'in', self.picking_ids.ids)]
+        if len(self.picking_ids) == 1:
+            action.update({'view_mode': 'form', 'views': [(False, 'form')],
+                           'res_id': self.picking_ids.id})
+        return action
+
+    def action_view_bills(self):
+        self.ensure_one()
+        action = self.env['ir.actions.act_window']._for_xml_id('account.action_move_in_invoice_type')
+        action['domain'] = [('id', 'in', self.bill_ids.ids)]
+        action['context'] = {'default_move_type': 'in_invoice'}
+        if len(self.bill_ids) == 1:
+            action.update({'view_mode': 'form', 'views': [(False, 'form')],
+                           'res_id': self.bill_ids.id})
+        return action
+
+    def action_update_tracking(self):
+        self._ltl_update_tracking(raise_if_unsupported=True)
+
+    def action_fetch_documents(self):
+        for shipment in self:
+            carrier = shipment.carrier_id
+            if not carrier or not carrier.ltl_can('documents'):
+                raise UserError(_('%s has no carrier connection for documents yet.',
+                                  carrier.name or shipment.name))
+            shipment._attach_documents(carrier.ltl_documents(shipment), _('Documents from %s', carrier.name))
+
+    # ------------------------------------------------------------------ carrier results
+
+    def _apply_quote(self, rate, carrier, source):
+        """Save a chosen rate on the shipment (replaces any earlier quote)."""
+        self.ensure_one()
+        charges = [(5, 0, 0)] + [
+            (0, 0, {'code': c.get('code') or False, 'name': c.get('name') or c.get('code') or _('Charge'),
+                    'amount': c.get('amount') or 0.0})
+            for c in (rate.get('charges') or [])
+        ]
+        self.write({
+            'carrier_id': carrier.id,
+            'quote_source': source,
+            'quoted_amount': rate.get('total') or 0.0,
+            'quote_number': rate.get('quote_number') or False,
+            'quote_expires': rate.get('expires') or False,
+            'transit_days': rate.get('transit_days') or 0,
+            'charge_ids': charges,
+        })
+
+    def _apply_booking(self, result):
+        """Save what a carrier connection returned from booking."""
+        self.ensure_one()
+        vals = {'state': 'booked'}
+        for key in ('pro_number', 'bol_number', 'pickup_number'):
+            if result.get(key):
+                vals[key] = result[key]
+        self.write(vals)
+        self._attach_documents(result.get('documents') or [], _('Booked with %s', self.carrier_id.name))
+
+    def _attach_documents(self, documents, note):
+        self.ensure_one()
+        attachments = self.env['ir.attachment']
+        for filename, content in documents or []:
+            if isinstance(content, str):
+                content = content.encode()
+            attachments |= self.env['ir.attachment'].create({
+                'name': filename,
+                'datas': base64.b64encode(content),
+                'res_model': self._name,
+                'res_id': self.id,
+            })
+        if attachments:
+            self.message_post(body=note, attachment_ids=attachments.ids)
+        return attachments
+
+    def _ltl_update_tracking(self, raise_if_unsupported=False):
+        by_carrier = defaultdict(lambda: self.browse())
+        for shipment in self:
+            carrier = shipment.carrier_id
+            if carrier and carrier.ltl_can('track'):
+                by_carrier[carrier] |= shipment
+            elif raise_if_unsupported:
+                raise UserError(_('%s has no carrier connection for tracking yet.',
+                                  carrier.name or shipment.name))
+        for carrier, shipments in by_carrier.items():
+            try:
+                results = carrier.ltl_track(shipments) or {}
+            except Exception as error:  # one carrier failing must not stop the others
+                if raise_if_unsupported:
+                    raise
+                _logger.warning('LTL tracking failed for %s: %s', carrier.name, error)
+                continue
+            for shipment in shipments:
+                info = results.get(shipment.id) or {}
+                vals = {}
+                if info.get('status'):
+                    vals['tracking_status'] = info['status']
+                if info.get('pro_number') and not shipment.pro_number:
+                    vals['pro_number'] = info['pro_number']
+                if info.get('state') in ('in_transit', 'delivered') and shipment.state != 'delivered':
+                    vals['state'] = info['state']
+                if info.get('delivered_date'):
+                    vals['delivered_date'] = info['delivered_date']
+                if vals:
+                    shipment.write(vals)
+                if info.get('state') == 'delivered' and carrier.ltl_can('documents'):
+                    try:
+                        shipment._attach_documents(
+                            carrier.ltl_documents(shipment), _('Delivery documents from %s', carrier.name))
+                    except Exception as error:
+                        _logger.warning('LTL documents failed for %s: %s', shipment.name, error)
+
+    @api.model
+    def _cron_update_tracking(self):
+        shipments = self.search([('state', 'in', ('booked', 'in_transit')),
+                                 ('carrier_id', '!=', False)])
+        shipments._ltl_update_tracking()
+
+
+class LtlShipmentUnit(models.Model):
+    """One line of pallets or boxes on a shipment. Its class comes from its own
+    dimensions and weight (density), not from the products on it."""
+    _name = 'selamta.ltl.shipment.unit'
+    _description = 'LTL handling unit'
+    _order = 'sequence, id'
+
+    shipment_id = fields.Many2one(
+        'selamta.ltl.shipment', required=True, ondelete='cascade', index=True)
+    sequence = fields.Integer(default=10)
+    unit_type = fields.Selection(UNIT_TYPES, 'Type', required=True, default='pallet')
+    quantity = fields.Integer(
+        'Count', default=1, required=True,
+        help='Number of identical pallets or boxes on this line (same size and weight each).')
+    package_type_id = fields.Many2one('stock.package.type', 'Package type')
+    package_id = fields.Many2one('stock.quant.package', 'Package')
+    description = fields.Char(required=True, default=lambda self: _('Freight'))
+    length = fields.Float('L (in)', digits=(16, 1), help='Length of one pallet or box, inches.')
+    width = fields.Float('W (in)', digits=(16, 1), help='Width of one pallet or box, inches.')
+    height = fields.Float(
+        'H (in)', digits=(16, 1),
+        help='Height of one pallet or box in inches, measured with the freight on it, '
+             'including the pallet.')
+    weight = fields.Float(
+        'Weight (lb)', digits=(16, 0),
+        help='Total weight of this line in pounds (all pallets or boxes on it, including '
+             'the pallets themselves).')
+    nmfc_item = fields.Char('NMFC item')
+    nmfc_sub = fields.Char('NMFC sub')
+    cube = fields.Float('Cube (ft³)', compute='_compute_density', store=True, digits=(16, 2))
+    density = fields.Float('Density (lb/ft³)', compute='_compute_density', store=True, digits=(16, 2))
+    density_class = fields.Selection(
+        FREIGHT_CLASSES, 'Calculated class', compute='_compute_density', store=True,
+        help='Class for this density on the NMFC density scale.')
+    class_override = fields.Selection(
+        FREIGHT_CLASSES, 'Class override',
+        help='Leave empty to use the calculated class. Fill in only when the carrier or the '
+             'NMFC item calls for a different class.')
+    freight_class = fields.Selection(
+        FREIGHT_CLASSES, 'Class', compute='_compute_freight_class', store=True,
+        help='Class printed on the BOL: the override if set, otherwise the calculated class.')
+    class_note = fields.Char(compute='_compute_freight_class', store=True)
+
+    @api.onchange('package_type_id')
+    def _onchange_package_type_id(self):
+        package_type = self.package_type_id
+        if not package_type:
+            return
+        to_inch = self.env.ref('uom.product_uom_inch')
+        length_uom = self.env['product.template']._get_length_uom_id_from_ir_config_parameter()
+
+        def inches(value):
+            return float_round(length_uom._compute_quantity(value or 0.0, to_inch, round=False), 1)
+
+        if package_type.ltl_unit_type:
+            self.unit_type = package_type.ltl_unit_type
+        self.length = inches(package_type.packaging_length) or self.length
+        self.width = inches(package_type.width) or self.width
+        if package_type.height:
+            self.height = inches(package_type.height)
+
+    @api.depends('quantity', 'length', 'width', 'height', 'weight', 'nmfc_item')
+    def _compute_density(self):
+        scale = self.env['selamta.ltl.density.scale']
+        for unit in self:
+            cube = (unit.quantity or 0) * unit.length * unit.width * unit.height / CUBIC_INCHES_PER_FOOT
+            unit.cube = cube
+            unit.density = unit.weight / cube if cube else 0.0
+            unit.density_class = scale._class_for_density(unit.density, unit.nmfc_item) if cube and unit.weight else False
+
+    @api.depends('class_override', 'density_class', 'cube', 'weight')
+    def _compute_freight_class(self):
+        for unit in self:
+            unit.freight_class = unit.class_override or unit.density_class or False
+            note = False
+            if not unit.cube or not unit.weight:
+                note = _('measure length, width, height and weight to work out the class')
+            elif unit.class_override and unit.density_class and unit.class_override != unit.density_class:
+                declared = class_number(unit.class_override)
+                measured = class_number(unit.density_class)
+                if declared < measured:
+                    note = _('class %(declared)s declared, but it measures %(measured)s lb/ft³ '
+                             '(class %(cls)s): expect the carrier to reclass it',
+                             declared=unit.class_override, measured='%.2f' % unit.density,
+                             cls=unit.density_class)
+                else:
+                    note = _('class %(declared)s declared, but it measures %(measured)s lb/ft³ '
+                             '(class %(cls)s): we may be paying for a higher class than needed',
+                             declared=unit.class_override, measured='%.2f' % unit.density,
+                             cls=unit.density_class)
+            unit.class_note = note
+
+
+class LtlShipmentCharge(models.Model):
+    _name = 'selamta.ltl.shipment.charge'
+    _description = 'LTL quoted charge'
+    _order = 'sequence, id'
+
+    shipment_id = fields.Many2one(
+        'selamta.ltl.shipment', required=True, ondelete='cascade', index=True)
+    sequence = fields.Integer(default=10)
+    code = fields.Char()
+    name = fields.Char('Charge', required=True)
+    currency_id = fields.Many2one(related='shipment_id.currency_id')
+    amount = fields.Monetary()

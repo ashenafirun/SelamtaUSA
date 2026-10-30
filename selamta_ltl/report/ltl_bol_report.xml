@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_ltl_bol" model="report.paperformat">
+        <field name="name">US Letter, narrow margins (BOL)</field>
+        <field name="format">Letter</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">8</field>
+        <field name="margin_right">8</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_ltl_bol" model="ir.actions.report">
+        <field name="name">Bill of lading</field>
+        <field name="model">selamta.ltl.shipment</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">selamta_ltl.report_ltl_bol</field>
+        <field name="report_file">selamta_ltl.report_ltl_bol</field>
+        <field name="print_report_name">'BOL %s' % (object.bol_reference)</field>
+        <field name="binding_model_id" ref="model_selamta_ltl_shipment"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_ltl_bol"/>
+    </record>
+
+    <template id="report_ltl_bol_address">
+        <div t-if="partner">
+            <strong t-out="partner.commercial_partner_id.name if partner.parent_id else partner.name"/>
+            <div t-if="partner.parent_id and partner.name" t-out="partner.name"/>
+            <div t-out="partner.street"/>
+            <div t-if="partner.street2" t-out="partner.street2"/>
+            <div><t t-out="partner.city"/>, <t t-out="partner.state_id.code"/> <t t-out="partner.zip"/></div>
+            <div t-if="partner.phone or partner.mobile">Phone: <t t-out="partner.phone or partner.mobile"/></div>
+        </div>
+    </template>
+
+    <template id="report_ltl_bol_document">
+        <t t-set="doc" t-value="doc.with_context(lang='en_US')"/>
+        <div class="page" style="font-size: 12.5px; font-family: Arial, Helvetica, sans-serif;">
+            <style>
+                .bol td, .bol th { border: 1px solid #000; padding: 3px 5px; vertical-align: top; }
+                .bol { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+                .bol th { background: #e6e6e6; text-align: left; font-size: 11px; text-transform: uppercase; }
+                .bol .num { text-align: right; }
+                .box { display: inline-block; width: 12px; height: 12px; border: 1px solid #000; margin-right: 4px; text-align: center; line-height: 11px; font-size: 11px; }
+            </style>
+            <table class="bol">
+                <tr>
+                    <td style="width: 60%; border: none; padding-left: 0;">
+                        <div style="font-size: 20px; font-weight: bold;">STRAIGHT BILL OF LADING</div>
+                        <div>Short form, not negotiable</div>
+                    </td>
+                    <td style="width: 40%;">
+                        <div>BOL number: <strong style="font-size: 16px;" t-out="doc.bol_reference"/></div>
+                        <div>Date: <strong t-out="doc.ship_date" t-options="{'widget': 'date'}"/></div>
+                        <div t-if="doc.pro_number">PRO: <strong style="font-size: 16px;" t-out="doc.pro_number"/></div>
+                    </td>
+                </tr>
+            </table>
+
+            <table class="bol">
+                <tr><th style="width: 50%;">Ship from</th><th style="width: 50%;">Ship to</th></tr>
+                <tr>
+                    <td><t t-call="selamta_ltl.report_ltl_bol_address"><t t-set="partner" t-value="doc.shipper_id"/></t></td>
+                    <td>
+                        <t t-call="selamta_ltl.report_ltl_bol_address"><t t-set="partner" t-value="doc.partner_id"/></t>
+                        <div t-if="doc.receiving_hours"><strong>Receiving hours: </strong><t t-out="doc.receiving_hours"/></div>
+                    </td>
+                </tr>
+            </table>
+
+            <table class="bol">
+                <tr>
+                    <th style="width: 50%;">Carrier</th>
+                    <th style="width: 50%;">Freight charges</th>
+                </tr>
+                <tr>
+                    <td>
+                        <div><strong t-out="doc.carrier_id.name or ''"/>
+                            <t t-if="doc.carrier_id.ltl_scac"> (SCAC <t t-out="doc.carrier_id.ltl_scac"/>)</t></div>
+                        <div t-if="doc.quote_number">Quote number: <t t-out="doc.quote_number"/></div>
+                        <div t-if="doc.pickup_number">Pickup confirmation: <t t-out="doc.pickup_number"/></div>
+                        <div t-if="doc.order_refs">Customer order / PO: <t t-out="doc.order_refs"/></div>
+                    </td>
+                    <td>
+                        <div>
+                            <span class="box"><t t-if="doc.freight_terms == 'prepaid'">X</t></span>Prepaid
+                            <span class="box" style="margin-left: 10px;"><t t-if="doc.freight_terms == 'collect'">X</t></span>Collect
+                            <span class="box" style="margin-left: 10px;"><t t-if="doc.freight_terms == 'third_party'">X</t></span>Third party
+                        </div>
+                        <div t-if="doc.freight_terms == 'prepaid'" style="margin-top: 4px;">
+                            Bill freight charges to:
+                            <t t-call="selamta_ltl.report_ltl_bol_address"><t t-set="partner" t-value="doc.company_id.partner_id"/></t>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+
+            <table class="bol">
+                <tr><th>Services ordered</th></tr>
+                <tr>
+                    <td>
+                        <t t-if="doc.accessorial_ids">
+                            <t t-foreach="doc.accessorial_ids" t-as="service">
+                                <span class="box">X</span><t t-out="service.name"/><span style="margin-right: 12px;"/>
+                            </t>
+                        </t>
+                        <t t-else="">None.</t>
+                        <div t-if="not doc.inside_delivery_ordered" style="font-weight: bold; margin-top: 3px;">NO INSIDE DELIVERY.</div>
+                        <div style="margin-top: 3px;">Only the services listed above are ordered. Any other service or charge needs the shipper's written approval before it is performed.</div>
+                        <div t-if="doc.special_instructions" style="margin-top: 3px; white-space: pre-line;"><strong>Instructions: </strong><t t-out="doc.special_instructions"/></div>
+                    </td>
+                </tr>
+            </table>
+
+            <table class="bol">
+                <tr>
+                    <th class="num">Count</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th class="num">L x W x H (in), each</th>
+                    <th class="num">Weight (lb)</th>
+                    <th class="num">Cube (ft³)</th>
+                    <th>NMFC</th>
+                    <th class="num">Class</th>
+                </tr>
+                <tr t-foreach="doc.unit_ids" t-as="unit">
+                    <td class="num" t-out="unit.quantity"/>
+                    <td t-out="dict(unit._fields['unit_type'].selection).get(unit.unit_type)"/>
+                    <td t-out="unit.description"/>
+                    <td class="num"><t t-out="'%g x %g x %g' % (unit.length, unit.width, unit.height)"/></td>
+                    <td class="num" t-out="'{:,.0f}'.format(unit.weight)"/>
+                    <td class="num" t-out="'{:,.2f}'.format(unit.cube)"/>
+                    <td><t t-out="unit.nmfc_item or ''"/><t t-if="unit.nmfc_sub">-<t t-out="unit.nmfc_sub"/></t></td>
+                    <td class="num"><strong t-out="unit.freight_class or ''"/></td>
+                </tr>
+                <tr>
+                    <td class="num"><strong t-out="doc.total_units"/></td>
+                    <td colspan="3"><strong>Total</strong> (density <t t-out="'{:,.2f}'.format(doc.density)"/> lb/ft³)</td>
+                    <td class="num"><strong t-out="'{:,.0f}'.format(doc.total_weight)"/></td>
+                    <td class="num"><strong t-out="'{:,.2f}'.format(doc.total_cube)"/></td>
+                    <td colspan="2"/>
+                </tr>
+            </table>
+
+            <div style="font-size: 10.5px; margin-bottom: 8px;">
+                Received, subject to the classifications and tariffs in effect on the date of this bill
+                of lading, the property described above in apparent good order, except as noted.
+                Dimensions and weights above were measured by the shipper.
+            </div>
+
+            <table class="bol">
+                <tr>
+                    <th style="width: 34%;">Shipper</th>
+                    <th style="width: 33%;">Carrier</th>
+                    <th style="width: 33%;">Consignee</th>
+                </tr>
+                <tr>
+                    <td style="height: 110px;">
+                        Signature / date:<br/><br/><br/>
+                        <span class="box"/>Loaded by shipper <span class="box" style="margin-left: 6px;"/>By driver<br/>
+                        <span class="box"/>Counted by shipper <span class="box" style="margin-left: 6px;"/>By driver, pallets
+                    </td>
+                    <td>Driver signature / pickup date:<br/><br/><br/>Trailer number:</td>
+                    <td>Received in good order, signature / date:<br/><br/><br/>Pieces received:</td>
+                </tr>
+            </table>
+        </div>
+    </template>
+
+    <template id="report_ltl_bol">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.basic_layout">
+                    <t t-call="selamta_ltl.report_ltl_bol_document"/>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

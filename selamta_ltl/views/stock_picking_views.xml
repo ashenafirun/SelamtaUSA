@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_picking_form_ltl" model="ir.ui.view">
+        <field name="name">stock.picking.form.ltl</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_ltl_shipment" type="object" string="LTL shipment"
+                        invisible="picking_type_code != 'outgoing' or state == 'cancel'"/>
+            </xpath>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_ltl_shipment" type="object" class="oe_stat_button"
+                        icon="fa-truck" invisible="not ltl_shipment_id">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">LTL</span>
+                        <field name="ltl_shipment_id" readonly="1" class="o_stat_value"/>
+                    </div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Several delivery orders to one customer on one shipment: select them, Action > Create LTL shipment. -->
+    <record id="action_server_picking_ltl_shipment" model="ir.actions.server">
+        <field name="name">Create LTL shipment</field>
+        <field name="model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_ltl_shipment()</field>
+    </record>
+</odoo>
