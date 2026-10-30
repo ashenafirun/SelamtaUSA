@@ -332,9 +332,15 @@ class DeliveryCarrier(models.Model):
             amount = self._aact_number(self._aact_text(line, 'Charges'))
             if not amount:
                 continue
-            description = self._aact_text(line, 'Description') or _('Charge')
-            charges.append({'code': self._aact_text(line, 'Accessorial') or 'LINE',
-                            'name': description.capitalize(), 'amount': amount})
+            code = self._aact_text(line, 'Accessorial') or 'LINE'
+            description = self._aact_text(line, 'Description')
+            if description:
+                name = description.capitalize()
+            else:
+                freight_class = self._aact_text(line, 'Class')
+                name = _('Linehaul before discount, class %s', freight_class) if freight_class \
+                    else _('Linehaul before discount')
+            charges.append({'code': code, 'name': name, 'amount': amount})
         if charges:
             difference = round(total - sum(c['amount'] for c in charges), 2)
             if abs(difference) >= 0.01:

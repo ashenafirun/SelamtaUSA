@@ -156,6 +156,10 @@ class TestAaaCooper(TransactionCase):
         self.assertEqual([c['code'] for c in rate['charges']], ['LINE', 'DSC', 'LGD', 'FSC'])
         self.assertEqual(rate['charges'][1]['amount'], -2626.89)
         self.assertEqual(rate['charges'][2]['name'], 'Liftgate delivery')
+        self.answers['/sapi30/wsGenEst'] = FakeResponse(200, content=rate_answer(total='100.00', lines=[
+            ('', '1,800', '100.00', '')]).replace(b'<Weight>', b'<Class>85</Class><Weight>'))
+        self.assertEqual(self.carrier.ltl_rate(self.shipment)[0]['charges'][0]['name'],
+                         'Linehaul before discount, class 85')
         self.assertAlmostEqual(sum(c['amount'] for c in rate['charges']), 581.90)
 
     def test_pallet_pricing_and_errors(self):
