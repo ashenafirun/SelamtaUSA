@@ -9,7 +9,7 @@
                 <page string="Daylight" name="daylight" invisible="delivery_type != 'daylight'">
                     <div class="alert alert-info" role="alert" invisible="dylt_book_pickups">
                         Rates and tracking only. Choosing Daylight in the rate shop saves the quote; book the
-                        pickup on MyDaylight and type the PRO. Daylight has no test system, so turning on
+                        pickup on MyDaylight and type the PRO. Daylight offers no test system for customers, so turning on
                         "Book pickups through the API" books real pickups.
                     </div>
                     <div class="alert alert-warning" role="alert" invisible="not dylt_book_pickups">

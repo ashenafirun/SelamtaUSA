@@ -34,7 +34,7 @@ def rate_answer(**overrides):
         'earliestDeliveryDate': '2026-11-05', 'totalWeight': 1800, 'origZip': '30035', 'destZip': '28202',
         'itemCharges': {'itemCharge': {'pcs': 2, 'pallets': 2, 'weight': 1800, 'actualClass': '85',
                                        'rateClass': '85', 'rate': 320.29, 'charge': 5765.22, 'discountPct': 94.0}},
-        'accessorialCharges': {'accessorialCharge': {'reqAccessorial': 'LFTD', 'accRate': 55, 'accCharge': 55.0}},
+        'accessorialCharges': {'accessorialCharge': {'reqAccessorial': 'Lift Gate Delivery', 'accRate': 55, 'accCharge': 55.0}},
         'totalCharges': {'grossCharge': 5765.22, 'fuelSurcharge': 180.22, 'totalAccessorial': 55.0,
                          'discountAmt': 5419.31, 'netCharge': 581.13},
     }
@@ -62,7 +62,6 @@ class TestDaylight(TransactionCase):
         cls.vendor = env['res.partner'].create({'name': 'Daylight Transport', 'is_company': True})
         product = env['product.product'].create({'name': 'Freight', 'type': 'service'})
         cls.liftgate = env.ref('selamta_ltl.accessorial_liftgate_delivery')
-        cls.liftgate.dylt_code = 'LFTD'
         cls.carrier = env['delivery.carrier'].create({
             'name': 'Daylight', 'product_id': product.id, 'delivery_type': 'daylight',
             'ltl_enabled': True, 'ltl_vendor_id': cls.vendor.id,
@@ -124,7 +123,7 @@ class TestDaylight(TransactionCase):
         item = body['items']['item'][0]
         self.assertEqual(item, {'description': 'Teff flour', 'pcs': 2, 'pallets': 2, 'weight': 1800,
                                 'actualClass': '85', 'nmfcNumber': '73260'})
-        self.assertEqual(body['accessorials'], {'accessorial': [{'accName': 'D', 'accId': 'LFTD'}]})
+        self.assertEqual(body['accessorials'], {'accessorial': [{'accName': 'D', 'accId': 'Lift Gate Delivery'}]})
         rate = rates[0]
         self.assertEqual(rate['total'], 581.13)
         self.assertEqual(rate['quote_number'], '12345678')
@@ -201,7 +200,10 @@ class TestDaylight(TransactionCase):
         self.assertEqual((body['pickupStartTime'], body['pickupEndTime']), ('13:30:00', '17:00:00'))
         self.assertEqual(body['items']['item'][0]['pallets'], 2)
         self.assertEqual(body['notes']['note'], 'LIFTGATE AT DELIVERY, NO INSIDE DELIVERY, PICKUP: Dock door 2')
-        self.assertEqual(body['accessorials'], {'accessorial': [{'accName': 'D', 'accId': 'LFTD'}]})
+        self.assertEqual(body['accessorials'], {'accessorial': [{'accName': 'D', 'accId': 'Lift Gate Delivery'}]})
+        self.assertEqual(body['shipReferences'], {'shipReference': [
+            {'referenceType': 'B', 'referenceNumber': self.shipment.name},
+            {'referenceType': 'Q', 'referenceNumber': '12345678'}]})
         image_call = self._calls_to('/image/booking/4796689/bol')[0]
         self.assertEqual(image_call['params'], {'userName': 'demo', 'password': 'pw'})
         shipment = self.shipment
@@ -262,3 +264,19 @@ class TestDaylight(TransactionCase):
         action = self.carrier.action_dylt_test_connection()
         self.assertIn('21365491', action['params']['message'])
         self.assertIn('581.13', action['params']['message'])
+
+    def test_default_daylight_codes(self):
+        Accessorial = self.env['selamta.ltl.accessorial']
+        self.assertEqual(self.liftgate.dylt_code, 'Lift Gate Delivery')  # set on install
+        self.assertEqual(self.env.ref('selamta_ltl.accessorial_liftgate_pickup').dylt_code, 'Lift Gate Pickup')
+        self.liftgate.dylt_code = 'My code'
+        Accessorial._dylt_set_default_codes()
+        self.assertEqual(self.liftgate.dylt_code, 'My code')  # codes already set are kept
+        # "-": Daylight has no such charge; left out of requests without blocking booking.
+        notify = self.env.ref('selamta_ltl.accessorial_notify')
+        self.assertEqual(notify.dylt_code, '-')
+        self.liftgate.dylt_code = 'Lift Gate Delivery'
+        self.shipment.accessorial_ids = [(4, notify.id)]
+        accessorials, missing = self.carrier._dylt_accessorials(self.shipment)
+        self.assertEqual(accessorials, [{'accName': 'D', 'accId': 'Lift Gate Delivery'}])
+        self.assertFalse(missing)
