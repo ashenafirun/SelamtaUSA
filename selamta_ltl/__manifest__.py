@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta LTL Freight',
-    'version': '18.0.1.1.0',
+    'version': '18.0.1.1.1',
     'category': 'Inventory/Delivery',
     'summary': 'Book LTL freight from delivery orders, print the BOL, and check every carrier bill against its quote',
     'description': """

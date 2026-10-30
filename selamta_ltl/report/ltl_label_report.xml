@@ -68,7 +68,7 @@
                     <div class="ll-cap">PRO</div>
                     <div class="ll-pro" t-out="doc.pro_number"/>
                     <div t-field="doc.pro_number"
-                         t-options="{'widget': 'barcode', 'symbology': 'Code128', 'width': 800, 'height': 160, 'img_style': 'width: 88mm; height: 22mm;'}"/>
+                         t-options="{'widget': 'barcode', 'symbology': 'Code128', 'width': 800, 'height': 160, 'img_style': 'width: 86mm; height: 20mm;'}"/>
                 </t>
                 <t t-else="">
                     <div class="ll-cap">PRO: ____________________</div>
@@ -92,16 +92,17 @@
             </table>
 
             <div class="ll-count">
-                <t t-out="piece['kind']"/> <t t-out="piece['number']"/> OF <t t-out="piece['total']"/>
+                <div class="ll-kind" t-out="piece['kind']"/>
+                <div class="ll-num"><t t-out="piece['number']"/> OF <t t-out="piece['total']"/></div>
             </div>
         </div>
     </template>
 
     <template id="report_ltl_label">
-        <t t-call="web.html_container">
-            <t t-call="web.basic_layout">
+        <t t-call="web.basic_layout">
                 <style>
-                    .ltl-label { width: 97mm; height: 144mm; overflow: hidden; border: 2px solid #000;
+                    body.container { padding: 0 !important; margin: 0 !important; max-width: none !important; }
+                    .ltl-label { width: 100%; height: 145mm; overflow: hidden; border: 2px solid #000;
                                  font-family: Arial, Helvetica, sans-serif; color: #000; box-sizing: border-box; }
                     .ll-break { page-break-before: always; }
                     .ll-row { width: 100%; border-collapse: collapse; border-bottom: 1.5px solid #000; }
@@ -117,7 +118,9 @@
                     .ll-to-city { font-size: 21pt; font-weight: bold; line-height: 1.2; }
                     .ll-for { font-size: 9.5pt; line-height: 1.2; }
                     .ll-pro { font-size: 32pt; font-weight: bold; letter-spacing: 1px; line-height: 1.1; }
-                    .ll-count { font-size: 40pt; font-weight: bold; text-align: center; padding: 5mm 0 3mm 0; }
+                    .ll-count { text-align: center; padding: 2mm 0; font-weight: bold; white-space: nowrap; }
+                    .ll-kind { font-size: 15pt; letter-spacing: 2px; }
+                    .ll-num { font-size: 44pt; line-height: 1.05; }
                 </style>
                 <t t-foreach="docs" t-as="doc">
                     <t t-foreach="doc._label_pieces()" t-as="piece">
@@ -126,7 +129,6 @@
                         </div>
                     </t>
                 </t>
-            </t>
         </t>
     </template>
 </odoo>

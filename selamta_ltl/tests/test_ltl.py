@@ -423,8 +423,9 @@ class TestLtl(AccountTestInvoicingCommon):
         html = self.env['ir.actions.report']._render_qweb_html(
             'selamta_ltl.report_ltl_label', shipment.ids)[0].decode()
         self.assertEqual(html.count('class="ltl-label"'), 7)
-        self.assertIn('PALLET 2 OF 5', ' '.join(html.split()))
-        self.assertIn('BOX 5 OF 5', ' '.join(html.split()))
+        flat = ' '.join(html.split())
+        self.assertIn('<div class="ll-kind">PALLET</div> <div class="ll-num">2 OF 5</div>', flat)
+        self.assertIn('<div class="ll-kind">BOX</div> <div class="ll-num">5 OF 5</div>', flat)
         self.assertIn('246813579', html)
         self.assertIn('data:image/png;base64', html)  # PRO barcode
         self.env['ir.config_parameter'].sudo().set_param('selamta_ltl.pallet_label_copies', '1')
