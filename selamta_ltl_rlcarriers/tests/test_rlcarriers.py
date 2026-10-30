@@ -137,6 +137,32 @@ class TestRlCarriers(TransactionCase):
         self.assertEqual(rate['charges'][2]['amount'], -1487.83)
         self.assertAlmostEqual(sum(c['amount'] for c in rate['charges']), 436.71, places=2)
 
+    def test_real_answer_with_subtotals(self):
+        """Charge lines as R+L sent them on 30 Oct 2026 (Decatur GA -> Alexandria VA, 2 pallets,
+        1,600 lb, class 85, liftgate): subtotals and the total are listed among the charges and
+        the discount is a positive amount."""
+        self.answers['/RateQuote'] = FakeResponse(200, rate_answer(net='625.17', gross='5,150.40', guaranteed=False,
+                                                                   discount='4,779.57', charges=[
+            {'Type': '', 'Title': 'Class: 85', 'Weight': '800', 'Rate': '$257.52', 'Amount': '$2,060.16'},
+            {'Type': '', 'Title': 'Class: 85', 'Weight': '800', 'Rate': '$257.52', 'Amount': '$2,060.16'},
+            {'Type': 'DEFICIT', 'Title': 'Deficit Weight', 'Weight': '400', 'Rate': '$257.52', 'Amount': '$1,030.08'},
+            {'Type': 'GROSS', 'Title': 'Gross Charge', 'Weight': '', 'Rate': '', 'Amount': '$5,150.40'},
+            {'Type': 'DISCNT', 'Title': 'R+L Discount Saves This Much', 'Weight': '', 'Rate': '',
+             'Amount': '$4,779.57'},
+            {'Type': 'DISCNF', 'Title': 'Discounted Freight Charge', 'Weight': '', 'Rate': '', 'Amount': '$370.83'},
+            {'Type': 'FUEL', 'Title': 'Fuel Surcharge', 'Weight': '', 'Rate': '', 'Amount': '$214.34'},
+            {'Type': 'LIFT', 'Title': 'Lift Gate Fee', 'Weight': '', 'Rate': '', 'Amount': '$40.00'},
+            {'Type': 'NET', 'Title': 'Net Charge', 'Weight': '', 'Rate': '', 'Amount': '$625.17'},
+        ]))
+        rate = self.carrier.ltl_rate(self.shipment)[0]
+        self.assertEqual(rate['total'], 625.17)
+        self.assertEqual([(c['code'], c['amount']) for c in rate['charges']], [
+            ('LINEHAUL', 2060.16), ('LINEHAUL', 2060.16), ('DEFICIT', 1030.08), ('DISC', -4779.57),
+            ('FUEL', 214.34), ('LIFT', 40.0)])
+        self.assertEqual(rate['charges'][0]['name'], 'Linehaul before discount, class 85, 800 lb')
+        self.assertEqual(rate['charges'][3]['name'], 'Discount')
+        self.assertAlmostEqual(sum(c['amount'] for c in rate['charges']), 625.17, places=2)
+
     def test_guaranteed_and_complete_charge_lines(self):
         self.carrier.rlc_show_guaranteed = True
         self.answers['/RateQuote'] = FakeResponse(200, rate_answer(net='300.00', charges=[
@@ -149,7 +175,7 @@ class TestRlCarriers(TransactionCase):
         self.assertEqual([r['rlc_service_code'] for r in rates], ['STD', 'GSDS'])
         standard, guaranteed = rates
         self.assertEqual([c['name'] for c in standard['charges']],
-                         ['Linehaul before discount, class: 85, 1800 lb', 'Discount', 'Fuel Surcharge',
+                         ['Linehaul before discount, class 85, 1800 lb', 'Discount', 'Fuel Surcharge',
                           'Destination Liftgate'])
         self.assertEqual((guaranteed['total'], guaranteed['rlc_service_level'], guaranteed['quote_number']),
                          (488.01, 'Guaranteed', '29098816'))
