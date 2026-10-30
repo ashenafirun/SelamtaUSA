@@ -431,6 +431,32 @@ class TestLtl(AccountTestInvoicingCommon):
         self.env['ir.config_parameter'].sudo().set_param('selamta_ltl.pallet_label_copies', '1')
         self.assertEqual(len(shipment._label_pieces()), 5)
 
+    def test_pickup_date_and_window(self):
+        Shipment = self.env['selamta.ltl.shipment']
+        self.assertEqual(Shipment._format_time(10.5), '10:30 AM')
+        self.assertEqual(Shipment._format_time(16.0), '4:00 PM')
+        self.assertEqual(Shipment._format_time(12.0), '12:00 PM')
+        self.assertLess(Shipment._default_ship_date().weekday(), 5)
+        self.c_tforce.write({'ltl_ready_time': 9.5, 'ltl_close_time': 15.0})
+        shipment = self._shipment(self.c_tforce)
+        self.assertEqual((shipment.pickup_ready_time, shipment.pickup_close_time), (9.5, 15.0))
+        shipment.write({'ship_date': fields.Date.subtract(fields.Date.today(), days=1)})
+        self.assertIn('past', shipment.pickup_warning)
+        with self.assertRaisesRegex(Exception, 'past'):
+            shipment.action_confirm_booking()
+        monday = fields.Date.add(fields.Date.today(), days=(7 - fields.Date.today().weekday()))
+        shipment.write({'ship_date': monday, 'pickup_ready_time': 14.0, 'pickup_close_time': 13.0})
+        with self.assertRaisesRegex(Exception, 'closes before'):
+            shipment.action_confirm_booking()
+        shipment.write({'pickup_ready_time': 13.5, 'pickup_close_time': 17.0})
+        self.assertIn('ready 1:30 PM, dock closes 5:00 PM', ' '.join(shipment._bol_pickup_lines()))
+        saturday = fields.Date.add(monday, days=5)
+        shipment.ship_date = saturday
+        self.assertIn('Saturday', shipment.pickup_warning)
+        shipment.ship_date = monday
+        shipment.action_confirm_booking()
+        self.assertEqual(shipment.state, 'booked')
+
     def test_bol_renders(self):
         shipment = self._shipment(self.c_tforce, pro='246813579', quoted=300)
         shipment.accessorial_ids = self.env.ref('selamta_ltl.accessorial_liftgate_delivery')

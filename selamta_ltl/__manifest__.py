@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta LTL Freight',
-    'version': '18.0.1.2.0',
+    'version': '18.0.1.3.0',
     'category': 'Inventory/Delivery',
     'summary': 'Book LTL freight from delivery orders, print the BOL, and check every carrier bill against its quote',
     'description': """
@@ -28,6 +28,10 @@ Foundation for booking LTL freight directly with each carrier, replacing Freight
 * Accessorials ordered are filled in from the customer's delivery services (Liftgate,
   Residential, Limited Access...) and printed on the BOL, with NO INSIDE DELIVERY when
   inside delivery was not ordered and the customer's receiving hours.
+* Pickup date and window on each shipment (ready at / dock closes), filled in from the
+  carrier's defaults (LTL tab) and changeable before booking; next weekday by default
+  after 3 PM or on weekends; warns on weekend or past dates; printed in the Pickup
+  Instructions box and sent to the carrier with the pickup.
 * Rate shop: asks every carrier that has an API connection for a rate, and lets staff add
   quotes they got by phone or on a carrier website, side by side. Picking a rate saves the
   quote; for an API carrier it books the shipment.

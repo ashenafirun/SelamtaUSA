@@ -34,6 +34,9 @@
                             invisible="state != 'cancel'"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,booked,in_transit,delivered"/>
                 </header>
+                <div class="alert alert-warning mb-0" role="alert" invisible="not pickup_warning">
+                    <strong>Pickup: </strong><field name="pickup_warning" class="d-inline"/>
+                </div>
                 <div class="alert alert-warning mb-0" role="alert" invisible="not class_warning">
                     <strong>Class check: </strong><field name="class_warning" class="d-inline"/>
                 </div>
@@ -66,6 +69,13 @@
                                    string="Orders for"/>
                             <field name="shipper_id" readonly="state not in ('draft', 'booked')"/>
                             <field name="ship_date"/>
+                            <label for="pickup_ready_time" string="Pickup window"/>
+                            <div class="o_row">
+                                <span>ready</span>
+                                <field name="pickup_ready_time" widget="float_time" class="oe_inline"/>
+                                <span>dock closes</span>
+                                <field name="pickup_close_time" widget="float_time" class="oe_inline"/>
+                            </div>
                             <field name="order_refs" invisible="not order_refs"/>
                             <field name="company_id" invisible="1"/>
                             <field name="currency_id" invisible="1"/>

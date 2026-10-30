@@ -26,9 +26,6 @@
                             <field name="tforce_bol_format"/>
                             <field name="tforce_label_type"/>
                             <field name="tforce_schedule_pickup"/>
-                            <field name="tforce_ready_time" invisible="not tforce_schedule_pickup"/>
-                            <field name="tforce_open_time" invisible="not tforce_schedule_pickup"/>
-                            <field name="tforce_close_time" invisible="not tforce_schedule_pickup"/>
                             <field name="tforce_contact_name" invisible="not tforce_schedule_pickup"/>
                             <field name="tforce_contact_email" invisible="not tforce_schedule_pickup"/>
                             <field name="tforce_contact_phone" invisible="not tforce_schedule_pickup"/>
