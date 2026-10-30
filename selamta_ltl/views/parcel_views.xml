@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_picking_parcel_list" model="ir.ui.view">
+        <field name="name">stock.picking.parcel.list</field>
+        <field name="model">stock.picking</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <list string="Parcel deliveries" create="false" decoration-muted="state == 'cancel'"
+                  decoration-success="parcel_delivered_date">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="origin" optional="show"/>
+                <field name="scheduled_date" optional="hide"/>
+                <field name="date_done" string="Shipped on"/>
+                <field name="carrier_id"/>
+                <field name="carrier_tracking_ref" string="Tracking number"/>
+                <field name="parcel_status"/>
+                <field name="parcel_delivered_date"/>
+                <field name="shipping_weight" optional="hide"/>
+                <field name="carrier_price" optional="show"/>
+                <field name="state" widget="badge" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_picking_parcel_search" model="ir.ui.view">
+        <field name="name">stock.picking.parcel.search</field>
+        <field name="model">stock.picking</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <search string="Parcel deliveries">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="origin"/>
+                <field name="carrier_tracking_ref" string="Tracking number"/>
+                <filter name="to_ship" string="To ship" domain="[('state', 'not in', ('done', 'cancel'))]"/>
+                <filter name="in_transit" string="In transit"
+                        domain="[('state', '=', 'done'), ('parcel_delivered_date', '=', False)]"/>
+                <filter name="delivered" string="Delivered" domain="[('parcel_delivered_date', '!=', False)]"/>
+                <separator/>
+                <filter name="shipped_date" string="Shipped on" date="date_done"/>
+                <group expand="0" string="Group by">
+                    <filter name="group_carrier" string="Carrier" context="{'group_by': 'carrier_id'}"/>
+                    <filter name="group_customer" string="Customer" context="{'group_by': 'partner_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_picking_form_parcel" model="ir.ui.view">
+        <field name="name">stock.picking.form.parcel</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='origin']" position="after">
+                <field name="ltl_parcel" invisible="1"/>
+                <field name="parcel_status" invisible="not parcel_status"/>
+                <field name="parcel_delivered_date" invisible="not parcel_delivered_date"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_parcel_deliveries" model="ir.actions.act_window">
+        <field name="name">Parcel deliveries</field>
+        <field name="res_model">stock.picking</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('picking_type_code', '=', 'outgoing'), ('carrier_id.ltl_parcel', '=', True)]</field>
+        <field name="search_view_id" ref="view_picking_parcel_search"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('view_picking_parcel_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('stock.view_picking_form')})]"/>
+        <field name="help" type="html">
+            <p>Deliveries shipped with a parcel carrier (shipping methods marked "Parcel carrier"),
+               with their tracking number and UPS status. Choose the parcel carrier on the delivery,
+               put the boxes in packs and validate to print the labels.</p>
+        </field>
+    </record>
+
+    <record id="action_server_parcel_update_tracking" model="ir.actions.server">
+        <field name="name">Update parcel tracking</field>
+        <field name="model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">records.action_parcel_update_tracking()</field>
+    </record>
+</odoo>

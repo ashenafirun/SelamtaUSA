@@ -7,3 +7,4 @@ from . import delivery_carrier
 from . import ltl_shipment
 from . import stock_picking
 from . import account_move
+from . import parcel

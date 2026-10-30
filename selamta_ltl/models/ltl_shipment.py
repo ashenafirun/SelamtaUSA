@@ -652,7 +652,8 @@ class LtlShipment(models.Model):
         self.ensure_one()
         if self.state not in ('draft', 'booked'):
             raise UserError(_('Rates can only be shopped before pickup.'))
-        self._check_units_complete()
+        if not self._units_complete() and not self._parcel_possible():
+            self._check_units_complete()  # explains what to measure
         wizard = self.env['selamta.ltl.rate.wizard'].create({'shipment_id': self.id})
         wizard._fetch_rates()
         return {
@@ -663,6 +664,18 @@ class LtlShipment(models.Model):
             'view_mode': 'form',
             'target': 'new',
         }
+
+    def _units_complete(self):
+        self.ensure_one()
+        return bool(self.unit_ids) and not self.unit_ids.filtered(
+            lambda u: not (u.length and u.width and u.height and u.weight))
+
+    def _parcel_possible(self):
+        """Light enough for a parcel quote, and a parcel carrier is set up (UPS...)."""
+        self.ensure_one()
+        limit = float(self.env['ir.config_parameter'].sudo().get_param('selamta_ltl.parcel_max_weight', 300) or 0)
+        return bool(self.unit_ids) and bool(limit) and self.total_weight <= limit and bool(
+            self.env['delivery.carrier'].search_count([('ltl_parcel', '=', True)]))
 
     def _check_units_complete(self):
         for shipment in self:
