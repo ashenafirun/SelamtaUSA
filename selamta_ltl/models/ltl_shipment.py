@@ -101,7 +101,7 @@ class LtlShipment(models.Model):
     inside_delivery_ordered = fields.Boolean(compute='_compute_inside_delivery_ordered')
 
     unit_ids = fields.One2many(
-        'selamta.ltl.shipment.unit', 'shipment_id', 'Handling units', copy=True)
+        'selamta.ltl.shipment.unit', 'shipment_id', 'Pallets and boxes', copy=True)
     total_units = fields.Integer('Handling units', compute='_compute_totals', store=True)
     total_weight = fields.Float('Weight (lb)', compute='_compute_totals', store=True)
     total_cube = fields.Float('Cube (ft³)', compute='_compute_totals', store=True, digits=(16, 2))
