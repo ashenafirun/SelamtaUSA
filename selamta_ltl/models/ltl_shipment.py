@@ -710,8 +710,9 @@ class LtlShipment(models.Model):
     def action_cancel(self):
         """Cancel the shipment. A booked pickup is cancelled with the carrier first when its
         connection can do that; otherwise the shipment is cancelled in Odoo only and staff are
-        told to call the carrier."""
-        call_carrier = []
+        told to call the carrier. A connection's cancel can return a reminder (text) for staff,
+        for example a broker whose cancel does not reach the trucking carrier."""
+        call_carrier, reminders = [], []
         odoo_only = self.env.context.get('ltl_odoo_only')
         for shipment in self:
             carrier = shipment.carrier_id
@@ -722,7 +723,7 @@ class LtlShipment(models.Model):
                     carrier.name or _('the carrier')))
             elif booked and carrier and carrier.ltl_can('cancel'):
                 try:
-                    carrier.ltl_cancel(shipment)
+                    result = carrier.ltl_cancel(shipment)
                 except UserError as error:
                     action = self.env.ref('selamta_ltl.action_server_ltl_cancel_odoo_only',
                                           raise_if_not_found=False)
@@ -735,7 +736,12 @@ class LtlShipment(models.Model):
                             'active_id': shipment.id, 'active_ids': shipment.ids,
                             'active_model': shipment._name}) from error
                     raise UserError(message) from error
-                shipment.message_post(body=_('Pickup cancelled with %s.', carrier.name))
+                if isinstance(result, str) and result:
+                    reminders.append('%s: %s' % (shipment.name, result))
+                    shipment.message_post(body=_('Pickup cancelled with %(carrier)s. %(note)s',
+                                                 carrier=carrier.name, note=result))
+                else:
+                    shipment.message_post(body=_('Pickup cancelled with %s.', carrier.name))
             elif booked:
                 call_carrier.append(shipment)
                 shipment.message_post(body=_(
@@ -743,13 +749,17 @@ class LtlShipment(models.Model):
                     carrier=carrier.name or _('the carrier'),
                     pickup=_(' (pickup number %s)', shipment.pickup_number) if shipment.pickup_number else ''))
         self.write({'state': 'cancel'})
+        messages = []
         if call_carrier:
+            messages.append(_('Cancelled in Odoo only. Call the carrier to cancel the pickup: %s',
+                              ', '.join('%s (%s)' % (s.name, s.carrier_id.name) for s in call_carrier)))
+        messages.extend(reminders)
+        if messages:
             return {
                 'type': 'ir.actions.client', 'tag': 'display_notification',
                 'params': {
                     'type': 'warning', 'sticky': True,
-                    'message': _('Cancelled in Odoo only. Call the carrier to cancel the pickup: %s',
-                                 ', '.join('%s (%s)' % (s.name, s.carrier_id.name) for s in call_carrier)),
+                    'message': '\n'.join(messages),
                     'next': {'type': 'ir.actions.client', 'tag': 'soft_reload'},
                 },
             }
