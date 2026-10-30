@@ -5,7 +5,7 @@ import logging
 from collections import defaultdict
 
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import RedirectWarning, UserError
 from odoo.tools import float_round
 
 from .ltl_common import FREIGHT_CLASSES, UNIT_TYPES, class_number, digits_only
@@ -699,11 +699,29 @@ class LtlShipment(models.Model):
         connection can do that; otherwise the shipment is cancelled in Odoo only and staff are
         told to call the carrier."""
         call_carrier = []
+        odoo_only = self.env.context.get('ltl_odoo_only')
         for shipment in self:
             carrier = shipment.carrier_id
             booked = shipment.state in ('booked', 'in_transit')
-            if booked and carrier and carrier.ltl_can('cancel'):
-                carrier.ltl_cancel(shipment)
+            if booked and odoo_only:
+                shipment.message_post(body=_(
+                    'Cancelled in Odoo only; the pickup was cancelled with %s outside Odoo.',
+                    carrier.name or _('the carrier')))
+            elif booked and carrier and carrier.ltl_can('cancel'):
+                try:
+                    carrier.ltl_cancel(shipment)
+                except UserError as error:
+                    action = self.env.ref('selamta_ltl.action_server_ltl_cancel_odoo_only',
+                                          raise_if_not_found=False)
+                    message = _(
+                        '%(carrier)s did not cancel the pickup: %(error)s\n\nThe shipment is still '
+                        'booked. Cancel it with %(carrier)s by phone, then use "Cancel in Odoo only".',
+                        carrier=carrier.name, error=error.args[0] if error.args else error)
+                    if action:
+                        raise RedirectWarning(message, action.id, _('Cancel in Odoo only'), {
+                            'active_id': shipment.id, 'active_ids': shipment.ids,
+                            'active_model': shipment._name}) from error
+                    raise UserError(message) from error
                 shipment.message_post(body=_('Pickup cancelled with %s.', carrier.name))
             elif booked:
                 call_carrier.append(shipment)

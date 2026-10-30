@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta LTL Freight',
-    'version': '18.0.1.3.4',
+    'version': '18.0.1.3.5',
     'category': 'Inventory/Delivery',
     'summary': 'Book LTL freight from delivery orders, print the BOL, and check every carrier bill against its quote',
     'description': """
@@ -59,6 +59,7 @@ carrier's website and the PRO is typed in.
         'data/ltl_accessorial_data.xml',
         'data/ltl_density_scale_data.xml',
         'data/ir_cron_data.xml',
+        'data/ltl_action_data.xml',
         'report/ltl_bol_report.xml',
         'report/ltl_label_report.xml',
         'wizard/ltl_rate_wizard_views.xml',
