@@ -44,8 +44,8 @@
                     </td>
                     <td style="width: 42%; border-left: 1.5px solid #000;">
                         <div class="ll-cap">CARRIER</div>
-                        <div class="ll-carrier" t-out="doc.carrier_id.name or ''"/>
-                        <div class="ll-small" t-if="doc.carrier_id.ltl_scac">SCAC <t t-out="doc.carrier_id.ltl_scac"/></div>
+                        <div class="ll-carrier" t-out="doc.print_carrier_name or ''"/>
+                        <div class="ll-small" t-if="doc.print_carrier_scac">SCAC <t t-out="doc.print_carrier_scac"/></div>
                     </td>
                 </tr>
             </table>

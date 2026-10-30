@@ -87,8 +87,8 @@
                 </tr>
                 <tr>
                     <td>
-                        <div><strong t-out="doc.carrier_id.name or ''"/>
-                            <t t-if="doc.carrier_id.ltl_scac"> (SCAC <t t-out="doc.carrier_id.ltl_scac"/>)</t></div>
+                        <div><strong t-out="doc.print_carrier_name or ''"/>
+                            <t t-if="doc.print_carrier_scac"> (SCAC <t t-out="doc.print_carrier_scac"/>)</t></div>
                         <div t-if="doc.order_refs">Customer order / PO: <t t-out="doc.order_refs"/></div>
                     </td>
                     <td>
