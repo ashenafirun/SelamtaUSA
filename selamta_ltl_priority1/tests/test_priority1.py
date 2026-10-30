@@ -267,10 +267,17 @@ class TestPriority1(TransactionCase):
         self.shipment.write({'state': 'booked', 'bol_number': '60116495862', 'p1_shipment_id': '15260611'})
         self.answers['/v2/ltl/shipments/cancel'] = FakeResponse(200, {'id': 15260611, 'success': True})
         self.assertTrue(self.carrier.ltl_can('cancel'))  # even with dispatch off
-        self.assertTrue(self.shipment.action_cancel())
+        action = self.shipment.action_cancel()
         self.assertEqual(self._calls_to('/shipments/cancel')[0]['json'], {'id': 15260611})
         self.assertEqual(self.shipment.state, 'cancel')
-        self.assertIn('Pickup cancelled with Priority1', ' '.join(self.shipment.message_ids.mapped('body')))
+        bodies = ' '.join(self.shipment.message_ids.mapped('body'))
+        self.assertIn('Pickup cancelled with Priority1', bodies)
+        self.assertIn('call or email Priority1', bodies)
+        # The API cancel does not reach the trucking carrier: staff get a sticky reminder.
+        self.assertEqual(action['tag'], 'display_notification')
+        self.assertTrue(action['params']['sticky'])
+        self.assertIn('call or email Priority1', action['params']['message'])
+        self.assertIn('60116495862', action['params']['message'])
 
     def test_cancel_refused_keeps_shipment_booked(self):
         self.shipment.write({'state': 'booked', 'p1_shipment_id': '15260611'})

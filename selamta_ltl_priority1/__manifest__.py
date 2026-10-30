@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta LTL: Priority1',
-    'version': '18.0.1.0.2',
+    'version': '18.0.1.0.3',
     'category': 'Inventory/Delivery',
     'summary': 'Priority1 API connection for Selamta LTL shipments: multi-carrier quotes, dispatch, tracking, documents',
     'description': """

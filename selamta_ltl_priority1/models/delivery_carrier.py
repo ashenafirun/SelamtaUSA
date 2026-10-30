@@ -522,7 +522,12 @@ class DeliveryCarrier(models.Model):
             raise UserError(_('%s has no Priority1 shipment ID; cancel it with Priority1 by phone, then '
                               'cancel it here.', shipment.name))
         self._p1_call('/v2/ltl/shipments/cancel', {'id': int(shipment.p1_shipment_id)})
-        return True
+        # Priority1 (30 Oct 2026): the cancel endpoint only cancels the load in Priority1's
+        # system; most carriers do not take cancellations over the API, so Priority1 must be told.
+        return _('Cancelled in Priority1\'s system only. Also call or email Priority1 so they cancel '
+                 'it with %(carrier)s (Priority1 BOL %(bol)s%(pickup)s).',
+                 carrier=shipment.p1_carrier_name or _('the carrier'), bol=shipment.bol_number or '-',
+                 pickup=_(', pickup %s', shipment.pickup_number) if shipment.pickup_number else '')
 
     # ------------------------------------------------------------------ Odoo delivery hooks
 
