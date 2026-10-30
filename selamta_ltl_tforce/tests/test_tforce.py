@@ -178,7 +178,9 @@ class TestTForce(TransactionCase):
         self.assertEqual(shipment.tforce_bol_id, '8418552')
         attachments = self.env['ir.attachment'].search(
             [('res_model', '=', shipment._name), ('res_id', '=', shipment.id)])
-        self.assertIn('TForce BOL 062108025.pdf', attachments.mapped('name'))
+        self.assertIn('TForce eBOL (carrier copy) 062108025.pdf', attachments.mapped('name'))
+        self.assertIn('BOL 062108025.pdf', attachments.mapped('name'))  # our BOL, to print
+        self.assertEqual(shipment.message_main_attachment_id.name, 'BOL 062108025.pdf')
         messages = ' '.join(shipment.message_ids.mapped('body'))
         self.assertIn('RURAL POINT', messages)
         self.assertIn('TEST environment', messages)

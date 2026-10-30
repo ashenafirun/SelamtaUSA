@@ -507,6 +507,8 @@ class TestLtl(AccountTestInvoicingCommon):
         attachments = self.env['ir.attachment'].search(
             [('res_model', '=', shipment._name), ('res_id', '=', shipment.id)])
         self.assertIn('BOL.pdf', attachments.mapped('name'))
+        self.assertIn('BOL 900000001.pdf', attachments.mapped('name'))
+        self.assertEqual(shipment.message_main_attachment_id.name, 'BOL 900000001.pdf')
 
     def test_rate_shop_without_connections(self):
         shipment = self._shipment(self.c_tforce)
