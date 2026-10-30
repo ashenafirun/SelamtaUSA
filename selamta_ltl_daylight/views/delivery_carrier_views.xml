@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_delivery_carrier_form_daylight" model="ir.ui.view">
+        <field name="name">delivery.carrier.form.daylight</field>
+        <field name="model">delivery.carrier</field>
+        <field name="inherit_id" ref="delivery.view_delivery_carrier_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Daylight" name="daylight" invisible="delivery_type != 'daylight'">
+                    <div class="alert alert-info" role="alert" invisible="dylt_book_pickups">
+                        Rates and tracking only. Choosing Daylight in the rate shop saves the quote; book the
+                        pickup on MyDaylight and type the PRO. Daylight has no test system, so turning on
+                        "Book pickups through the API" books real pickups.
+                    </div>
+                    <div class="alert alert-warning" role="alert" invisible="not dylt_book_pickups">
+                        Booking is on: choosing Daylight in the rate shop schedules a real Daylight pickup.
+                    </div>
+                    <group>
+                        <group string="Connection">
+                            <field name="dylt_client_id" groups="base.group_system"/>
+                            <field name="dylt_client_secret" password="True" groups="base.group_system"/>
+                            <field name="dylt_account_number"/>
+                            <field name="dylt_username" groups="base.group_system"/>
+                            <field name="dylt_password" password="True" groups="base.group_system"/>
+                            <button name="action_dylt_test_connection" type="object" string="Test sign-in (sample rate)"
+                                    class="btn-secondary" groups="base.group_system" colspan="2"/>
+                        </group>
+                        <group string="Booking">
+                            <field name="dylt_book_pickups"/>
+                            <field name="dylt_contact_name"/>
+                            <field name="dylt_contact_phone"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_ltl_accessorial_list_daylight" model="ir.ui.view">
+        <field name="name">selamta.ltl.accessorial.list.daylight</field>
+        <field name="model">selamta.ltl.accessorial</field>
+        <field name="inherit_id" ref="selamta_ltl.view_ltl_accessorial_list"/>
+        <field name="arch" type="xml">
+            <field name="code" position="after">
+                <field name="dylt_code" optional="show"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_ltl_shipment_form_daylight" model="ir.ui.view">
+        <field name="name">selamta.ltl.shipment.form.daylight</field>
+        <field name="model">selamta.ltl.shipment</field>
+        <field name="inherit_id" ref="selamta_ltl.view_ltl_shipment_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='pickup_number']" position="after">
+                <field name="dylt_reservation" invisible="not dylt_reservation"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
