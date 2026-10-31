@@ -154,6 +154,39 @@ class TestDaylight(TransactionCase):
         self.carrier.ltl_rate(self.shipment)
         self.assertNotIn('pickupDate', self._calls_to('/rateQuote')[-1]['json']['dyltRateQuoteReq'])
 
+    def test_real_answer_decatur_to_sacramento(self):
+        """Daylight's answer on 30 Oct 2026 (Decatur GA -> Sacramento CA, 2 pallets, 1,600 lb,
+        class 85): wrapped in dyltRateQuoteResp, dates as MM/DD/YYYY, "NULL" error text, and
+        the fuel surcharge both among the accessorials and in the totals."""
+        self.answers['/rateQuote'] = FakeResponse(200, {'dyltRateQuoteResp': {
+            'success': 'YES', 'errorInformation': {'errorMessage': 'NULL'}, 'quoteNumber': 'CQ290300053',
+            'quoteDate': '10/30/2026', 'pickupDate': '10/30/2026', 'earliestDeliveryDate': '11/03/2026',
+            'totalWeight': 1600, 'origZip': 30035, 'destZip': 95822, 'rateBaseName': 'DYLT507AY 2026-08-31',
+            'itemCharges': {'itemCharge': [{'description': 'Foodstuff', 'pcs': 2, 'pallets': 2, 'weight': 1600,
+                                            'actualClass': 85, 'rateClass': 85, 'rate': 601.78,
+                                            'charge': 9628.48, 'discountPct': 95.5}]},
+            'accessorialCharges': {'accessorialCharge': [
+                {'reqAccessorial': 'California Compliance Surcharge', 'accRate': 36.0, 'accCharge': 36.0},
+                {'reqAccessorial': 'Fuel Surcharge', 'accRate': 0.537, 'accCharge': 232.671}]},
+            'totalCharges': {'grossCharge': 9628.48, 'fuelSurcharge': 232.671, 'totalAccessorial': 268.67,
+                             'discountAmt': 9195.2, 'netCharge': 701.95}}})
+        rate = self.carrier.ltl_rate(self.shipment)[0]
+        self.assertEqual((rate['total'], rate['quote_number'], rate['transit_days']), (701.95, 'CQ290300053', 2))
+        self.assertEqual([(c['code'], c['amount']) for c in rate['charges']], [
+            ('GROSS', 9628.48), ('DISCOUNT', -9195.2), ('California Compliance Surcharge', 36.0), ('FUEL', 232.67)])
+        self.assertAlmostEqual(sum(c['amount'] for c in rate['charges']), 701.95, places=2)
+
+    def test_plain_names_for_daylight(self):
+        carrier = self.carrier
+        self.assertEqual(carrier._dylt_text('Merkato Import & Export, INC. (Sacramento)', 60),
+                         'Merkato Import and Export, INC.')
+        self.assertEqual(carrier._dylt_text("Abay's <Market>", 60), 'Abay s Market')
+        self.consignee.name = 'Sample & Sons Market (Charlotte)'
+        self.answers['/rateQuote'] = FakeResponse(200, rate_answer())
+        carrier.ltl_rate(self.shipment)
+        sent = self._calls_to('/rateQuote')[-1]['json']['dyltRateQuoteReq']['consigneeInfo']['customerName']
+        self.assertEqual(sent, 'Sample and Sons Market')
+
     def test_wrapped_answer_and_unknown_error(self):
         self.answers['/rateQuote'] = FakeResponse(200, {'dyltRateQuoteResp': rate_answer()})
         self.assertEqual(self.carrier.ltl_rate(self.shipment)[0]['total'], 581.13)
