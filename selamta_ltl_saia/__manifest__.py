@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta LTL: Saia',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.0.1',
     'category': 'Inventory/Delivery',
     'summary': 'Saia LTL Freight API for Selamta LTL shipments: rate quotes, tracking, delivery documents',
     'description': """

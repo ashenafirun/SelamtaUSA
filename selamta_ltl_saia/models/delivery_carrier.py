@@ -14,7 +14,7 @@ user ID and password give our pricing and our documents.
   discount {discountPercent, discountAmount}, surcharge {fuelSurchargePercent,
   fuelSurchargeAmount, fuelSurchargeAmountWithGss5/10/12}, rateDetails {totalInvoice,
   isGssCompliant, totalInvoiceWithGss5/10/12, gss5/10/12AccessorialCharge}, deficitDetails
-  {deficitAmount}, rateDetailItems [{class, weight, rate, amount}], rateAccessorials [{code,
+  {deficitAmount}, rateDetailItems [{class, weight, rate, amount}], rateAccessorials {accessorials: [{code,
   description, amount}], terminals.originTerminal {name, cityDispatchPhone}. Errors: {status:
   FAIL, fault, errors: [{<field>: {message}}]}; gateway errors {statusCode, message}.
 * Tracking: GET https://api.saia.com/customer-api/webservice/track/pro-numbers/{pro}, headers
@@ -303,7 +303,10 @@ class DeliveryCarrier(models.Model):
             percent = self._saia_number(discount.get('discountPercent'))
             lines.append({'code': 'DISC', 'amount': -abs(amount),
                           'name': _('Discount (%s%%)', '%g' % percent) if percent else _('Discount')})
-        for charge in self._saia_list(data.get('rateAccessorials')):
+        accessorials = data.get('rateAccessorials')
+        if isinstance(accessorials, dict):  # real answer: {"accessorials": [...]}
+            accessorials = accessorials.get('accessorials') or accessorials.get('accessorial') or []
+        for charge in self._saia_list(accessorials):
             amount = self._saia_number(charge.get('amount'))
             if not amount:
                 continue
