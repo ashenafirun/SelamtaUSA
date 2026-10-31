@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_delivery_carrier_form_xpo" model="ir.ui.view">
+        <field name="name">delivery.carrier.form.xpo</field>
+        <field name="model">delivery.carrier</field>
+        <field name="inherit_id" ref="delivery.view_delivery_carrier_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="XPO" name="xpo" invisible="delivery_type != 'xpo'">
+                    <div class="alert alert-info" role="alert" invisible="xpo_book_shipments">
+                        Rates and tracking only. Choosing XPO in the rate shop saves the quote; book on
+                        ltl.xpo.com and type the PRO. Turning on "Create BOLs through the API" creates real
+                        XPO BOLs and pickups.
+                    </div>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="not xpo_book_shipments or xpo_environment != 'production'">
+                        BOLs are on: choosing XPO in the rate shop creates a real XPO BOL and PRO
+                        <span invisible="not xpo_schedule_pickup">and schedules the pickup</span>.
+                    </div>
+                    <group>
+                        <group string="Connection">
+                            <field name="xpo_host"/>
+                            <field name="xpo_api_key" password="True" groups="base.group_system"/>
+                            <field name="xpo_username" groups="base.group_system"/>
+                            <field name="xpo_password" password="True" groups="base.group_system"/>
+                            <field name="xpo_shipper_account"/>
+                            <field name="xpo_billto_account"/>
+                            <field name="xpo_billto_code"/>
+                            <field name="xpo_show_guaranteed"/>
+                            <button name="action_xpo_test_connection" type="object" string="Test XPO login (sample rate)"
+                                    class="btn-secondary" groups="base.group_system" colspan="2"/>
+                        </group>
+                        <group string="Booking">
+                            <field name="xpo_book_shipments"/>
+                            <field name="xpo_environment" widget="radio"/>
+                            <field name="xpo_schedule_pickup"/>
+                            <field name="xpo_contact_name"/>
+                            <field name="xpo_contact_phone"/>
+                            <field name="xpo_contact_email"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_ltl_shipment_form_xpo" model="ir.ui.view">
+        <field name="name">selamta.ltl.shipment.form.xpo</field>
+        <field name="model">selamta.ltl.shipment</field>
+        <field name="inherit_id" ref="selamta_ltl.view_ltl_shipment_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='pickup_number']" position="after">
+                <field name="xpo_terminal" invisible="not xpo_terminal"/>
+                <field name="xpo_test_booking" invisible="not xpo_test_booking"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
