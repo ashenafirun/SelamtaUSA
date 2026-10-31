@@ -38,6 +38,7 @@ https://api.xpo.com, so the host is a setting.
 """
 import base64
 import hashlib
+import json as json_lib
 import logging
 import re
 import time
@@ -666,7 +667,10 @@ class DeliveryCarrier(models.Model):
         shipment = self.env['selamta.ltl.shipment'].browse(shipment_id) if shipment_id \
             else self._xpo_sample_shipment()
         request = self._xpo_rate_request(shipment)
-        return {'request': request, 'answer': self._xpo_call('POST', 'rating/1.0/ratequotes', json=request)}
+        answer = self._xpo_call('POST', 'rating/1.0/ratequotes', json=request,
+                                params={'showSpecialServiceCharges': 'true'})
+        # As text: XPO's epoch-millisecond dates are too big for XML-RPC integers.
+        return json_lib.dumps({'request': request, 'answer': answer}, indent=1)
 
     def xpo_ltl_book(self, shipment, rate):
         self.ensure_one()

@@ -366,6 +366,12 @@ class TestXpo(TransactionCase):
                                                   ('res_id', '=', self.shipment.id)]).mapped('name')
         self.assertIn('Delivery receipt 123456782.pdf', names)
 
+    def test_raw_answer_is_text(self):
+        self.answers['/rating/1.0/ratequotes'] = rate_answer()
+        raw = json.loads(self.carrier.xpo_raw_rate_answer(self.shipment.id))
+        self.assertEqual(raw['answer']['data']['transitTime']['estdDlvrDate'], 1794283200000)
+        self.assertIn(('showSpecialServiceCharges', 'true'), self._calls_to('/rating/1.0/ratequotes')[0]['params'])
+
     def test_helpers(self):
         carrier = self.carrier
         winter = carrier._xpo_moment(date(2026, 11, 2), 10.5, self.env.company.partner_id)
