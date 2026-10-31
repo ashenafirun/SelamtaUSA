@@ -130,6 +130,40 @@ class TestSaia(TransactionCase):
             'Fuel surcharge (35.5%)'])
         self.assertAlmostEqual(sum(c['amount'] for c in rate['charges']), 742.5, places=2)
 
+    def test_real_answer_decatur_to_alexandria(self):
+        """Saia's answer on 30 Oct 2026 (Decatur GA -> Alexandria VA, 2 pallets, 1,600 lb, class 85,
+        liftgate): accessorials come wrapped in {"accessorials": [...]}, with amounts in the text."""
+        self.answers['/ratequote/customer-api'] = FakeResponse(200, rate_answer(
+            quoteNumber=764491873, accountCode='1055993', expirationDate='2026-11-04', standardServiceDays=2,
+            discount={'discountPercent': 95, 'discountAmount': 3945.92},
+            surcharge={'fuelSurchargePercent': 58.12, 'fuelSurchargeAmount': 202.65,
+                       'isFuelSurchargeApplicableOnGss': 'Y', 'fuelSurchargeAmountWithGss5': 240.43,
+                       'fuelSurchargeAmountWithGss10': 324.7, 'fuelSurchargeAmountWithGss12': 312.21},
+            rateDetails={'rateType': 'Class', 'totalInvoice': 603.33, 'isGssCompliant': True,
+                         'totalInvoiceWithGss5': 706.11, 'totalInvoiceWithGss10': 935.38,
+                         'totalInvoiceWithGss12': 901.39, 'gss5AccessorialCharge': 65,
+                         'gss10AccessorialCharge': 210, 'gss12AccessorialCharge': 188.5, 'tariff': 'SAIA5700'},
+            rateDetailItems=[{'class': '85', 'weight': 1600, 'rate': 259.6, 'amount': 4153.6}],
+            rateAccessorials={'accessorials': [
+                {'code': 'liftgateservice', 'internalCode': 'LGATE',
+                 'description': 'LIFTGATE DELV/HAND UNLOAD   575', 'amount': 52},
+                {'description': 'VIRGINIA HIGH COST CHARGE       700', 'internalCode': 'VAARB', 'amount': 141}]}))
+        rate = self.carrier.ltl_rate(self.shipment)[0]
+        self.assertEqual((rate['total'], rate['quote_number'], rate['transit_days']), (603.33, '764491873', 2))
+        self.assertEqual([(c['code'], c['name'], c['amount']) for c in rate['charges']], [
+            ('LINEHAUL', 'Linehaul before discount, class 85, 1600 lb', 4153.6),
+            ('DISC', 'Discount (95%)', -3945.92),
+            ('LGATE', 'Liftgate delv/hand unload', 52.0),
+            ('VAARB', 'Virginia high cost charge', 141.0),
+            ('FUEL', 'Fuel surcharge (58.12%)', 202.65)])
+        self.assertAlmostEqual(sum(c['amount'] for c in rate['charges']), 603.33, places=2)
+        # Guaranteed by noon: same lines, GSS fuel and the guaranteed charge, adding up to Saia's total.
+        self.carrier.saia_show_guaranteed = True
+        noon = self.carrier.ltl_rate(self.shipment)[1]
+        self.assertEqual((noon['saia_service'], noon['total']), ('GSS12', 901.39))
+        self.assertAlmostEqual(sum(c['amount'] for c in noon['charges']), 901.39, places=2)
+        self.assertNotIn('OTHER', [c['code'] for c in noon['charges']])
+
     def test_guaranteed_and_account(self):
         self.carrier.write({'saia_show_guaranteed': True, 'saia_account_code': '0712345'})
         self.answers['/ratequote/customer-api'] = FakeResponse(200, rate_answer())
