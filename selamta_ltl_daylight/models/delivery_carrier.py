@@ -21,7 +21,7 @@ off until it is switched on on the shipping method.
 import json
 import logging
 import re
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import requests
 from markupsafe import Markup
@@ -143,7 +143,7 @@ class DeliveryCarrier(models.Model):
         messages = []
         if isinstance(data, dict):
             info = data.get('errorInformation') or {}
-            if isinstance(info, dict) and info.get('errorMessage'):
+            if isinstance(info, dict) and info.get('errorMessage') and str(info['errorMessage']).upper() != 'NULL':
                 messages.append(info['errorMessage'])
             for key in ('message', 'reason', 'error_description', 'error'):
                 if isinstance(data.get(key), str) and data[key]:
@@ -224,22 +224,32 @@ class DeliveryCarrier(models.Model):
         return phone[:10]
 
     @api.model
+    def _dylt_text(self, value, size):
+        """Plain text for Daylight: its server fails (HTTP 500, NullPointerException) on names
+        like "Merkato Import & Export, INC. (Sacramento)" (seen 30 Oct 2026). Drops a trailing
+        "(...)" note, writes & as "and" and keeps letters, digits and . , : # / - only."""
+        text = re.sub(r'\s*\([^)]*\)\s*$', '', str(value or ''))
+        text = text.replace('&', ' and ')
+        text = re.sub(r'[^A-Za-z0-9 .,:#/-]', ' ', text)
+        return ' '.join(text.split())[:size]
+
+    @api.model
     def _dylt_company_name(self, partner):
         return (partner.commercial_partner_id.name if partner.parent_id else partner.name) or ''
 
     @api.model
     def _dylt_customer(self, partner, account=None):
         info = {
-            'customerName': self._dylt_company_name(partner)[:60],
+            'customerName': self._dylt_text(self._dylt_company_name(partner), 60),
             'customerAddress': {
-                'streetAddress': (partner.street or '')[:60],
-                'city': (partner.city or '')[:30],
+                'streetAddress': self._dylt_text(partner.street, 60),
+                'city': self._dylt_text(partner.city, 30),
                 'state': partner.state_id.code or '',
                 'zip': self._dylt_zip(partner),
             },
         }
         if partner.street2:
-            info['customerAddress']['aptAddress'] = partner.street2[:60]
+            info['customerAddress']['aptAddress'] = self._dylt_text(partner.street2, 60)
         if account:
             info['customerNumber'] = account
         return info
@@ -268,7 +278,7 @@ class DeliveryCarrier(models.Model):
             if shipment.consolidated and unit.for_text:
                 text = '%s - for %s' % (text, unit.for_text)
             item = {
-                'description': text[:60],
+                'description': self._dylt_text(text, 60) or 'Freight',
                 'pcs': unit.quantity,
                 'pallets': unit.quantity if unit.unit_type == 'pallet' else 0,
                 'weight': round(unit.weight),
@@ -359,20 +369,20 @@ class DeliveryCarrier(models.Model):
             'shipmentID': shipment.bol_reference,
             'billTerms': 'PP',
             'serviceType': 'LTL',
-            'shipperName': self._dylt_company_name(shipper)[:60],
-            'shipperAddress1': shipper.street[:60],
-            'shipperCity': shipper.city[:30],
+            'shipperName': self._dylt_text(self._dylt_company_name(shipper), 60),
+            'shipperAddress1': self._dylt_text(shipper.street, 60),
+            'shipperCity': self._dylt_text(shipper.city, 30),
             'shipperState': shipper.state_id.code,
             'shipperZip': self._dylt_zip(shipper),
-            'shipperContactName': (self.dylt_contact_name or self.env.user.name or '')[:60],
+            'shipperContactName': self._dylt_text(self.dylt_contact_name or self.env.user.name, 60),
             'shipperContactNumber': self._dylt_phone(
                 self.dylt_contact_phone or shipper.phone or shipment.company_id.phone, _('shipping contact')),
-            'consigneeName': self._dylt_company_name(consignee)[:60],
-            'consigneeAddress1': consignee.street[:60],
-            'consigneeCity': consignee.city[:30],
+            'consigneeName': self._dylt_text(self._dylt_company_name(consignee), 60),
+            'consigneeAddress1': self._dylt_text(consignee.street, 60),
+            'consigneeCity': self._dylt_text(consignee.city, 30),
             'consigneeState': consignee.state_id.code,
             'consigneeZip': self._dylt_zip(consignee),
-            'consigneeContactName': ((consignee.name if consignee.parent_id else False) or _('Receiving'))[:60],
+            'consigneeContactName': self._dylt_text((consignee.name if consignee.parent_id else False) or _('Receiving'), 60),
             'consigneeContactNumber': self._dylt_phone(
                 consignee.phone or consignee.mobile or consignee.commercial_partner_id.phone,
                 _('consignee (%s)', consignee.display_name)),
@@ -383,14 +393,14 @@ class DeliveryCarrier(models.Model):
             'items': {'item': self._dylt_items(shipment)},
         }
         if shipper.street2:
-            request['shipperAddress2'] = shipper.street2[:60]
+            request['shipperAddress2'] = self._dylt_text(shipper.street2, 60)
         if consignee.street2:
-            request['consigneeAddress2'] = consignee.street2[:60]
+            request['consigneeAddress2'] = self._dylt_text(consignee.street2, 60)
         lines = shipment._bol_delivery_lines()
         if shipment.pickup_instructions:
             lines.append('PICKUP: %s' % ' '.join(shipment.pickup_instructions.split()))
         if lines:
-            request['notes'] = {'note': ', '.join(lines)[:MAX_NOTE]}
+            request['notes'] = {'note': self._dylt_text(', '.join(lines), MAX_NOTE)}
         if accessorials:
             request['accessorials'] = {'accessorial': accessorials}
         request['shipReferences'] = {'shipReference': self._dylt_references(shipment)}
@@ -435,12 +445,15 @@ class DeliveryCarrier(models.Model):
 
     @api.model
     def _dylt_date(self, value):
-        value = (value or '')[:10]
-        try:
-            parsed = date.fromisoformat(value)
-        except ValueError:
-            return False
-        return parsed if parsed.year > 1900 else False
+        """'2026-11-03' or '11/03/2026' (what the rate quote really sends) -> date."""
+        value = str(value or '').strip()[:10]
+        for fmt in ('%Y-%m-%d', '%m/%d/%Y'):
+            try:
+                parsed = datetime.strptime(value, fmt).date()
+            except ValueError:
+                continue
+            return parsed if parsed.year > 1900 else False
+        return False
 
     @api.model
     def _dylt_business_days(self, start, end):
@@ -472,15 +485,17 @@ class DeliveryCarrier(models.Model):
             name = _('Discount (%s%%)', ('%g' % discount_pct)) if discount_pct else _('Discount')
             charges.append({'code': 'DISCOUNT', 'name': name, 'amount': -abs(discount)})
         accessorial_lines = self._dylt_list((data.get('accessorialCharges') or {}).get('accessorialCharge'))
+        fuel = round(self._dylt_number(totals.get('fuelSurcharge')), 2)
         for line in accessorial_lines:
-            amount = self._dylt_number(line.get('accCharge'))
+            amount = round(self._dylt_number(line.get('accCharge')), 2)
+            if amount and fuel and 'fuel' in str(line.get('reqAccessorial') or '').lower():
+                continue  # Daylight lists the fuel surcharge here and in the totals; one fuel line below
             if amount:
                 code = line.get('reqAccessorial') or 'ACC'
                 charges.append({'code': code, 'name': self._dylt_accessorial_name(code), 'amount': amount})
         if not accessorial_lines and self._dylt_number(totals.get('totalAccessorial')):
             charges.append({'code': 'ACC', 'name': _('Accessorials'),
                             'amount': self._dylt_number(totals.get('totalAccessorial'))})
-        fuel = self._dylt_number(totals.get('fuelSurcharge'))
         if fuel:
             charges.append({'code': 'FUEL', 'name': _('Fuel surcharge'), 'amount': fuel})
         if charges:
