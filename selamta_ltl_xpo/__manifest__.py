@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta LTL: XPO',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.0.1',
     'category': 'Inventory/Delivery',
     'summary': 'XPO LTL API for Selamta LTL shipments: rate quotes, BOL with pickup, tracking, documents',
     'description': """

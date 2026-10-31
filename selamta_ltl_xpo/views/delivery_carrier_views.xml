@@ -26,6 +26,7 @@
                             <field name="xpo_shipper_account"/>
                             <field name="xpo_billto_account"/>
                             <field name="xpo_billto_code"/>
+                            <field name="xpo_rate_account" widget="radio"/>
                             <field name="xpo_show_guaranteed"/>
                             <button name="action_xpo_test_connection" type="object" string="Test XPO login (sample rate)"
                                     class="btn-secondary" groups="base.group_system" colspan="2"/>

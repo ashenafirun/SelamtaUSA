@@ -118,6 +118,12 @@ class DeliveryCarrier(models.Model):
         'XPO bill-to account', help='Our XPO bill-to account number (the one that carries our pricing).')
     xpo_billto_code = fields.Char(
         'XPO bill-to code', help='Letter code of the bill-to account, like ABCDE123000.')
+    xpo_rate_account = fields.Selection(
+        [('billto', 'Bill-to account'), ('shipper', 'Pickup account')],
+        'Price with', default='billto', required=True,
+        help='XPO takes one account number per quote or BOL (shipper, consignee or bill-to, not '
+             'two), and that account decides the pricing. Bill-to: our bill-to account pays and '
+             'the dock goes by ZIP code. Pickup: our pickup account is the shipper and pays.')
     xpo_show_guaranteed = fields.Boolean(
         'Show guaranteed quotes',
         help='When XPO offers guaranteed service (G!) for the lane, also list its price in the rate shop.')
@@ -417,6 +423,16 @@ class DeliveryCarrier(models.Model):
                 codes.append(code)
         return codes
 
+    def _xpo_account_party(self):
+        """'billto' or 'shipper': the one party that carries our account number, or False."""
+        if self.xpo_rate_account == 'shipper' and (self.xpo_shipper_account or '').strip():
+            return 'shipper'
+        if (self.xpo_billto_account or '').strip():
+            return 'billto'
+        if (self.xpo_shipper_account or '').strip():
+            return 'shipper'
+        return False
+
     def _xpo_rate_request(self, shipment, guaranteed=False):
         units = self._xpo_units(shipment)
         shipper = shipment.shipper_id
@@ -434,9 +450,13 @@ class DeliveryCarrier(models.Model):
                 line['dimensions'] = {'length': round(unit.length, 1), 'width': round(unit.width, 1),
                                       'height': round(unit.height, 1), 'dimensionsUom': 'INCH'}
             commodities.append(line)
-        origin = {'address': {'postalCd': self._xpo_zip(shipper)}}
-        if self.xpo_shipper_account:
-            origin['acctInstId'] = self.xpo_shipper_account.strip()
+        # XPO: one party only may carry an account number, and a party with an account number
+        # goes without a postal code (XPO uses the account's).
+        account_party = self._xpo_account_party()
+        if account_party == 'shipper':
+            origin = {'acctInstId': self.xpo_shipper_account.strip()}
+        else:
+            origin = {'address': {'postalCd': self._xpo_zip(shipper)}}
         info = {
             'paymentTermCd': 'P',
             'shipmentDate': self._xpo_iso(self._xpo_moment(ship_date, shipment.pickup_ready_time or 12.0, shipper),
@@ -448,9 +468,8 @@ class DeliveryCarrier(models.Model):
         }
         if guaranteed:
             info['accessorials'].append({'accessorialCd': GUARANTEED})
-        if self.xpo_billto_account:
-            bill_to = {'acctInstId': self.xpo_billto_account.strip(),
-                       'address': {'postalCd': self._xpo_zip(shipment.company_id.partner_id)}}
+        if account_party == 'billto':
+            bill_to = {'acctInstId': self.xpo_billto_account.strip()}
             if self.xpo_billto_code:
                 bill_to['acctMadCd'] = self.xpo_billto_code.strip()
             info['bill2Party'] = bill_to
@@ -496,7 +515,8 @@ class DeliveryCarrier(models.Model):
         if not consignee_contact.get('phone'):
             raise UserError(_('XPO needs a phone number for %s (consignee).', consignee.display_name))
         shipper_party = {'address': self._xpo_address(shipper, _('shipper')), 'contactInfo': shipper_contact}
-        if self.xpo_shipper_account:
+        account_party = self._xpo_account_party()
+        if account_party == 'shipper':
             shipper_party['acctInstId'] = self.xpo_shipper_account.strip()
         bol = {
             'requester': {'role': 'S'},
@@ -507,7 +527,7 @@ class DeliveryCarrier(models.Model):
             'chargeToCd': 'P',
             'suppRef': {'shippersRefNbr': (shipment.bol_reference or '')[:30]},
         }
-        if self.xpo_billto_account:
+        if account_party == 'billto':
             bol['billToCust'] = {
                 'acctInstId': self.xpo_billto_account.strip(),
                 'address': self._xpo_address(company.partner_id, _('bill to')),

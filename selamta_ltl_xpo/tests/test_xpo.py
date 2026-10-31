@@ -141,10 +141,11 @@ class TestXpo(TransactionCase):
         self.assertEqual(call['headers']['Authorization'], 'Bearer token-1')
         info = call['json']['shipmentInfo']
         self.assertEqual(info['paymentTermCd'], 'P')
-        self.assertEqual(info['shipper'], {'address': {'postalCd': '30035'}, 'acctInstId': '700000001'})
+        # XPO (30 Oct 2026): "Shipper, Consignee and Bill-To cannot have a customer number at the
+        # same time" and "Shipper cannot have Account Number and Postal code at the same time".
+        self.assertEqual(info['shipper'], {'address': {'postalCd': '30035'}})
         self.assertEqual(info['consignee'], {'address': {'postalCd': '28202'}})
-        self.assertEqual(info['bill2Party'], {'acctInstId': '800000002', 'acctMadCd': 'TESTX991000',
-                                              'address': {'postalCd': '30035'}})
+        self.assertEqual(info['bill2Party'], {'acctInstId': '800000002', 'acctMadCd': 'TESTX991000'})
         self.assertEqual(info['commodity'], [{
             'pieceCnt': 2, 'packageCode': 'PLT', 'grossWeight': {'weight': 1801, 'weightUom': 'LBS'},
             'nmfcClass': '%g' % float(self.shipment.unit_ids.freight_class), 'hazmatInd': False,
@@ -164,6 +165,20 @@ class TestXpo(TransactionCase):
             'Linehaul before discount, class 85, 1801 lb', 'Discount (77.36%)', 'Homeland security fee',
             'Fuel surcharge'])
         self.assertAlmostEqual(sum(c['amount'] for c in rate['charges']), 541.01, places=2)
+
+    def test_price_with_pickup_account(self):
+        self.carrier.xpo_rate_account = 'shipper'
+        self.answers['/rating/1.0/ratequotes'] = rate_answer()
+        self.carrier.ltl_rate(self.shipment)
+        info = self._calls_to('/rating/1.0/ratequotes')[0]['json']['shipmentInfo']
+        self.assertEqual(info['shipper'], {'acctInstId': '700000001'})
+        self.assertNotIn('bill2Party', info)
+        # No account numbers at all: by ZIP code.
+        self.carrier.write({'xpo_shipper_account': False, 'xpo_billto_account': False})
+        self.carrier.ltl_rate(self.shipment)
+        info = self._calls_to('/rating/1.0/ratequotes')[1]['json']['shipmentInfo']
+        self.assertEqual(info['shipper'], {'address': {'postalCd': '30035'}})
+        self.assertNotIn('bill2Party', info)
 
     def test_token_reused_and_renewed(self):
         self.answers['/rating/1.0/ratequotes'] = rate_answer()
@@ -250,7 +265,7 @@ class TestXpo(TransactionCase):
         bol = request['bol']
         self.assertEqual(bol['requester'], {'role': 'S'})
         self.assertEqual(bol['chargeToCd'], 'P')
-        self.assertEqual(bol['shipper']['acctInstId'], '700000001')
+        self.assertNotIn('acctInstId', bol['shipper'])  # one account per BOL: the bill-to
         self.assertEqual(bol['shipper']['address'], {
             'addressLine1': '5335 Dividend Dr Suite C', 'cityName': 'Decatur', 'stateCd': 'GA',
             'countryCd': 'US', 'postalCd': '30035'})
@@ -280,10 +295,12 @@ class TestXpo(TransactionCase):
         self.assertIn('XPO BOL (carrier copy) 123456782.pdf', names)
 
     def test_book_in_test_mode_without_pickup(self):
-        self._book(xpo_environment='test', xpo_schedule_pickup=False)
+        self._book(xpo_environment='test', xpo_schedule_pickup=False, xpo_rate_account='shipper')
         call = self._calls_to('/billoflading/1.0/billsoflading')[0]
         self.assertIn(('testMode', 'Y'), call['params'])
         self.assertNotIn('pickupInfo', call['json']['bol'])
+        self.assertEqual(call['json']['bol']['shipper']['acctInstId'], '700000001')
+        self.assertNotIn('billToCust', call['json']['bol'])
         self.assertTrue(self.shipment.xpo_test_booking)
         self.assertIn('TEST MODE', ' '.join(self.shipment.message_ids.mapped('body')))
 
