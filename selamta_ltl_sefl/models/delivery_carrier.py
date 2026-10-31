@@ -43,7 +43,7 @@ PUBLIC_TRACKING_URL = 'https://www.sefl.com/Tracing/index.jsp?Type=PN&RefNum1=%s
 TIMEOUT = 45
 MAX_LINES = 20
 TRACK_BATCH = 10
-QUOTE_WAIT = [1, 1, 2, 2, 3, 3]  # seconds between asks while SEFL says ENT (queued)
+QUOTE_WAIT = [1, 1, 2, 2, 3, 3, 4, 4]  # seconds between asks while SEFL is still rating
 ACCESSORIALS = {
     'LIFTGATE_DEL': 'chkLGD',
     'RESIDENTIAL_DEL': 'chkPR',
@@ -74,7 +74,7 @@ class DeliveryCarrier(models.Model):
         'Southeastern account number',
         help='Shipper account number, shown in MySEFL under Shipping Tools > Rate Quotes.')
     sefl_send_dimensions = fields.Boolean(
-        'Send pallet dimensions',
+        'Send pallet dimensions', default=True,
         help='Also send each line\'s dimensions, for accounts on dimension-based pricing.')
 
     # ------------------------------------------------------------------ connection
@@ -251,14 +251,23 @@ class DeliveryCarrier(models.Model):
                 detail = {}
             if self._sefl_failed(detail):
                 raise UserError(_('Southeastern: %s', self._sefl_mask(detail.get('errorMessage') or number)))
-            if self._sefl_text(detail.get('status')).upper() != 'ENT':
+            if not self._sefl_pending(detail):
                 break
         status = self._sefl_text(detail.get('status')).upper()
-        if status == 'ENT':
+        if self._sefl_pending(detail):
             raise UserError(_('Southeastern is still working on quote %s; try Get rates again in a minute.', number))
         if status == 'UTR':
             raise UserError(_('Southeastern has to rate quote %s by hand; it will be emailed.', number))
         return detail
+
+    def _sefl_pending(self, detail):
+        """SEFL is still rating: status ENT, or no status yet with "Quote has not yet been
+        processed" (seen 30 Oct 2026)."""
+        status = self._sefl_text(detail.get('status')).upper()
+        if status in ('RAT', 'UTR'):
+            return False
+        message = self._sefl_text(detail.get('errorMessage')).lower()
+        return status == 'ENT' or 'not yet' in message or not self._sefl_number(detail.get('rateQuote'))
 
     def _sefl_rate_from_answer(self, data):
         total = self._sefl_number(data.get('rateQuote'))
