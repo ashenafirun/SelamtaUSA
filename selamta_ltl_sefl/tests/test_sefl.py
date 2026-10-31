@@ -122,7 +122,9 @@ class TestSefl(TransactionCase):
         self.assertEqual((form['Class1'], form['Weight1'], form['Pieces1']),
                          (self.carrier._sefl_class(self.shipment.unit_ids.freight_class), '1801', '2'))
         self.assertEqual(form['chkLGD'], 'on')
-        self.assertNotIn('DimsOption', form)
+        # Dimensions by default: SEFL answered "The number of units and the weight for each item
+        # must be provided" without them (30 Oct 2026).
+        self.assertEqual((form['DimsOption'], form['NumberOfUnits1'], form['PieceHeight1']), ('I', '2', '60'))
         detail = self._calls_to('/rest/CXQKNF157')[0]
         self.assertEqual(detail['params'], {'ReturnDetail': 'Y'})
         rate = rates[0]
@@ -133,9 +135,10 @@ class TestSefl(TransactionCase):
         self.assertAlmostEqual(sum(c['amount'] for c in rate['charges']), 667.26, places=2)
 
     def test_queued_quote_hand_rating_and_errors(self):
-        self._answer_quote(quote_detail(status='ENT', total='0'), quote_detail())
+        not_yet = dict(quote_detail(status='', total='0'), errorMessage='Quote has not yet been processed.')
+        self._answer_quote(quote_detail(status='ENT', total='0'), not_yet, quote_detail())
         self.assertEqual(self.carrier.ltl_rate(self.shipment)[0]['total'], 667.26)
-        self.assertEqual(len(self._calls_to('/rest/CXQKNF157')), 2)
+        self.assertEqual(len(self._calls_to('/rest/CXQKNF157')), 3)
         self._answer_quote(quote_detail(status='UTR', total='0'))
         with self.assertRaisesRegex(UserError, 'rate quote CXQKNF157 by hand'):
             self.carrier.ltl_rate(self.shipment)
@@ -151,7 +154,6 @@ class TestSefl(TransactionCase):
             self.carrier.ltl_rate(self.shipment)
 
     def test_minimum_charge_and_dimensions(self):
-        self.carrier.sefl_send_dimensions = True
         self._answer_quote(quote_detail(total='487.10', details=[
             {'typeCharge': '     P', 'description': 'Teff flour', 'charges': '410.00', 'ratingClass': ' 85',
              'weight': '300'},
