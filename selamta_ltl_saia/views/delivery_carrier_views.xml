@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_delivery_carrier_form_saia" model="ir.ui.view">
+        <field name="name">delivery.carrier.form.saia</field>
+        <field name="model">delivery.carrier</field>
+        <field name="inherit_id" ref="delivery.view_delivery_carrier_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Saia" name="saia" invisible="delivery_type != 'saia'">
+                    <div class="alert alert-info" role="alert">
+                        Rates, tracking and delivery documents. Choosing Saia in the rate shop saves the quote;
+                        book on saia.com and type the PRO.
+                    </div>
+                    <group>
+                        <group string="Saia login (saia.com)">
+                            <field name="saia_username" groups="base.group_system"/>
+                            <field name="saia_password" password="True" groups="base.group_system"/>
+                            <field name="saia_account_code"/>
+                            <field name="saia_show_guaranteed"/>
+                        </group>
+                        <group string="Developer portal keys">
+                            <field name="saia_rq_key" password="True" groups="base.group_system"/>
+                            <field name="saia_tracking_key" password="True" groups="base.group_system"/>
+                            <field name="saia_imaging_key" password="True" groups="base.group_system"/>
+                            <button name="action_saia_test_connection" type="object" string="Test Saia login (sample rate)"
+                                    class="btn-secondary" groups="base.group_system" colspan="2"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
