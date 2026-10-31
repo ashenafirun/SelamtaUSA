@@ -154,6 +154,20 @@ class TestDaylight(TransactionCase):
         self.carrier.ltl_rate(self.shipment)
         self.assertNotIn('pickupDate', self._calls_to('/rateQuote')[-1]['json']['dyltRateQuoteReq'])
 
+    def test_wrapped_answer_and_unknown_error(self):
+        self.answers['/rateQuote'] = FakeResponse(200, {'dyltRateQuoteResp': rate_answer()})
+        self.assertEqual(self.carrier.ltl_rate(self.shipment)[0]['total'], 581.13)
+        # A refusal whose reason is not in a field we know shows Daylight's own answer,
+        # with passwords hidden.
+        self.answers['/rateQuote'] = FakeResponse(200, {'success': 'NO', 'statusMsg': 'User not authorized',
+                                                        'password': 'pw-should-not-show'})
+        with self.assertRaisesRegex(UserError, 'User not authorized') as caught:
+            self.carrier.ltl_rate(self.shipment)
+        self.assertNotIn('pw-should-not-show', str(caught.exception))
+        raw = json.loads(self.carrier.dylt_raw_rate_answer(self.shipment.id))
+        self.assertEqual(raw['request']['dyltRateQuoteReq'].get('password', '***'), '***')
+        self.assertEqual(raw['answer']['password'], '***')
+
     def test_token_reused_and_refreshed(self):
         self.answers['/rateQuote'] = FakeResponse(200, rate_answer())
         self.carrier.ltl_rate(self.shipment)
