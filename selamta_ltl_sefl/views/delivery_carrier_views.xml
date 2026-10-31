@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_delivery_carrier_form_sefl" model="ir.ui.view">
+        <field name="name">delivery.carrier.form.sefl</field>
+        <field name="model">delivery.carrier</field>
+        <field name="inherit_id" ref="delivery.view_delivery_carrier_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Southeastern" name="sefl" invisible="delivery_type != 'sefl'">
+                    <div class="alert alert-info" role="alert">
+                        Rates, tracking and delivery documents. Choosing Southeastern in the rate shop saves the
+                        quote; book on sefl.com and type the PRO.
+                    </div>
+                    <group>
+                        <group string="MySEFL login (sefl.com)">
+                            <field name="sefl_username" groups="base.group_system"/>
+                            <field name="sefl_password" password="True" groups="base.group_system"/>
+                            <field name="sefl_account"/>
+                            <field name="sefl_send_dimensions"/>
+                            <button name="action_sefl_test_connection" type="object" string="Test MySEFL login (sample rate)"
+                                    class="btn-secondary" groups="base.group_system" colspan="2"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
