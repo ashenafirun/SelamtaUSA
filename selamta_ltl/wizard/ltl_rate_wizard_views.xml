@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_ltl_rate_wizard_form" model="ir.ui.view">
+        <field name="name">selamta.ltl.rate.wizard.form</field>
+        <field name="model">selamta.ltl.rate.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Rate shop">
+                <div class="alert alert-info" role="alert" invisible="not message">
+                    <field name="message"/>
+                </div>
+                <field name="shipment_id" invisible="1"/>
+                <field name="currency_id" invisible="1"/>
+                <p class="text-muted">
+                    Rates from connected carriers appear here. Add a line for any quote you got
+                    on a carrier website or by phone, then click <b>Choose</b> on the one to use.
+                    Light loads also get a parcel quote (blue line); choosing it sends the boxes by parcel.
+                </p>
+                <field name="line_ids">
+                    <list editable="bottom" decoration-muted="error" decoration-info="parcel and not error">
+                        <field name="carrier_id" options="{'no_create': True}" readonly="source == 'api'"/>
+                        <field name="source" readonly="source == 'api'"/>
+                        <field name="service" optional="show"/>
+                        <field name="total"/>
+                        <field name="transit_days"/>
+                        <field name="quote_number"/>
+                        <field name="expires" optional="show"/>
+                        <field name="error" optional="show"/>
+                        <field name="parcel" column_invisible="True"/>
+                        <field name="currency_id" column_invisible="True"/>
+                        <button name="action_choose" type="object" string="Choose"
+                                class="btn-primary" invisible="error"/>
+                    </list>
+                </field>
+                <footer>
+                    <button name="action_refresh" type="object" string="Ask carriers again"/>
+                    <button string="Close" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

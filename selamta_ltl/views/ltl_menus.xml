@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_ltl_parcel_root" name="LTL &amp; Parcel" parent="stock.menu_stock_warehouse_mgmt"
+              sequence="15" groups="stock.group_stock_user"/>
+    <menuitem id="menu_ltl_shipments" name="LTL shipments" parent="menu_ltl_parcel_root"
+              action="action_ltl_shipment" sequence="1" groups="stock.group_stock_user"/>
+    <menuitem id="menu_parcel_deliveries" name="Parcel deliveries" parent="menu_ltl_parcel_root"
+              action="action_parcel_deliveries" sequence="2" groups="stock.group_stock_user"/>
+    <menuitem id="menu_ltl_accessorials" name="LTL Services" parent="stock.menu_delivery"
+              action="action_ltl_accessorial" sequence="20" groups="stock.group_stock_manager"/>
+    <menuitem id="menu_ltl_density_scale" name="Freight Density Scale" parent="stock.menu_delivery"
+              action="action_ltl_density_scale" sequence="21" groups="stock.group_stock_manager"/>
+    <menuitem id="menu_ltl_bill_check" name="LTL Bill Check" parent="account.menu_finance_payables"
+              action="action_ltl_bill_check" sequence="40" groups="account.group_account_invoice"/>
+</odoo>

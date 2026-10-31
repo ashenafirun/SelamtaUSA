@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- NMFC 13-tier density scale (Docket 2025-1, effective 19 Jul 2025): pounds per cubic
+         foot -> class. Editable under Inventory > Configuration > Freight density scale.
+         Add lines with an NMFC item to give that item its own subs. -->
+    <record id="density_scale_sub_1" model="selamta.ltl.density.scale">
+        <field name="min_density">0</field>
+        <field name="freight_class">400</field>
+        <field name="note">Sub 1</field>
+    </record>
+    <record id="density_scale_sub_2" model="selamta.ltl.density.scale">
+        <field name="min_density">1</field>
+        <field name="freight_class">300</field>
+        <field name="note">Sub 2</field>
+    </record>
+    <record id="density_scale_sub_3" model="selamta.ltl.density.scale">
+        <field name="min_density">2</field>
+        <field name="freight_class">250</field>
+        <field name="note">Sub 3</field>
+    </record>
+    <record id="density_scale_sub_4" model="selamta.ltl.density.scale">
+        <field name="min_density">4</field>
+        <field name="freight_class">175</field>
+        <field name="note">Sub 4</field>
+    </record>
+    <record id="density_scale_sub_5" model="selamta.ltl.density.scale">
+        <field name="min_density">6</field>
+        <field name="freight_class">125</field>
+        <field name="note">Sub 5</field>
+    </record>
+    <record id="density_scale_sub_6" model="selamta.ltl.density.scale">
+        <field name="min_density">8</field>
+        <field name="freight_class">100</field>
+        <field name="note">Sub 6</field>
+    </record>
+    <record id="density_scale_sub_7" model="selamta.ltl.density.scale">
+        <field name="min_density">10</field>
+        <field name="freight_class">92.5</field>
+        <field name="note">Sub 7</field>
+    </record>
+    <record id="density_scale_sub_8" model="selamta.ltl.density.scale">
+        <field name="min_density">12</field>
+        <field name="freight_class">85</field>
+        <field name="note">Sub 8</field>
+    </record>
+    <record id="density_scale_sub_9" model="selamta.ltl.density.scale">
+        <field name="min_density">15</field>
+        <field name="freight_class">70</field>
+        <field name="note">Sub 9</field>
+    </record>
+    <record id="density_scale_sub_10" model="selamta.ltl.density.scale">
+        <field name="min_density">22.5</field>
+        <field name="freight_class">65</field>
+        <field name="note">Sub 10</field>
+    </record>
+    <record id="density_scale_sub_11" model="selamta.ltl.density.scale">
+        <field name="min_density">30</field>
+        <field name="freight_class">60</field>
+        <field name="note">Sub 11</field>
+    </record>
+    <record id="density_scale_sub_12" model="selamta.ltl.density.scale">
+        <field name="min_density">35</field>
+        <field name="freight_class">55</field>
+        <field name="note">Sub 12</field>
+    </record>
+    <record id="density_scale_sub_13" model="selamta.ltl.density.scale">
+        <field name="min_density">50</field>
+        <field name="freight_class">50</field>
+        <field name="note">Sub 13</field>
+    </record>
+</odoo>

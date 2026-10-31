@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Shipment / BOL numbers: SEL2600001. Letters and digits only, so every carrier API accepts it. -->
+    <record id="seq_ltl_shipment" model="ir.sequence">
+        <field name="name">LTL shipment</field>
+        <field name="code">selamta.ltl.shipment</field>
+        <field name="prefix">SEL%(y)s</field>
+        <field name="padding">5</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

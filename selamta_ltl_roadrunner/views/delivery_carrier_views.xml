@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_delivery_carrier_form_roadrunner" model="ir.ui.view">
+        <field name="name">delivery.carrier.form.roadrunner</field>
+        <field name="model">delivery.carrier</field>
+        <field name="inherit_id" ref="delivery.view_delivery_carrier_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Roadrunner" name="roadrunner" invisible="delivery_type != 'roadrunner'">
+                    <div class="alert alert-warning" role="alert" invisible="rrts_environment == 'production'">
+                        Test: BOLs go to Roadrunner's test system and nothing is picked up. Rates and
+                        tracking come from production either way (they book nothing). Switch to
+                        Production when the tests are done.
+                    </div>
+                    <group>
+                        <group string="Connection">
+                            <field name="rrts_environment" widget="radio"/>
+                            <field name="rrts_account_number"/>
+                            <field name="rrts_username" groups="base.group_system"/>
+                            <field name="rrts_password" password="True" groups="base.group_system"/>
+                            <button name="action_rrts_test_connection" type="object" string="Test sign-in (sample rate)"
+                                    class="btn-secondary" groups="base.group_system" colspan="2"/>
+                            <field name="rrts_app_id" groups="base.group_system"/>
+                            <field name="rrts_api_key" password="True" groups="base.group_system"/>
+                        </group>
+                        <group string="Booking">
+                            <field name="rrts_schedule_pickup"/>
+                            <field name="rrts_label_style"/>
+                            <field name="rrts_contact_name"/>
+                            <field name="rrts_contact_email"/>
+                            <field name="rrts_contact_phone"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_ltl_shipment_form_roadrunner" model="ir.ui.view">
+        <field name="name">selamta.ltl.shipment.form.roadrunner</field>
+        <field name="model">selamta.ltl.shipment</field>
+        <field name="inherit_id" ref="selamta_ltl.view_ltl_shipment_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='pickup_number']" position="after">
+                <field name="rrts_terminal" invisible="not rrts_terminal"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_ltl_accessorial_list" model="ir.ui.view">
+        <field name="name">selamta.ltl.accessorial.list</field>
+        <field name="model">selamta.ltl.accessorial</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="keywords"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_ltl_accessorial" model="ir.actions.act_window">
+        <field name="name">LTL services (accessorials)</field>
+        <field name="res_model">selamta.ltl.accessorial</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'active_test': False}</field>
+    </record>
+
+    <record id="view_ltl_density_scale_list" model="ir.ui.view">
+        <field name="name">selamta.ltl.density.scale.list</field>
+        <field name="model">selamta.ltl.density.scale</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="nmfc_item" placeholder="General scale"/>
+                <field name="min_density"/>
+                <field name="freight_class"/>
+                <field name="note"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ltl_density_scale_search" model="ir.ui.view">
+        <field name="name">selamta.ltl.density.scale.search</field>
+        <field name="model">selamta.ltl.density.scale</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="nmfc_item"/>
+                <filter name="general" string="General scale" domain="[('nmfc_item', '=', False)]"/>
+                <filter name="items" string="NMFC item scales" domain="[('nmfc_item', '!=', False)]"/>
+                <group expand="0" string="Group by">
+                    <filter name="group_item" string="NMFC item" context="{'group_by': 'nmfc_item'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ltl_density_scale" model="ir.actions.act_window">
+        <field name="name">Freight density scale</field>
+        <field name="res_model">selamta.ltl.density.scale</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="view_ltl_density_scale_search"/>
+        <field name="help" type="html">
+            <p>Pounds per cubic foot to freight class. Each line applies from its density up to
+               the next line. Lines with an NMFC item replace the general scale for that item.</p>
+        </field>
+    </record>
+</odoo>

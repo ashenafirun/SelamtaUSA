@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- For a pickup the carrier's system would not cancel (cancelled by phone instead). Also
+         offered on the error shown when the carrier refuses the cancellation. -->
+    <record id="action_server_ltl_cancel_odoo_only" model="ir.actions.server">
+        <field name="name">Cancel in Odoo only (carrier cancelled by phone)</field>
+        <field name="model_id" ref="model_selamta_ltl_shipment"/>
+        <field name="binding_model_id" ref="model_selamta_ltl_shipment"/>
+        <field name="binding_view_types">form</field>
+        <field name="state">code</field>
+        <field name="code">action = records.with_context(ltl_odoo_only=True).action_cancel()</field>
+    </record>
+</odoo>
