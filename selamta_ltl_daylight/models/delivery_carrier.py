@@ -18,7 +18,9 @@ host api.dylt.com, portal dylt-portalapi.apigee.io).
 Daylight offers no test system for customers: a pickup booked through the API is a real pickup, so booking is
 off until it is switched on on the shipping method.
 """
+import json
 import logging
+import re
 from datetime import date, timedelta
 
 import requests
@@ -149,9 +151,38 @@ class DeliveryCarrier(models.Model):
             fault = data.get('fault') or {}
             if isinstance(fault, dict) and fault.get('faultstring'):
                 messages.append(fault['faultstring'])
+        if not messages and isinstance(data, dict) and data:
+            # Not in a field we know: show Daylight's own answer (passwords hidden).
+            messages.append(json.dumps(self._dylt_masked(data), separators=(',', ':'))[:400])
         if not messages and response is not None:
-            messages.append((response.text or '')[:300])
+            messages.append(self._dylt_mask_text(response.text or '')[:300])
         return '; '.join(m for m in messages if m) or _('no details')
+
+    @api.model
+    def _dylt_masked(self, data):
+        """Copy of a request or answer with passwords and secrets replaced by ***."""
+        if isinstance(data, dict):
+            return {key: '***' if re.search(r'pass|secret|token', str(key), re.I) and value else self._dylt_masked(value)
+                    for key, value in data.items()}
+        if isinstance(data, list):
+            return [self._dylt_masked(value) for value in data]
+        return data
+
+    @api.model
+    def _dylt_mask_text(self, text):
+        return re.sub(r'(?i)("?[a-z_]*(?:pass|secret|token)[a-z_]*"?\s*[:=]\s*)"[^"]*"', r'\1"***"', text)
+
+    @api.model
+    def _dylt_unwrap(self, data):
+        """The spec shows a flat rate answer; accept it wrapped in one object too
+        ({"dyltRateQuoteResp": {...}})."""
+        if isinstance(data, dict) and 'success' not in data and 'totalCharges' not in data:
+            for key in ('dyltRateQuoteResp', 'dyltRateQuoteResponse', 'rateQuoteResp', 'response', 'data'):
+                if isinstance(data.get(key), dict):
+                    return data[key]
+            if len(data) == 1 and isinstance(next(iter(data.values())), dict):
+                return next(iter(data.values()))
+        return data
 
     def _dylt_call(self, method, path, payload=None, params=None, retry=True, binary=False):
         """Call the ship-daylight API. Returns the JSON, or the raw response for binary=True."""
@@ -423,6 +454,7 @@ class DeliveryCarrier(models.Model):
         return days
 
     def _dylt_rate_from_answer(self, data, missing=None):
+        data = self._dylt_unwrap(data)
         if str(data.get('success') or '').upper() != 'YES':
             raise UserError(_('Daylight: %s', self._dylt_error(data)))
         totals = data.get('totalCharges') or {}
@@ -481,6 +513,29 @@ class DeliveryCarrier(models.Model):
         _accessorials, missing = self._dylt_accessorials(shipment)
         data = self._dylt_call('POST', '/rateQuote', self._dylt_rate_request(shipment))
         return [self._dylt_rate_from_answer(data, missing)]
+
+    def dylt_raw_rate_answer(self, shipment_id=False):
+        """Request and Daylight's full rate answer (passwords hidden) for a shipment or a sample
+        from our dock, as text, to check what Daylight sends. Administrators only; books nothing."""
+        self.ensure_one()
+        if not self.env.user.has_group('base.group_system'):
+            raise UserError(_('Only administrators can see raw Daylight answers.'))
+        shipment = self.env['selamta.ltl.shipment'].browse(shipment_id) if shipment_id else self._dylt_sample_shipment()
+        request = self._dylt_rate_request(shipment)
+        response = self._dylt_request('POST', API_HOST + '/rateQuote', json=request, headers={
+            'Authorization': 'Bearer %s' % self._dylt_token(), 'Accept': 'application/json'})
+        return json.dumps({'request': self._dylt_masked(request), 'status': response.status_code,
+                           'answer': self._dylt_masked(self._dylt_json(response))
+                           or self._dylt_mask_text(response.text or '')[:2000]}, indent=1)
+
+    def _dylt_sample_shipment(self):
+        shipper = self.env.company.partner_id
+        return self.env['selamta.ltl.shipment'].new({
+            'shipper_id': shipper.id, 'partner_id': shipper.id, 'carrier_id': self.id,
+            'ship_date': fields.Date.context_today(self),
+            'unit_ids': [(0, 0, {'unit_type': 'pallet', 'quantity': 1, 'length': 48, 'width': 40,
+                                 'height': 48, 'weight': 500, 'class_override': '70'})],
+        })
 
     def daylight_ltl_book(self, shipment, rate):
         self.ensure_one()
@@ -600,13 +655,7 @@ class DeliveryCarrier(models.Model):
         class 70). Books nothing."""
         self.ensure_one()
         self.sudo().write({'dylt_access_token': False, 'dylt_token_expiry': False})
-        shipper = self.env.company.partner_id
-        shipment = self.env['selamta.ltl.shipment'].new({
-            'shipper_id': shipper.id, 'partner_id': shipper.id, 'carrier_id': self.id,
-            'ship_date': fields.Date.context_today(self),
-            'unit_ids': [(0, 0, {'unit_type': 'pallet', 'quantity': 1, 'length': 48, 'width': 40,
-                                 'height': 48, 'weight': 500, 'class_override': '70'})],
-        })
+        shipment = self._dylt_sample_shipment()
         rate = self._dylt_rate_from_answer(self._dylt_call('POST', '/rateQuote', self._dylt_rate_request(shipment)))
         return {
             'type': 'ir.actions.client', 'tag': 'display_notification',
