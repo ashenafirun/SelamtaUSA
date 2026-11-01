@@ -463,6 +463,41 @@ class TestLtl(AccountTestInvoicingCommon):
         shipment.action_confirm_booking()
         self.assertEqual(shipment.state, 'booked')
 
+    def test_default_pickup_window_9_to_1730(self):
+        carrier = self.env['delivery.carrier'].create({
+            'name': 'New LTL', 'product_id': self.c_tforce.product_id.id, 'ltl_enabled': True,
+            'ltl_vendor_id': self.tforce.id,
+        })
+        self.assertEqual((carrier.ltl_ready_time, carrier.ltl_close_time), (9.0, 17.5))
+        shipment = self._shipment(carrier)
+        self.assertEqual((shipment.pickup_ready_time, shipment.pickup_close_time), (9.0, 17.5))
+        no_carrier = self.env['selamta.ltl.shipment'].create({'partner_id': self.customer.id})
+        self.assertEqual((no_carrier.pickup_ready_time, no_carrier.pickup_close_time), (9.0, 17.5))
+        self.assertIn('ready 9:00 AM, dock closes 5:30 PM', ' '.join(shipment._bol_pickup_lines()))
+
+    def test_pallet_description_foodstuff(self):
+        ours = self._delivery(self.customer, 10, 'S00701')
+        second = self._delivery(self.customer, 5, 'S00702')
+        shipment = self.env['selamta.ltl.shipment']._create_from_pickings(ours | second)
+        self.assertEqual(shipment.unit_ids.mapped('description'), ['Foodstuff', 'Foodstuff'])
+        # A line added by hand starts as Foodstuff too, and staff can change it.
+        shipment.unit_ids = [(0, 0, {'quantity': 1, 'unit_type': 'box', 'weight': 40})]
+        added = shipment.unit_ids.sorted('id')[-1]
+        self.assertEqual(added.description, 'Foodstuff')
+        added.description = 'Coffee beans'
+        html = self.env['ir.actions.report']._render_qweb_html(
+            'selamta_ltl.report_ltl_bol', shipment.ids)[0].decode()
+        self.assertIn('Foodstuff', html)
+        self.assertIn('Coffee beans', html)
+        # Another default for every new line, from the system parameter.
+        self.env['ir.config_parameter'].sudo().set_param('selamta_ltl.default_description', 'Groceries')
+        other = self.env['selamta.ltl.shipment']._create_from_pickings(self._delivery(self.customer, 3, 'S00703'))
+        self.assertEqual(other.unit_ids.description, 'Groceries')
+        # Picking the order on a line shows the sales order with the delivery.
+        labelled = ours.with_context(ltl_show_order=True)
+        self.assertEqual(labelled.display_name, 'S00701 (%s)' % ours.name)
+        self.assertEqual(ours.display_name, ours.name)
+
     def test_bol_renders(self):
         shipment = self._shipment(self.c_tforce, pro='246813579', quoted=300)
         shipment.accessorial_ids = self.env.ref('selamta_ltl.accessorial_liftgate_delivery')

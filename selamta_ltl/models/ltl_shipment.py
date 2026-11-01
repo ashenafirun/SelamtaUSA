@@ -8,7 +8,10 @@ from odoo import _, api, fields, models
 from odoo.exceptions import RedirectWarning, UserError
 from odoo.tools import float_round
 
-from .ltl_common import FREIGHT_CLASSES, UNIT_TYPES, class_number, digits_only
+from .ltl_common import (
+    DEFAULT_CLOSE_TIME, DEFAULT_DESCRIPTION, DEFAULT_READY_TIME, FREIGHT_CLASSES, UNIT_TYPES,
+    class_number, digits_only,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -191,8 +194,8 @@ class LtlShipment(models.Model):
                 shipment.pickup_ready_time = carrier.ltl_ready_time
                 shipment.pickup_close_time = carrier.ltl_close_time
             else:
-                shipment.pickup_ready_time = shipment.pickup_ready_time or 10.0
-                shipment.pickup_close_time = shipment.pickup_close_time or 16.0
+                shipment.pickup_ready_time = shipment.pickup_ready_time or DEFAULT_READY_TIME
+                shipment.pickup_close_time = shipment.pickup_close_time or DEFAULT_CLOSE_TIME
 
     @api.depends('ship_date', 'pickup_ready_time', 'pickup_close_time', 'state')
     def _compute_pickup_warning(self):
@@ -519,6 +522,7 @@ class LtlShipment(models.Model):
 
         units = []
         nmfc_item, nmfc_sub = self._default_nmfc()
+        description = self._default_unit_description()
         all_lines = pickings.move_line_ids
         ltl_lines = all_lines.filtered(lambda ml: ml.result_package_id.package_type_id.ltl_unit_type)
         for package in ltl_lines.result_package_id:
@@ -536,7 +540,7 @@ class LtlShipment(models.Model):
                 'width': inches(package_type.width),
                 'height': inches(package_type.height),
                 'weight': pounds(weight),
-                'description': self._describe(package_lines.product_id),
+                'description': description,
                 'nmfc_item': nmfc_item,
                 'nmfc_sub': nmfc_sub,
             })
@@ -559,7 +563,7 @@ class LtlShipment(models.Model):
                     'quantity': 1,
                     'unit_type': 'pallet',
                     'weight': pounds(weight),
-                    'description': self._describe(products),
+                    'description': description,
                     'nmfc_item': nmfc_item,
                     'nmfc_sub': nmfc_sub,
                 })
@@ -568,12 +572,12 @@ class LtlShipment(models.Model):
         return units
 
     @api.model
-    def _describe(self, products):
-        names = [p.display_name for p in products[:3]]
-        text = ', '.join(names)
-        if len(products) > 3:
-            text += _(' and %s more', len(products) - 3)
-        return text[:120] or _('Freight')
+    def _default_unit_description(self):
+        """What a new pallet or box line is described as on the BOL: 'Foodstuff' unless the
+        system parameter selamta_ltl.default_description says otherwise. Staff edit it per
+        line when a load is something else."""
+        param = self.env['ir.config_parameter'].sudo().get_param('selamta_ltl.default_description')
+        return (param or '').strip() or DEFAULT_DESCRIPTION
 
     @api.model
     def _default_nmfc(self):
@@ -980,7 +984,11 @@ class LtlShipmentUnit(models.Model):
     for_text = fields.Char(
         'For customers', compute='_compute_for_text',
         help='Customer and order of everything on this pallet, as printed on the BOL.')
-    description = fields.Char(required=True, default=lambda self: _('Freight'))
+    description = fields.Char(
+        required=True,
+        default=lambda self: self.env['selamta.ltl.shipment']._default_unit_description(),
+        help='Commodity description printed on the BOL and sent to the carrier. Starts as '
+             'Foodstuff; type something else when the load is different.')
     length = fields.Float('L (in)', digits=(16, 1), help='Length of one pallet or box, inches.')
     width = fields.Float('W (in)', digits=(16, 1), help='Width of one pallet or box, inches.')
     height = fields.Float(

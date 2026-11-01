@@ -217,7 +217,7 @@ class TestRoadrunner(TransactionCase):
         self.assertEqual(bol['Accessorials'], [{'AccessorialCode': 'LGD'}])
         self.assertEqual(bol['Instructions'], 'LIFTGATE AT DELIVERY, NO INSIDE DELIVERY')
         self.assertTrue(bol['QuickPickup'])
-        self.assertEqual((bol['FreightReady'], bol['FreightClosed']), ('10:00', '16:00'))
+        self.assertEqual((bol['FreightReady'], bol['FreightClosed']), ('09:00', '17:30'))
         self.assertEqual(bol['ReqEmail'], 'dock@example.com')
         self.assertFalse(bol['PrintLabel'])
         shipment = self.shipment

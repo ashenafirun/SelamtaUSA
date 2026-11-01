@@ -15,6 +15,15 @@ UNIT_TYPES = [
     ('box', 'Box'),
 ]
 
+# Commodity description a pallet or box line starts with (BOL and carrier APIs). Change it
+# with the system parameter selamta_ltl.default_description; staff can edit it per line.
+DEFAULT_DESCRIPTION = 'Foodstuff'
+
+# Our pickup window when a carrier has none of its own: freight ready at 9:00 AM,
+# dock closes at 5:30 PM (hours as floats, 17.5 = 17:30).
+DEFAULT_READY_TIME = 9.0
+DEFAULT_CLOSE_TIME = 17.5
+
 # A bill reference shorter than this (after removing everything but digits) is too short
 # to match safely.
 MIN_REF_DIGITS = 5
