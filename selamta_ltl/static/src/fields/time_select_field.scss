@@ -1,0 +1,12 @@
+// Time dropdowns stay as wide as a time, also side by side in a form row
+// ("ready [09:00] dock closes [17:30]").
+.o_form_view .o_row > .o_field_widget.o_field_selamta_time_select,
+.o_field_selamta_time_select {
+    flex: 0 0 auto;
+    width: auto !important;
+}
+
+.o_selamta_time_select {
+    width: auto;
+    min-width: 6.5rem;
+}

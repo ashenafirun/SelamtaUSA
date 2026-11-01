@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import _, fields, models
+from odoo import _, api, fields, models
 
 
 class StockPicking(models.Model):
@@ -7,6 +7,16 @@ class StockPicking(models.Model):
 
     ltl_shipment_id = fields.Many2one(
         'selamta.ltl.shipment', 'LTL shipment', copy=False, index=True, ondelete='set null')
+
+    @api.depends('origin')
+    @api.depends_context('ltl_show_order')
+    def _compute_display_name(self):
+        """On a shipment's pallet lines, show the sales order with the delivery
+        ('S01234 (WH/OUT/05678)') so staff pick the order they know."""
+        super()._compute_display_name()
+        if self.env.context.get('ltl_show_order'):
+            for picking in self.filtered('origin'):
+                picking.display_name = '%s (%s)' % (picking.origin, picking.name)
 
     def action_ltl_shipment(self):
         """Open this delivery's LTL shipment, creating it the first time.

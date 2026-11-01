@@ -152,7 +152,7 @@ class TestXpo(TransactionCase):
             'dimensions': {'length': 48.0, 'width': 40.0, 'height': 60.0, 'dimensionsUom': 'INCH'}}])
         self.assertEqual(info['accessorials'], [{'accessorialCd': 'DLG'}])
         self.assertEqual(info['palletCnt'], 2)
-        self.assertTrue(info['shipmentDate'].startswith(self.shipment.ship_date.isoformat() + 'T10:00:00.000-0'))
+        self.assertTrue(info['shipmentDate'].startswith(self.shipment.ship_date.isoformat() + 'T09:00:00.000-0'))
         # Standard service only by default.
         self.assertEqual(len(rates), 1)
         rate = rates[0]

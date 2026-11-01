@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta LTL Freight',
-    'version': '18.0.1.4.1',
+    'version': '18.0.1.5.0',
     'category': 'Inventory/Delivery',
     'summary': 'Book LTL freight from delivery orders, print the BOL, and check every carrier bill against its quote',
     'description': """
@@ -24,14 +24,16 @@ Foundation for booking LTL freight directly with each carrier, replacing Freight
   (Inventory > Configuration > Package Types) becomes its own line, with the type's length
   and width. Everything else (cases packed by product packaging, loose products) goes on
   one pallet line per delivery order with its total weight; staff set how many pallets it
-  is and measure them. Pallet height is always measured and typed.
+  is and measure them. Pallet height is always measured and typed. Each line is described
+  as Foodstuff (system parameter selamta_ltl.default_description) and can be edited; its
+  Order column shows which sales orders are on it.
 * Accessorials ordered are filled in from the customer's delivery services (Liftgate,
   Residential, Limited Access...) and printed on the BOL, with NO INSIDE DELIVERY when
   inside delivery was not ordered and the customer's receiving hours.
-* Pickup date and window on each shipment (ready at / dock closes), filled in from the
-  carrier's defaults (LTL tab) and changeable before booking; next weekday by default
-  after 3 PM or on weekends; warns on weekend or past dates; printed in the Pickup
-  Instructions box and sent to the carrier with the pickup.
+* Pickup date and window on each shipment (ready at / dock closes, 9:00 to 17:30 unless
+  the carrier's LTL tab says otherwise), picked from a list of times and changeable before
+  booking; next weekday by default after 3 PM or on weekends; warns on weekend or past
+  dates; printed in the Pickup Instructions box and sent to the carrier with the pickup.
 * Rate shop: asks every carrier that has an API connection for a rate, and lets staff add
   quotes they got by phone or on a carrier website, side by side. Picking a rate saves the
   quote; for an API carrier it books the shipment.
@@ -81,6 +83,13 @@ carrier's website and the PRO is typed in.
         'views/parcel_views.xml',
         'views/ltl_menus.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'selamta_ltl/static/src/fields/time_select_field.js',
+            'selamta_ltl/static/src/fields/time_select_field.scss',
+            'selamta_ltl/static/src/fields/time_select_field.xml',
+        ],
+    },
     'installable': True,
     'application': False,
     'auto_install': False,

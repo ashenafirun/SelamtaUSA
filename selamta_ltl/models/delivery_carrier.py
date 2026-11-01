@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from odoo import fields, models
 
+from .ltl_common import DEFAULT_CLOSE_TIME, DEFAULT_READY_TIME
+
 
 class DeliveryCarrier(models.Model):
     """LTL settings on a shipping method, and the hooks carrier connections implement.
@@ -52,10 +54,10 @@ class DeliveryCarrier(models.Model):
     ltl_dock_open_time = fields.Float(
         'Dock opens', default=8.0, help='When our dock opens for this carrier (sent with pickups).')
     ltl_ready_time = fields.Float(
-        'Freight usually ready at', default=10.0,
+        'Freight usually ready at', default=DEFAULT_READY_TIME,
         help='Filled in on new shipments as the pickup ready time; change it per shipment.')
     ltl_close_time = fields.Float(
-        'Dock usually closes at', default=16.0,
+        'Dock usually closes at', default=DEFAULT_CLOSE_TIME,
         help='Filled in on new shipments as the time the dock closes; change it per shipment.')
 
     def _ltl_method(self, operation):
