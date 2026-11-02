@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_adyen_settlement_user,adyen settlement user,model_selamta_adyen_settlement,account.group_account_user,1,0,0,0
+access_adyen_settlement_manager,adyen settlement manager,model_selamta_adyen_settlement,account.group_account_manager,1,1,1,1
+access_adyen_settlement_line_user,adyen settlement line user,model_selamta_adyen_settlement_line,account.group_account_user,1,0,0,0
+access_adyen_settlement_line_manager,adyen settlement line manager,model_selamta_adyen_settlement_line,account.group_account_manager,1,1,1,1
+access_adyen_settlement_upload_manager,adyen settlement upload manager,model_selamta_adyen_settlement_upload,account.group_account_manager,1,1,1,1

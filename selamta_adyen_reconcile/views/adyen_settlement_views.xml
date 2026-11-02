@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_adyen_settlement_list" model="ir.ui.view">
+        <field name="name">selamta.adyen.settlement.list</field>
+        <field name="model">selamta.adyen.settlement</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="state == 'exception'" decoration-muted="state == 'done'"
+                  decoration-info="state == 'batched'">
+                <field name="batch_number"/>
+                <field name="name"/>
+                <field name="payout_date"/>
+                <field name="payout_reference" optional="hide"/>
+                <field name="sales_amount" sum="Total"/>
+                <field name="cost_amount" sum="Total"/>
+                <field name="chargeback_amount" sum="Total" optional="show"/>
+                <field name="payout_amount" sum="Total"/>
+                <field name="batch_payment_id" optional="show"/>
+                <field name="payout_move_id" optional="show"/>
+                <field name="state" widget="badge" decoration-success="state == 'done'"
+                       decoration-danger="state == 'exception'" decoration-info="state in ('checked', 'batched')"/>
+                <field name="currency_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_adyen_settlement_form" model="ir.ui.view">
+        <field name="name">selamta.adyen.settlement.form</field>
+        <field name="model">selamta.adyen.settlement</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_process" type="object" string="Process" class="oe_highlight"
+                            invisible="state in ('done', 'exception')"/>
+                    <button name="action_retry" type="object" string="Retry" class="oe_highlight"
+                            invisible="state != 'exception'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="new,checked,batched,done"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-warning" role="alert" invisible="state != 'exception'">
+                        <field name="exception_reason" nolabel="1"/>
+                    </div>
+                    <div class="oe_title">
+                        <h1>Batch <field name="batch_number" class="oe_inline"/></h1>
+                        <field name="name"/>
+                    </div>
+                    <group>
+                        <group string="Adyen">
+                            <field name="sales_amount"/>
+                            <field name="refund_amount"/>
+                            <field name="cost_amount"/>
+                            <field name="chargeback_amount"/>
+                            <field name="invoice_deduction_amount"/>
+                            <field name="deposit_withheld_amount"/>
+                            <field name="deposit_returned_amount"/>
+                            <field name="payout_amount"/>
+                        </group>
+                        <group string="Odoo">
+                            <field name="payout_reference"/>
+                            <field name="payout_date"/>
+                            <field name="batch_payment_id"/>
+                            <field name="statement_line_id"/>
+                            <field name="payout_move_id"/>
+                            <field name="attachment_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Report rows" name="rows">
+                            <field name="line_ids">
+                                <list decoration-muted="row_type in ('Fee', 'MerchantPayout')"
+                                      decoration-danger="row_type in ('Settled', 'Refunded', 'Chargeback') and not payment_id">
+                                    <field name="row_type"/>
+                                    <field name="creation_date"/>
+                                    <field name="merchant_reference"/>
+                                    <field name="psp_reference"/>
+                                    <field name="payment_method" optional="hide"/>
+                                    <field name="modification_reference" optional="hide"/>
+                                    <field name="gross_amount"/>
+                                    <field name="cost_amount"/>
+                                    <field name="net_amount"/>
+                                    <field name="payment_id"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_adyen_settlement_search" model="ir.ui.view">
+        <field name="name">selamta.adyen.settlement.search</field>
+        <field name="model">selamta.adyen.settlement</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="batch_number"/>
+                <field name="payout_reference"/>
+                <filter name="needs_review" string="Needs review" domain="[('state', '=', 'exception')]"/>
+                <filter name="waiting" string="Waiting for payout" domain="[('state', '=', 'batched')]"/>
+                <filter name="done" string="Reconciled" domain="[('state', '=', 'done')]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_adyen_settlement" model="ir.actions.act_window">
+        <field name="name">Adyen Settlements</field>
+        <field name="res_model">selamta.adyen.settlement</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No Adyen settlement reports yet</p>
+            <p>Reports arrive from Adyen's "Report available" webhook, or upload one with
+                <i>Upload Adyen Report</i>.</p>
+        </field>
+    </record>
+
+    <record id="view_adyen_settlement_upload_form" model="ir.ui.view">
+        <field name="name">selamta.adyen.settlement.upload.form</field>
+        <field name="model">selamta.adyen.settlement.upload</field>
+        <field name="arch" type="xml">
+            <form string="Upload Adyen settlement report">
+                <p>Upload <b>settlement_detail_report_batch_&lt;number&gt;.csv</b> from Adyen
+                    (Reports, Settlement details). It is checked against the payout, batched, and booked when
+                    the Chase line is in.</p>
+                <group>
+                    <field name="file" filename="filename"/>
+                    <field name="filename" invisible="1"/>
+                </group>
+                <footer>
+                    <button name="action_import" type="object" string="Upload and process" class="oe_highlight"/>
+                    <button string="Cancel" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_adyen_settlement_upload" model="ir.actions.act_window">
+        <field name="name">Upload Adyen Report</field>
+        <field name="res_model">selamta.adyen.settlement.upload</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_adyen_settlement_root" name="Adyen Settlements"
+              parent="account.menu_finance_entries" sequence="60"
+              groups="account.group_account_user"/>
+    <menuitem id="menu_adyen_settlement" name="Settlement Batches" parent="menu_adyen_settlement_root"
+              action="action_adyen_settlement" sequence="1"/>
+    <menuitem id="menu_adyen_settlement_upload" name="Upload Adyen Report" parent="menu_adyen_settlement_root"
+              action="action_adyen_settlement_upload" sequence="2" groups="account.group_account_manager"/>
+</odoo>
