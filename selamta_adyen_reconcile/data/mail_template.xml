@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Sent automatically from the chargeback payment, where the office used to send it by hand.
+         Editable in Settings > Technical > Email Templates; upgrades keep your edits. -->
+    <record id="mail_template_chargeback_notice" model="mail.template">
+        <field name="name">Adyen: returned payment (chargeback) notice</field>
+        <field name="model_id" ref="account.model_account_payment"/>
+        <field name="subject">Returned payment - {{ object.selamta_dispute_id.invoice_names or object.partner_id.commercial_partner_id.name }} - Selamta LLC</field>
+        <field name="email_from">{{ object.company_id.email_formatted }}</field>
+        <field name="partner_to">{{ object.partner_id.commercial_partner_id.id }}</field>
+        <field name="auto_delete" eval="False"/>
+        <field name="description">Customer email when an ACH payment comes back (Adyen chargeback).</field>
+        <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px; font-size: 14px;">
+    <t t-set="dispute" t-value="object.selamta_dispute_id"/>
+    <t t-set="customer" t-value="object.partner_id.commercial_partner_id"/>
+    <p style="margin: 0px 0 16px 0;">Dear <t t-out="customer.name or ''">Customer</t>,</p>
+    <p style="margin: 0px 0 16px 0;">Greetings from Selamta LLC.</p>
+    <p style="margin: 0px 0 16px 0;">
+        The ACH payment of <strong t-out="format_amount(dispute.amount, dispute.currency_id)">$0.00</strong>
+        <t t-if="dispute.original_payment_id.date">made on <t t-out="format_date(dispute.original_payment_id.date)">01/01/2026</t></t>
+        toward <t t-if="dispute.invoice_names">invoice <strong t-out="dispute.invoice_names">INV/0001</strong></t><t t-else="">your account</t>
+        was returned by your bank, so the payment did not go through.<t t-if="dispute.reason"> The reason your bank gave was: <t t-out="dispute.reason">insufficient funds (R01)</t>.</t>
+    </p>
+    <p style="margin: 0px 0 16px 0;" t-if="dispute.invoice_names">
+        <t t-out="dispute.invoice_names">INV/0001</t> now shows <strong t-out="format_amount(dispute.amount, dispute.currency_id)">$0.00</strong> due again.
+    </p>
+    <p style="margin: 0px 0 16px 0;" t-if="dispute.fee_status == 'waived_first'">
+        As stated in the Terms of Service on our website, a chargeback fee of <t t-out="format_amount(dispute.fee_amount, dispute.currency_id)">$20.00</t>
+        applies to returned payments. We have waived it this time; it will apply to any further returned payment.
+    </p>
+    <p style="margin: 0px 0 16px 0;" t-if="dispute.fee_status == 'charged' and dispute.fee_invoice_id">
+        Because this is not the first returned payment on your account in the last 12 months, a chargeback fee of
+        <strong t-out="format_amount(dispute.fee_amount, dispute.currency_id)">$20.00</strong> has been added to your account
+        (invoice <t t-out="dispute.fee_invoice_id.name">INV/0002</t>), as stated in the Terms of Service on our website.
+    </p>
+    <p style="margin: 0px 0 16px 0;" t-if="dispute.ach_turned_off">
+        Because of repeated returned payments, ACH bank payments are no longer available on your account.
+        Please contact us to arrange payment.
+    </p>
+    <p style="margin: 0px 0 16px 0;" t-if="dispute.invoice_ids">
+        <a t-att-href="dispute.invoice_ids[:1].get_base_url() + dispute.invoice_ids[:1].get_portal_url()"
+           style="background-color: #875A7B; padding: 8px 16px; text-decoration: none; color: #fff; border-radius: 5px;">View invoice and pay</a>
+    </p>
+    <p style="margin: 0px 0 16px 0; color: #c00000;"><strong>Please check with your bank and send the payment at your earliest convenience.</strong>
+        If you have any questions, please reply to this email or call us<t t-if="object.company_id.phone"> at <t t-out="object.company_id.phone">+1 404-750-4162</t></t>.</p>
+    <p style="margin: 0px;">Thank you,<br/><strong>Selamta LLC</strong></p>
+</div>
+        </field>
+    </record>
+</odoo>
