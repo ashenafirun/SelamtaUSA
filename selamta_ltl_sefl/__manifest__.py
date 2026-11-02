@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta LTL: Southeastern Freight Lines',
-    'version': '18.0.1.0.1',
+    'version': '18.0.1.1.0',
     'category': 'Inventory/Delivery',
     'summary': 'Southeastern Freight Lines (SEFL) Web Connect for Selamta LTL shipments: rate quotes, tracking, documents',
     'description': """
@@ -12,8 +12,11 @@ Connects Southeastern Freight Lines to Selamta LTL shipments through SEFL's Web 
   charge lines (linehaul per class, discount, fuel and accessorials).
 * Tracking every two hours by PRO (SEFL's public tracing; no password in the address), and on
   delivery the delivery receipt, W&I certificate and freight invoice through Document Retrieval.
-* Booking stays on sefl.com for now: choosing Southeastern in the rate shop saves the quote;
-  type the PRO.
+* Booking (switch "Book pickups through the API" on the Southeastern tab): choosing
+  Southeastern in the rate shop requests the pickup (Pickup REST service, confirmation number)
+  and takes a PRO from Southeastern's Get Pro service, printed on our BOL and labels; the
+  driver takes our BOL. Test mode checks a pickup request without scheduling it. With the
+  switch off, the quote is saved and the pickup is booked on sefl.com.
 
 Setup: Inventory > Configuration > Shipping Methods > Southeastern Freight Lines. Provider:
 Southeastern Freight Lines; LTL tab: LTL carrier, Bills come from: Southeastern; Southeastern

@@ -7,9 +7,16 @@
         <field name="arch" type="xml">
             <xpath expr="//notebook" position="inside">
                 <page string="Saia" name="saia" invisible="delivery_type != 'saia'">
-                    <div class="alert alert-info" role="alert">
+                    <div class="alert alert-info" role="alert" invisible="saia_book_shipments">
                         Rates, tracking and delivery documents. Choosing Saia in the rate shop saves the quote;
-                        book on saia.com and type the PRO.
+                        book on saia.com and type the PRO. Turning on "Book through the API" books real pickups.
+                    </div>
+                    <div class="alert alert-warning" role="alert" invisible="not saia_book_shipments or saia_test_mode">
+                        Booking is on: choosing Saia in the rate shop requests a real pickup and files the BOL with
+                        Saia (PRO number and Saia's BOL).
+                    </div>
+                    <div class="alert alert-info" role="alert" invisible="not saia_book_shipments or not saia_test_mode">
+                        Test mode: bookings are checked by Saia but nothing is filed and nothing is picked up.
                     </div>
                     <group>
                         <group string="Saia login (saia.com)">
@@ -24,6 +31,15 @@
                             <field name="saia_imaging_key" password="True" groups="base.group_system"/>
                             <button name="action_saia_test_connection" type="object" string="Test Saia login (sample rate)"
                                     class="btn-secondary" groups="base.group_system" colspan="2"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Booking">
+                            <field name="saia_book_shipments"/>
+                            <field name="saia_test_mode" invisible="not saia_book_shipments"/>
+                            <field name="saia_contact_name" placeholder="Whoever books"/>
+                            <field name="saia_contact_phone" placeholder="Our dock phone"/>
+                            <field name="saia_contact_email" placeholder="Our company email"/>
                         </group>
                     </group>
                 </page>

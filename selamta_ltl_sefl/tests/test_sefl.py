@@ -177,6 +177,87 @@ class TestSefl(TransactionCase):
         self.assertFalse(self.carrier.ltl_can('book'))
         self.assertTrue(self.carrier.ltl_can('rate'))
 
+    # ------------------------------------------------------------------ booking
+
+    def _ready_to_book(self):
+        self.carrier.write({'sefl_book_pickups': True, 'sefl_contact_name': 'Dock',
+                            'sefl_contact_phone': '+1 404-555-0100', 'sefl_contact_email': 'dock@example.com'})
+        self.shipment.write({'pickup_ready_time': 9.0, 'pickup_close_time': 17.5, 'quote_number': 'CXQKNF157',
+                             'pickup_instructions': 'Freight at door 2'})
+
+    def test_book_pickup_and_pro(self):
+        self.assertFalse(self.carrier.ltl_can('book'))
+        self._ready_to_book()
+        self.assertTrue(self.carrier.ltl_can('book'))
+        self.answers['/pickup-web/api/pickup'] = FakeResponse(200, {
+            'confirmation': {'confirmationNumber': 'WEB12345', 'dateTimeSubmitted': '20261102092254429',
+                             'totalShipments': 1, 'totalWeight': 1801}, 'message': 'Pickup submitted'})
+        self.answers['/generatePro/PreAssigned'] = FakeResponse(200, {
+            'errorMessage': '', 'pro': '123456789', 'errorOccurred': False})
+        result = self.carrier.ltl_book(self.shipment, {'total': 667.26, 'quote_number': 'CXQKNF157'})
+        self.assertEqual(result, {'pickup_number': 'WEB12345', 'pro_number': '123456789'})
+        call = self._calls_to('/pickup-web/api/pickup')[0]
+        self.assertEqual(call['method'], 'POST')
+        self.assertEqual(call['headers']['shipper_account'], '001184274')
+        self.assertEqual(call['auth'], ('selamtatest', 'pw-secret-1'))
+        body = call['json']
+        self.assertIs(body['developer'], False)
+        self.assertEqual(body['contact'], {'company': 'Selamta Test LLC', 'name': 'Dock', 'phone': '4045550100',
+                                           'email': 'dock@example.com'})
+        shipper = body['shipper']
+        self.assertEqual((shipper['zip'], shipper['state'], shipper['city'], shipper['phone']),
+                         ('30035', 'GA', 'DECATUR', '4045550100'))
+        self.assertEqual(shipper['requestPickupDate'], self.shipment.ship_date.strftime('%Y%m%d'))
+        self.assertEqual((shipper['pickupTimeStart'], shipper['pickupTimeEnd'], shipper['closeTime']),
+                         ('0900', '1730', '1730'))
+        self.assertEqual((shipper['foodstuff'], shipper['hazmat'], shipper['liftgate'], shipper['shipAs']),
+                         ('Y', 'N', 'N', 'S'))
+        self.assertEqual(shipper['driverInstructions'], 'Freight at door 2')
+        self.assertIn('BOL %s' % self.shipment.bol_reference, shipper['pickupNotes'])
+        self.assertEqual(body['consignees'], [{
+            'name': 'Sample Market', 'destZip': '28202', 'destCountry': '', 'destCity': 'CHARLOTTE',
+            'weight': 1801, 'pieces': 2, 'pkgType': 'PL', 'specialNumType': 'RATE', 'specialNum': 'CXQKNF157'}])
+        pro_call = self._calls_to('/generatePro/PreAssigned')[0]
+        self.assertEqual((pro_call['method'], pro_call['auth']), ('GET', ('selamtatest', 'pw-secret-1')))
+        # Through the shipment: booked with the pickup number and the PRO.
+        self.shipment._apply_booking(result)
+        self.assertEqual((self.shipment.state, self.shipment.pickup_number, self.shipment.pro_number),
+                         ('booked', 'WEB12345', '123456789'))
+
+    def test_pickup_refused_and_no_pro(self):
+        self._ready_to_book()
+        self.answers['/pickup-web/api/pickup'] = FakeResponse(400, {
+            'message': "Invalid Pickup Requested Date, the date cannot be less than today's date",
+            'response_code': '400'})
+        with self.assertRaisesRegex(UserError, "less than today's date"):
+            self.carrier.ltl_book(self.shipment, {'total': 1.0})
+        self.assertFalse(self._calls_to('/generatePro/PreAssigned'))  # nothing more after a refusal
+        # Pickup booked, but Southeastern gives no PRO: the booking stands.
+        self.answers['/pickup-web/api/pickup'] = FakeResponse(200, {
+            'confirmation': {'confirmationNumber': 'WEB12346'}, 'message': 'ok'})
+        self.answers['/generatePro/PreAssigned'] = FakeResponse(200, {
+            'errorMessage': 'Customer is not set up for pre-assigned pros', 'pro': '', 'errorOccurred': True})
+        result = self.carrier.ltl_book(self.shipment, {'total': 1.0})
+        self.assertEqual(result, {'pickup_number': 'WEB12346'})
+        self.assertIn('not set up for pre-assigned pros', self.shipment.message_ids[:1].body)
+
+    def test_test_mode_takes_no_pro(self):
+        self._ready_to_book()
+        self.carrier.sefl_test_mode = True
+        self.answers['/pickup-web/api/pickup'] = FakeResponse(200, {
+            'confirmation': {'confirmationNumber': 'ABC12345', 'totalShipments': 1, 'totalWeight': 1801},
+            'message': 'Input passed all validations. Pickup request not submitted (developer flag).'})
+        result = self.carrier.ltl_book(self.shipment, {'total': 1.0})
+        self.assertIs(self._calls_to('/pickup-web/api/pickup')[0]['json']['developer'], True)
+        self.assertFalse(self._calls_to('/generatePro/PreAssigned'))
+        self.assertEqual(result, {'pickup_number': 'ABC12345'})
+        self.assertIn('TEST mode', self.shipment.message_ids[:1].body)
+        self.carrier.sefl_contact_phone = '555-0100'
+        self.shipment.shipper_id.phone = False
+        self.env.company.phone = False
+        with self.assertRaisesRegex(UserError, '10-digit phone'):
+            self.carrier.ltl_book(self.shipment, {'total': 1.0})
+
     def test_tracking_and_documents(self):
         self.shipment.write({'state': 'booked', 'pro_number': 'RIC-0123456789'})
         self.answers['/webconnect/tracing'] = FakeResponse(200, {'pro': [{

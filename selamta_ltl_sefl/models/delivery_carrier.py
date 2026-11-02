@@ -27,6 +27,7 @@ import time
 from datetime import datetime
 
 import requests
+from markupsafe import Markup
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
@@ -36,6 +37,23 @@ from odoo.addons.selamta_ltl.models.ltl_common import digits_only
 
 _logger = logging.getLogger(__name__)
 
+# Booking (read 2 Nov 2026):
+# * Pickup: POST https://www.sefl.com/pickup-web/api/pickup (sefl.com/SeflPickup/pickupRESTService.jsp),
+#   Basic auth with the MySEFL login, header shipper_account, JSON {developer, contact {company,
+#   name, phone, email}, shipper {shipperName, shipperCountry, address, city, state, zip,
+#   pickupContactName, phone, email, email2, email3, requestPickupDate YYYYMMDD, requestPickupTime,
+#   pickupTimeStart, pickupTimeEnd, closeTime HHMM, driverInstructions, hazmat, liftgate,
+#   overlength, foodstuff, medical (Y/N), pickupNotes, shipAs S/C/T}, consignees [{name, destZip,
+#   destCountry, destCity, weight, pieces, pkgType (PL, BX, SK...), specialNumType (BOOK, CUST,
+#   CUSTR, LN, ORN, PO, RA, RATE), specialNum}]} -> {confirmation {confirmationNumber,
+#   dateTimeSubmitted, totalShipments, totalWeight}, message}; refused: {message, response_code}.
+#   developer true checks the request without scheduling it.
+# * PRO for our BOL: GET https://www.sefl.com/seflWebsite/resources/generatePro/PreAssigned (Get Pro
+#   API, Basic auth) -> {pro, errorOccurred, errorMessage}; up to 200 a day per login. The PRO has to
+#   be printed on the paper BOL. SEFL's BOL API is not published, so the driver takes our BOL.
+PICKUP_URL = 'https://www.sefl.com/pickup-web/api/pickup'
+PRO_URL = 'https://www.sefl.com/seflWebsite/resources/generatePro/PreAssigned'
+SHIP_AS = {'prepaid': 'S', 'collect': 'C', 'third_party': 'T'}
 RATE_URL = 'https://www.sefl.com/webconnect/ratequotes/rest/'
 TRACE_URL = 'https://www.sefl.com/webconnect/tracing'
 DOCS_URL = 'https://www.sefl.com/document-retrieval/'
@@ -76,8 +94,26 @@ class DeliveryCarrier(models.Model):
     sefl_send_dimensions = fields.Boolean(
         'Send pallet dimensions', default=True,
         help='Also send each line\'s dimensions, for accounts on dimension-based pricing.')
+    sefl_book_pickups = fields.Boolean(
+        'Book pickups through the API',
+        help='With this on, choosing Southeastern in the rate shop requests a real pickup and takes '
+             'a PRO number from Southeastern for our BOL. With it off, the quote is saved and the '
+             'pickup is booked on sefl.com.')
+    sefl_test_mode = fields.Boolean(
+        'Test mode',
+        help='Send pickup requests with Southeastern\'s developer flag: Southeastern checks them and '
+             'answers, but no pickup is scheduled and no PRO is taken.')
+    sefl_contact_name = fields.Char('Southeastern pickup contact')
+    sefl_contact_phone = fields.Char('Southeastern pickup contact phone')
+    sefl_contact_email = fields.Char('Southeastern pickup contact email')
 
     # ------------------------------------------------------------------ connection
+
+    def ltl_can(self, operation):
+        self.ensure_one()
+        if self.delivery_type == 'sefl' and operation == 'book' and not self.sefl_book_pickups:
+            return False
+        return super().ltl_can(operation)
 
     def _sefl_login(self):
         self.ensure_one()
@@ -336,6 +372,138 @@ class DeliveryCarrier(models.Model):
     def sefl_ltl_rate(self, shipment):
         self.ensure_one()
         return [self._sefl_rate_from_answer(self._sefl_quote(self._sefl_rate_form(shipment)))]
+
+    # ------------------------------------------------------------------ booking
+
+    @api.model
+    def _sefl_phone(self, value, label):
+        phone = digits_only(value)
+        if len(phone) == 11 and phone.startswith('1'):
+            phone = phone[1:]
+        if len(phone) != 10:
+            raise UserError(_('Southeastern needs a 10-digit phone number for the %s.', label))
+        return phone
+
+    @api.model
+    def _sefl_hhmm(self, hours):
+        """13.5 -> '1330'."""
+        hours = hours or 0.0
+        hour, minute = int(hours), int(round((hours - int(hours)) * 60))
+        if minute == 60:
+            hour, minute = hour + 1, 0
+        return '%02d%02d' % (min(hour, 23), minute)
+
+    def _sefl_pickup_body(self, shipment, rate):
+        account = (self.sefl_account or '').strip()
+        if not account:
+            raise UserError(_('Enter the Southeastern account number on the %s shipping method first.', self.name))
+        shipper, consignee, company = shipment.shipper_id, shipment.partner_id, shipment.company_id
+        if not shipper.street or not shipper.city or not shipper.state_id:
+            raise UserError(_('%s needs a street, city and state for a Southeastern pickup.', shipper.display_name))
+        units = self._sefl_units(shipment)
+        name = (self.sefl_contact_name or self.env.user.name or company.name or '')[:30]
+        phone = self._sefl_phone(self.sefl_contact_phone or shipper.phone or shipper.mobile or company.phone,
+                                 _('pickup contact (Southeastern tab or the shipper)'))
+        email = (self.sefl_contact_email or shipper.email or company.email or '')[:50]
+        ship_date = shipment.ship_date or fields.Date.context_today(self)
+        ready, close = self._sefl_hhmm(shipment.pickup_ready_time), self._sefl_hhmm(shipment.pickup_close_time)
+        company_name = (shipper.commercial_partner_id.name or shipper.name or '')[:30]
+        notes = ['BOL %s' % shipment.bol_reference]
+        if shipment.order_refs:
+            notes.append('PO %s' % shipment.order_refs)
+        consignee_line = {
+            'name': ((consignee.commercial_partner_id.name if consignee.parent_id else consignee.name) or '')[:30],
+            'destZip': self._sefl_zip(consignee),
+            'destCountry': '' if (consignee.country_id.code or 'US') == 'US' else consignee.country_id.code,
+            'destCity': (consignee.city or '')[:30].upper(),
+            'weight': int(round(sum(units.mapped('weight')))),
+            'pieces': sum(max(int(u.quantity or 1), 1) for u in units),
+            'pkgType': 'PL' if 'pallet' in units.mapped('unit_type') else 'BX',
+        }
+        quote = str(rate.get('quote_number') or shipment.quote_number or '').strip()
+        if quote:
+            consignee_line.update({'specialNumType': 'RATE', 'specialNum': quote[:20]})
+        return account, {
+            'developer': bool(self.sefl_test_mode),
+            'contact': {'company': company_name, 'name': name, 'phone': phone, 'email': email},
+            'shipper': {
+                'shipperName': company_name,
+                'shipperCountry': '' if (shipper.country_id.code or 'US') == 'US' else shipper.country_id.code,
+                'address': shipper.street[:30],
+                'city': shipper.city[:30].upper(),
+                'state': shipper.state_id.code,
+                'zip': self._sefl_zip(shipper),
+                'pickupContactName': name,
+                'phone': phone,
+                'email': email,
+                'email2': '',
+                'email3': '',
+                'requestPickupDate': ship_date.strftime('%Y%m%d'),
+                'requestPickupTime': ready,
+                'pickupTimeStart': ready,
+                'pickupTimeEnd': close,
+                'closeTime': close,
+                'driverInstructions': ' '.join((shipment.pickup_instructions or '').split())[:100],
+                'hazmat': 'N',
+                'liftgate': 'Y' if 'LIFTGATE_PU' in shipment.accessorial_ids.mapped('code') else 'N',
+                'overlength': 'N',
+                'foodstuff': 'Y',
+                'medical': 'N',
+                'pickupNotes': '. '.join(notes)[:100],
+                'shipAs': SHIP_AS.get(shipment.freight_terms, 'S'),
+            },
+            'consignees': [consignee_line],
+        }
+
+    def _sefl_take_pro(self):
+        """A PRO from Southeastern for our BOL, or (False, reason)."""
+        try:
+            response = self._sefl_request('GET', PRO_URL)
+        except UserError as error:
+            return False, error.args[0] if error.args else str(error)
+        data = self._sefl_json(response)
+        pro = self._sefl_pro(data.get('pro')) if isinstance(data, dict) else ''
+        failed = isinstance(data, dict) and str(data.get('errorOccurred', data.get('errorOccured')) or '').lower() == 'true'
+        if response.status_code >= 400 or failed or not pro:
+            reason = (data.get('errorMessage') if isinstance(data, dict) else '') or \
+                self._sefl_mask((response.text or '').strip()[:200]) or _('error %s', response.status_code)
+            return False, reason
+        return pro, False
+
+    def sefl_ltl_book(self, shipment, rate):
+        """Request the pickup, then take a PRO from Southeastern for our BOL. When the pickup
+        is booked but no PRO comes back, the booking stands: the driver puts a PRO sticker on
+        our BOL and it is typed in from there (tracking needs it)."""
+        self.ensure_one()
+        if not self.sefl_book_pickups:
+            raise UserError(_('Pickup requests through the Southeastern API are off on %s; book on sefl.com and '
+                              'type the PRO.', self.name))
+        account, body = self._sefl_pickup_body(shipment, rate)
+        response = self._sefl_request('POST', PICKUP_URL, json=body,
+                                      headers={'shipper_account': account, 'Content-Type': 'application/json'})
+        data = self._sefl_json(response)
+        data = data if isinstance(data, dict) else {}
+        confirmation = self._sefl_text((data.get('confirmation') or {}).get('confirmationNumber'))
+        code = self._sefl_text(data.get('response_code'))
+        if response.status_code >= 400 or (code and code != '200') or not confirmation:
+            message = self._sefl_text(data.get('message')) or self._sefl_mask((response.text or '').strip()[:300]) \
+                or _('error %s', response.status_code)
+            raise UserError(_('Southeastern did not take the pickup request: %s', message))
+        notes = [_('Southeastern pickup request %s.', confirmation)]
+        result = {'pickup_number': confirmation}
+        if self.sefl_test_mode:
+            notes.append(_('Sent in Southeastern TEST mode (developer): nothing will be picked up. %s',
+                           self._sefl_text(data.get('message'))))
+        else:
+            pro, reason = self._sefl_take_pro()
+            if pro:
+                result['pro_number'] = pro
+                notes.append(_('PRO %s from Southeastern: it is printed on our BOL and labels.', pro))
+            else:
+                notes.append(_('Southeastern gave no PRO (%s): the driver puts a PRO sticker on the BOL; type it in '
+                               'so tracking works.', reason))
+        shipment.message_post(body=Markup('<br/>').join(notes))
+        return result
 
     def sefl_ltl_track(self, shipments):
         self.ensure_one()

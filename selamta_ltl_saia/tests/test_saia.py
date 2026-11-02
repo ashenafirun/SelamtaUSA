@@ -194,6 +194,132 @@ class TestSaia(TransactionCase):
         self.assertFalse(self.carrier.ltl_can('book'))
         self.assertTrue(self.carrier.ltl_can('rate'))
         self.assertTrue(self.carrier.ltl_can('track'))
+        with self.assertRaisesRegex(UserError, 'off'):
+            self.carrier.saia_ltl_book(self.shipment, {'total': 1.0})
+
+    # ------------------------------------------------------------------ booking (SOAP)
+
+    @staticmethod
+    def _soap(ns, inner):
+        return FakeResponse(200, None, text=(
+            '<?xml version="1.0" encoding="utf-8"?><soap:Envelope xmlns:soap='
+            '"http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><CreateResponse xmlns="%s">'
+            '<CreateResult>%s</CreateResult></CreateResponse></soap:Body></soap:Envelope>' % (ns, inner)))
+
+    def _pickup_ok(self):
+        return self._soap('http://www.SaiaSecure.com/WebService/Pickup', (
+            '<PickupTerminal><ID>ATL</ID><Name>ATLANTA</Name><CityDispatchPhone>4045550123</CityDispatchPhone>'
+            '</PickupTerminal><Code /><Element /><Fault /><Message /><TestMode>N</TestMode>'
+            '<PickupNumber>8812345</PickupNumber><TotalPieces>2</TotalPieces><TotalWeight>1801</TotalWeight>'
+            '<NextBusinessDate />'))
+
+    def _bol_ok(self):
+        pdf = base64.b64encode(PDF).decode()
+        return self._soap('http://www.SaiaSecure.com/WebService/BOL', (
+            '<Code /><Element /><Fault /><Message /><TestMode>N</TestMode><ProNumber>1073050082</ProNumber>'
+            '<CheckDigit>4</CheckDigit><PDF>%s</PDF><HTML /><Barcode />' % pdf))
+
+    def _ready_to_book(self):
+        self.carrier.write({'saia_book_shipments': True, 'saia_account_code': '1055993',
+                            'saia_contact_name': 'Dock', 'saia_contact_phone': '(404) 555-0100',
+                            'saia_contact_email': 'dock@example.com'})
+        self.consignee.phone = '704-555-0199'
+        self.shipment.write({'pickup_ready_time': 9.0, 'pickup_close_time': 17.5, 'quote_number': '123456789'})
+
+    def _body(self, call):
+        from lxml import etree
+        return etree.fromstring(call['data'])
+
+    def test_book_pickup_then_bol(self):
+        self._ready_to_book()
+        self.assertTrue(self.carrier.ltl_can('book'))
+        self.answers['/pickup/soap.asmx'] = self._pickup_ok()
+        self.answers['/BOL/soap.asmx'] = self._bol_ok()
+        result = self.carrier.ltl_book(self.shipment, {'total': 742.5, 'quote_number': 123456789,
+                                                       'saia_service': 'STD'})
+        pickup_call, bol_call = self.calls
+        self.assertTrue(pickup_call['url'].endswith('/webservice/pickup/soap.asmx'))
+        self.assertTrue(bol_call['url'].endswith('/webservice/BOL/soap.asmx'))
+        self.assertEqual(pickup_call['headers']['SOAPAction'], '"http://www.SaiaSecure.com/WebService/Pickup/Create"')
+        self.assertEqual(bol_call['headers']['SOAPAction'], '"http://www.SaiaSecure.com/WebService/BOL/Create"')
+        p = '{http://www.SaiaSecure.com/WebService/Pickup}'
+        req = self._body(pickup_call).find('.//%srequest' % p)
+        tags = [child.tag.replace(p, '') for child in req]
+        self.assertEqual(tags, ['Details', 'UserID', 'Password', 'TestMode', 'AccountNumber', 'CompanyName',
+                                'Street', 'Box', 'City', 'State', 'Zipcode', 'ContactName', 'ContactPhone',
+                                'PickupDate', 'ReadyTime', 'CloseTime', 'SpecialInstructions'])
+        get = lambda el, name: el.findtext(p + name)  # noqa: E731
+        self.assertEqual((get(req, 'TestMode'), get(req, 'AccountNumber'), get(req, 'ContactPhone')),
+                         ('N', '1055993', '4045550100'))
+        self.assertEqual((get(req, 'ReadyTime'), get(req, 'CloseTime')), ('09:00:00', '17:30:00'))
+        self.assertEqual(get(req, 'PickupDate'), self.shipment.ship_date.strftime('%Y-%m-%d'))
+        item = req.find('%sDetails/%sDetailItem' % (p, p))
+        self.assertEqual([get(item, n) for n in ('DestinationZipcode', 'Pieces', 'Package', 'Weight', 'SaiaGuaranteed')],
+                         ['28202', '2', 'SK', '1801', 'N'])
+        self.assertIn('BOL %s' % self.shipment.bol_reference, get(req, 'SpecialInstructions'))
+        b = '{http://www.SaiaSecure.com/WebService/BOL}'
+        bol = self._body(bol_call).find('.//%srequest' % b)
+        tags = [child.tag.replace(b, '') for child in bol]
+        self.assertEqual(tags[:8], ['Shipper', 'Consignee', 'COD', 'Details', 'Accessorials',
+                                    'ExcessiveLengthTotalInches', 'FullValueCoverage', 'UserID'])
+        self.assertEqual(tags[-3:], ['TotalCubeUnits', 'DeclaredValue', 'BorderLocation'])
+        g = lambda el, name: el.findtext(b + name)  # noqa: E731
+        self.assertEqual((g(bol, 'BillingTerms'), g(bol, 'QuoteNumber'), g(bol, 'BLNumber'), g(bol, 'TestMode')),
+                         ('Prepaid', '123456789', self.shipment.bol_reference, 'N'))
+        self.assertEqual(g(bol.find(b + 'Consignee'), 'ContactName'), 'Sample Market')
+        self.assertEqual(g(bol.find(b + 'Shipper'), 'AccountNumber'), '1055993')
+        line = bol.find('%sDetails/%sDetailItem' % (b, b))
+        self.assertEqual([g(line, n) for n in ('Class', 'Package', 'Pieces', 'Weight', 'FoodItem', 'Description')],
+                         ['85', 'SK', '2', '1801', 'Y', 'Teff flour'])
+        self.assertEqual(bol.findtext('%sAccessorials/%sAccessorialItem/%sCode' % (b, b, b)), 'LiftgateService')
+        self.assertEqual((result['pickup_number'], result['pro_number']), ('8812345', '10730500824'))
+        self.assertEqual(result['documents'][0][1], PDF)
+        self.assertNotIn('pw-secret-1', self.shipment.message_ids[:1].body)
+
+    def test_book_through_rate_shop_sets_shipment(self):
+        self._ready_to_book()
+        self.answers['/pickup/soap.asmx'] = self._pickup_ok()
+        self.answers['/BOL/soap.asmx'] = self._bol_ok()
+        self.shipment._apply_quote({'total': 742.5}, self.carrier, 'api')
+        result = self.carrier.ltl_book(self.shipment, {'total': 742.5, 'quote_number': 1})
+        self.shipment._apply_booking(result)
+        self.assertEqual((self.shipment.state, self.shipment.pro_number, self.shipment.pickup_number),
+                         ('booked', '10730500824', '8812345'))
+        self.assertTrue(any('Saia BOL' in name for name in self.shipment.message_ids.attachment_ids.mapped('name')))
+
+    def test_pickup_refused_books_nothing(self):
+        self._ready_to_book()
+        self.answers['/pickup/soap.asmx'] = self._soap('http://www.SaiaSecure.com/WebService/Pickup', (
+            '<Code>S04</Code><Element>PickupDate</Element><Fault>C</Fault><Message>Pickup date is not a business '
+            'day</Message><PickupNumber>0</PickupNumber><NextBusinessDate>2026-11-09</NextBusinessDate>'))
+        with self.assertRaisesRegex(UserError, '2026-11-09'):
+            self.carrier.ltl_book(self.shipment, {'total': 1.0})
+        self.assertEqual(len(self.calls), 1)  # no BOL filed
+        self.answers['/pickup/soap.asmx'] = FakeResponse(500, None, text=(
+            '<?xml version="1.0"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body>'
+            '<soap:Fault><faultcode>soap:Server</faultcode><faultstring>Login failed for pw-secret-1</faultstring>'
+            '</soap:Fault></soap:Body></soap:Envelope>'))
+        with self.assertRaisesRegex(UserError, r'Login failed for \*\*\*'):
+            self.carrier.ltl_book(self.shipment, {'total': 1.0})
+        self.shipment.pickup_ready_time = 16.5
+        with self.assertRaisesRegex(UserError, '90 minutes'):
+            self.carrier.ltl_book(self.shipment, {'total': 1.0})
+
+    def test_bol_refused_keeps_pickup(self):
+        self._ready_to_book()
+        self.carrier.saia_test_mode = True
+        self.answers['/pickup/soap.asmx'] = self._pickup_ok()
+        self.answers['/BOL/soap.asmx'] = self._soap('http://www.SaiaSecure.com/WebService/BOL', (
+            '<Code>E12</Code><Element>Consignee</Element><Fault>C</Fault><Message>Invalid consignee</Message>'
+            '<ProNumber>0</ProNumber><CheckDigit>0</CheckDigit>'))
+        result = self.carrier.ltl_book(self.shipment, {'total': 1.0})
+        self.assertEqual(result['pickup_number'], '8812345')
+        self.assertFalse(result.get('pro_number'))
+        body = self.shipment.message_ids[:1].body
+        self.assertIn('did not file the BOL', body)
+        self.assertIn('TEST mode', body)
+        self.assertEqual(self._body(self.calls[0]).findtext(
+            './/{http://www.SaiaSecure.com/WebService/Pickup}TestMode'), 'Y')
 
     def test_tracking_and_documents(self):
         self.shipment.write({'state': 'booked', 'pro_number': '1073050082'})

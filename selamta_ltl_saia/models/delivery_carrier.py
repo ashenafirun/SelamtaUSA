@@ -31,6 +31,8 @@ import re
 from datetime import datetime
 
 import requests
+from lxml import etree
+from markupsafe import Markup
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
@@ -66,6 +68,29 @@ DOCUMENT_TYPES = [
 ]
 VALID_CLASSES = {50, 55, 60, 65, 70, 77.5, 85, 92.5, 100, 110, 125, 150, 175, 200, 250, 300, 400, 500}
 
+# Booking: Saia's SOAP web services on saiasecure.com (help pages soap.asmx?op=Create, read
+# 2 Nov 2026). Login is the Saia Secure user ID and password in the request; no portal key.
+# * Pickup Create: request {Details {DetailItem {DestinationZipcode, DestinationCountry, Pieces,
+#   Package, Weight, Freezable, SaiaGuaranteed}}, UserID, Password, TestMode, AccountNumber,
+#   CompanyName, Street, Box, City, State, Zipcode, ContactName, ContactPhone, PickupDate
+#   (YYYY-MM-DD), ReadyTime, CloseTime (HH:MM:SS, ready at least 90 minutes before close),
+#   SpecialInstructions} -> CreateResult {PickupTerminal {...}, Code, Element, Fault, Message,
+#   TestMode, PickupNumber, TotalPieces, TotalWeight, NextBusinessDate (with code S04)}.
+# * Bill of Lading Create: request {Shipper, Consignee (AccountNumber, ContactName, Address1,
+#   Address2, City, State, Zipcode, Zipcode4), COD, Details {DetailItem {PONumber, Class,
+#   Package, Pieces, Weight, FoodItem, Hazardous, UNHazmatID, UNPackageGroup, UNBulk,
+#   Description, NmfcCode, SubClass}}, Accessorials {AccessorialItem {Code}}, ..., UserID,
+#   Password, TestMode, ShipmentDate, BillingTerms, BLNumber, ..., QuoteNumber, ...} ->
+#   CreateResult {Code, Element, Fault, Message, TestMode, ProNumber, CheckDigit, PDF, HTML,
+#   Barcode}. A non-empty Code means the call failed; Fault C = our request, S = Saia's side.
+# Elements are sent in the order of Saia's schema; number elements (decimal) are always sent.
+SOAP_URL = 'https://www.saiasecure.com/webservice/%s/soap.asmx'
+SOAP_ENV = 'http://schemas.xmlsoap.org/soap/envelope/'
+BOL_NS = 'http://www.SaiaSecure.com/WebService/BOL'
+PICKUP_NS = 'http://www.SaiaSecure.com/WebService/Pickup'
+PACKAGES = {'pallet': 'SK', 'box': 'BX'}
+BILLING_TERMS = {'prepaid': 'Prepaid', 'collect': 'Collect'}
+
 
 class DeliveryCarrier(models.Model):
     _inherit = 'delivery.carrier'
@@ -96,8 +121,26 @@ class DeliveryCarrier(models.Model):
     saia_show_guaranteed = fields.Boolean(
         'Show guaranteed quotes',
         help='Also list Saia\'s guaranteed services (by noon, 10 AM, 5 PM) when Saia offers them.')
+    saia_book_shipments = fields.Boolean(
+        'Book through the API',
+        help='With this on, choosing Saia in the rate shop requests a real pickup and creates the '
+             'BOL with Saia (PRO number and Saia\'s BOL). With it off, the quote is saved and the '
+             'load is booked on saia.com.')
+    saia_test_mode = fields.Boolean(
+        'Test mode',
+        help='Send bookings with Saia\'s TestMode: Saia checks them and answers, but nothing is '
+             'filed and nothing is picked up.')
+    saia_contact_name = fields.Char('Saia pickup contact')
+    saia_contact_phone = fields.Char('Saia pickup contact phone')
+    saia_contact_email = fields.Char('Saia pickup contact email')
 
     # ------------------------------------------------------------------ connection
+
+    def ltl_can(self, operation):
+        self.ensure_one()
+        if self.delivery_type == 'saia' and operation == 'book' and not self.saia_book_shipments:
+            return False
+        return super().ltl_can(operation)
 
     def _saia_secret(self, field, label):
         value = (self.sudo()[field] or '').strip()
@@ -379,6 +422,277 @@ class DeliveryCarrier(models.Model):
                                       json=self._saia_rate_request(shipment))
         data = self._saia_check(response, self._saia_json(response))
         return self._saia_rates_from_answer(data)
+
+    # ------------------------------------------------------------------ booking (SOAP)
+
+    @api.model
+    def _saia_add(self, parent, ns, name, value=None):
+        element = etree.SubElement(parent, '{%s}%s' % (ns, name))
+        if value is not None:
+            element.text = str(value)
+        return element
+
+    def _saia_soap(self, service, ns, request):
+        """Send Create(request) to a saiasecure.com SOAP service; return CreateResult."""
+        self.ensure_one()
+        envelope = etree.Element('{%s}Envelope' % SOAP_ENV, nsmap={'soap': SOAP_ENV})
+        body = etree.SubElement(envelope, '{%s}Body' % SOAP_ENV)
+        create = etree.SubElement(body, '{%s}Create' % ns, nsmap={None: ns})
+        create.append(request)
+        payload = etree.tostring(envelope, xml_declaration=True, encoding='utf-8')
+        url = SOAP_URL % service
+        _logger.info('Saia POST %s', url)
+        try:
+            response = requests.request('POST', url, data=payload, timeout=TIMEOUT, headers={
+                'Content-Type': 'text/xml; charset=utf-8', 'SOAPAction': '"%s/Create"' % ns})
+        except requests.RequestException as error:
+            raise UserError(_('Could not reach Saia: %s', self._saia_mask(error))) from error
+        try:
+            root = etree.fromstring(response.content or b'')
+        except (etree.XMLSyntaxError, ValueError):
+            raise UserError(_('Saia answered %(status)s: %(text)s', status=response.status_code,
+                              text=self._saia_mask((response.text or '').strip()[:300]) or _('no details')))
+        fault = root.find('.//{%s}Fault' % SOAP_ENV)
+        if fault is not None:
+            raise UserError(_('Saia: %s', self._saia_mask(' '.join(
+                (fault.findtext('faultstring') or fault.findtext('.//faultstring') or '').split()) or _('error'))))
+        result = root.find('.//{%s}CreateResult' % ns)
+        if result is None:
+            raise UserError(_('Saia answered %(status)s without a result.', status=response.status_code))
+        return result
+
+    @api.model
+    def _saia_result(self, result, ns, name):
+        return ' '.join((result.findtext('{%s}%s' % (ns, name)) or '').split())
+
+    def _saia_result_error(self, result, ns):
+        code = self._saia_result(result, ns, 'Code')
+        if not code:
+            return False
+        message = self._saia_result(result, ns, 'Message') or _('no details')
+        element = self._saia_result(result, ns, 'Element')
+        return '%s%s (%s)' % (message, ' [%s]' % element if element else '', code)
+
+    @api.model
+    def _saia_phone(self, value, label):
+        phone = digits_only(value)
+        if len(phone) == 11 and phone.startswith('1'):
+            phone = phone[1:]
+        if len(phone) != 10:
+            raise UserError(_('Saia needs a 10-digit phone number for the %s.', label))
+        return phone
+
+    @api.model
+    def _saia_clock(self, hours):
+        """10.5 -> '10:30:00'."""
+        hours = hours or 0.0
+        hour, minute = int(hours), int(round((hours - int(hours)) * 60))
+        if minute == 60:
+            hour, minute = hour + 1, 0
+        return '%02d:%02d:00' % (min(hour, 23), minute)
+
+    def _saia_contact(self, shipment):
+        shipper, company = shipment.shipper_id, shipment.company_id
+        return {
+            'name': (self.saia_contact_name or self.env.user.name or company.name or '')[:30],
+            'phone': self._saia_phone(self.saia_contact_phone or shipper.phone or shipper.mobile or company.phone,
+                                      _('pickup contact (Saia tab or the shipper)')),
+            'email': self.saia_contact_email or shipper.email or company.email or '',
+        }
+
+    @api.model
+    def _saia_check_address(self, partner, label):
+        if not partner.street or not partner.city or not partner.state_id:
+            raise UserError(_('%(name)s needs a street, city and state for a Saia booking (%(label)s).',
+                              name=partner.display_name, label=label))
+
+    def _saia_test_flag(self):
+        return 'Y' if self.saia_test_mode else 'N'
+
+    def _saia_pickup_request(self, shipment, rate):
+        ns = PICKUP_NS
+        shipper, consignee = shipment.shipper_id, shipment.partner_id
+        self._saia_check_address(shipper, _('shipper'))
+        account = (self.saia_account_code or '').strip()
+        if not account:
+            raise UserError(_('Enter the Saia account number on the %s shipping method (Saia tab) first: Saia '
+                              'pickups need it.', self.name))
+        if shipment.pickup_close_time - shipment.pickup_ready_time < 1.5:
+            raise UserError(_('Saia needs the freight ready at least 90 minutes before the dock closes; change '
+                              'the pickup window on %s.', shipment.name))
+        user, password = self._saia_login()
+        units = self._saia_units(shipment)
+        contact = self._saia_contact(shipment)
+        ship_date = shipment.ship_date or fields.Date.context_today(self)
+        guaranteed = 'Y' if (rate.get('saia_service') or 'STD') != 'STD' else 'N'
+        request = etree.Element('{%s}request' % ns)
+        add = lambda name, value=None, parent=request: self._saia_add(parent, ns, name, value)  # noqa: E731
+        item = add('DetailItem', parent=add('Details'))
+        add('DestinationZipcode', self._saia_zip(consignee), item)
+        add('DestinationCountry', consignee.country_id.code or 'US', item)
+        add('Pieces', sum(max(int(u.quantity or 1), 1) for u in units), item)
+        add('Package', 'SK' if 'pallet' in units.mapped('unit_type') else 'BX', item)
+        add('Weight', int(round(sum(units.mapped('weight')))), item)
+        add('Freezable', 'N', item)
+        add('SaiaGuaranteed', guaranteed, item)
+        add('UserID', user)
+        add('Password', password)
+        add('TestMode', self._saia_test_flag())
+        add('AccountNumber', account)
+        add('CompanyName', (shipper.commercial_partner_id.name or shipper.name or '')[:40])
+        add('Street', shipper.street[:40])
+        add('Box', '')
+        add('City', shipper.city[:30])
+        add('State', shipper.state_id.code)
+        add('Zipcode', self._saia_zip(shipper))
+        add('ContactName', contact['name'])
+        add('ContactPhone', contact['phone'])
+        add('PickupDate', ship_date.strftime('%Y-%m-%d'))
+        add('ReadyTime', self._saia_clock(shipment.pickup_ready_time))
+        add('CloseTime', self._saia_clock(shipment.pickup_close_time))
+        notes = ['BOL %s' % shipment.bol_reference]
+        if shipment.pickup_instructions:
+            notes.append(' '.join(shipment.pickup_instructions.split()))
+        add('SpecialInstructions', '. '.join(notes)[:200])
+        return request
+
+    def _saia_bol_request(self, shipment, rate):
+        ns = BOL_NS
+        shipper, consignee = shipment.shipper_id, shipment.partner_id
+        self._saia_check_address(consignee, _('consignee'))
+        terms = BILLING_TERMS.get(shipment.freight_terms)
+        if not terms:
+            raise UserError(_('Saia bookings here are prepaid or collect; %s is billed to a third party. Book it '
+                              'on saia.com.', shipment.name))
+        user, password = self._saia_login()
+        contact = self._saia_contact(shipment)
+        ship_date = shipment.ship_date or fields.Date.context_today(self)
+        request = etree.Element('{%s}request' % ns)
+        add = lambda name, value=None, parent=request: self._saia_add(parent, ns, name, value)  # noqa: E731
+
+        def party(name, partner, account, contact_name):
+            block = add(name)
+            add('AccountNumber', account, block)
+            add('ContactName', contact_name[:30], block)
+            add('Address1', (partner.street or '')[:30], block)
+            add('Address2', (partner.street2 or '')[:30], block)
+            add('City', (partner.city or '')[:30], block)
+            add('State', partner.state_id.code or '', block)
+            add('Zipcode', self._saia_zip(partner), block)
+            add('Zipcode4', '', block)
+
+        party('Shipper', shipper, (self.saia_account_code or '').strip(), contact['name'])
+        party('Consignee', consignee, '',
+              consignee.commercial_partner_id.name if consignee.parent_id else consignee.name or '')
+        cod = add('COD')
+        add('CompanyCheck', '', cod)
+        add('BillingTerms', '', cod)
+        add('Amount', 0, cod)
+        details = add('Details')
+        for unit in self._saia_units(shipment):
+            item = add('DetailItem', parent=details)
+            add('PONumber', '', item)
+            add('Class', '%g' % self._saia_class(unit.freight_class), item)
+            add('Package', PACKAGES.get(unit.unit_type, 'SK'), item)
+            add('Pieces', max(int(unit.quantity or 1), 1), item)
+            add('Weight', max(int(round(unit.weight)), 1), item)
+            add('FoodItem', 'Y', item)
+            add('Hazardous', 'N', item)
+            add('UNHazmatID', '', item)
+            add('UNPackageGroup', '', item)
+            add('UNBulk', '', item)
+            add('Description', (unit.description or _('Freight'))[:50], item)
+            add('NmfcCode', unit.nmfc_item or '', item)
+            add('SubClass', unit.nmfc_sub or '', item)
+        accessorials = add('Accessorials')
+        for code in self._saia_accessorial_codes(shipment):
+            add('Code', code, add('AccessorialItem', parent=accessorials))
+        add('ExcessiveLengthTotalInches', '')
+        add('FullValueCoverage', 0)
+        add('UserID', user)
+        add('Password', password)
+        add('TestMode', self._saia_test_flag())
+        add('ShipmentDate', ship_date.strftime('%Y-%m-%d'))
+        add('BillingTerms', terms)
+        add('BLNumber', (shipment.bol_reference or '')[:20])
+        add('ShipperNumber', '')
+        add('StoreNumber', '')
+        add('TrailerNumber', '')
+        add('PONumber', (shipment.order_refs or '')[:20])
+        add('DepartmentNumber', '')
+        add('QuoteNumber', str(rate.get('quote_number') or shipment.quote_number or '')[:20])
+        add('Email', contact['email'][:50])
+        add('PrintRates', 'N')
+        add('Customs', 'N')
+        add('GuaranteedDelivery', 'Y' if (rate.get('saia_service') or 'STD') != 'STD' else '')
+        add('EmergencyPhone', 0)
+        add('SpecialInstructions', '. '.join(shipment._bol_delivery_lines())[:250])
+        add('VICS', 'N')
+        add('WeightUnits', 'LBS')
+        add('TotalCube', 0)
+        add('TotalCubeUnits', '')
+        add('DeclaredValue', 0)
+        add('BorderLocation', '')
+        return request
+
+    @api.model
+    def _saia_bol_pro(self, result):
+        pro = digits_only(self._saia_result(result, BOL_NS, 'ProNumber').split('.')[0])
+        check = digits_only(self._saia_result(result, BOL_NS, 'CheckDigit').split('.')[0])
+        if pro and check and len(pro) == 10:
+            pro += check[-1]
+        return self._saia_pro(pro) if pro and int(pro) else False
+
+    def saia_ltl_book(self, shipment, rate):
+        """Request the pickup (the truck), then file the BOL with Saia for the PRO and Saia's
+        BOL. When the pickup is booked but the BOL is not, the booking stands: the driver
+        takes our BOL and the PRO is typed in from it."""
+        self.ensure_one()
+        if not self.saia_book_shipments:
+            raise UserError(_('Booking through the Saia API is off on %s; book on saia.com and type the PRO.',
+                              self.name))
+        pickup = self._saia_soap('pickup', PICKUP_NS, self._saia_pickup_request(shipment, rate))
+        error = self._saia_result_error(pickup, PICKUP_NS)
+        if error:
+            next_day = self._saia_result(pickup, PICKUP_NS, 'NextBusinessDate')
+            if next_day:
+                raise UserError(_('Saia cannot pick up on that date (%(error)s). Its next business day is '
+                                  '%(day)s: change the pickup date and choose the rate again.',
+                                  error=error, day=next_day))
+            raise UserError(_('Saia did not take the pickup request: %s', error))
+        pickup_number = digits_only(self._saia_result(pickup, PICKUP_NS, 'PickupNumber').split('.')[0]).lstrip('0')
+        notes = [_('Saia pickup %s requested.', pickup_number or '-')]
+        terminal = ' '.join(filter(None, [
+            pickup.findtext('{%s}PickupTerminal/{%s}Name' % (PICKUP_NS, PICKUP_NS)),
+            pickup.findtext('{%s}PickupTerminal/{%s}CityDispatchPhone' % (PICKUP_NS, PICKUP_NS))]))
+        if terminal.strip():
+            notes.append(_('Pickup terminal: %s', ' '.join(terminal.split())))
+        result = {'pickup_number': pickup_number or False, 'documents': []}
+        try:
+            bol = self._saia_soap('BOL', BOL_NS, self._saia_bol_request(shipment, rate))
+            error = self._saia_result_error(bol, BOL_NS)
+            if error:
+                raise UserError(error)
+        except UserError as error:
+            notes.append(_('Saia did not file the BOL (%s). The pickup is booked: print the Odoo BOL for the '
+                           'driver and type the PRO from it.', error.args[0] if error.args else error))
+            bol = None
+        if bol is not None:
+            pro = self._saia_bol_pro(bol)
+            result['pro_number'] = pro
+            notes.append(_('Saia BOL filed, PRO %s.', pro or '-'))
+            pdf_text = self._saia_result(bol, BOL_NS, 'PDF').replace(' ', '')
+            if pdf_text:
+                try:
+                    pdf = base64.b64decode(pdf_text)
+                except (ValueError, TypeError):
+                    pdf = b''
+                if pdf[:4] == b'%PDF':
+                    result['documents'].append(('Saia BOL (carrier copy) %s.pdf' % (pro or shipment.name), pdf))
+        if self.saia_test_mode:
+            notes.append(_('Sent in Saia TEST mode: nothing is filed and nothing will be picked up.'))
+        shipment.message_post(body=Markup('<br/>').join(notes))
+        return result
 
     def saia_raw_answer(self, kind='rate', shipment_id=False):
         """Saia's full answer (password and keys hidden) for a rate quote, a tracking or a
