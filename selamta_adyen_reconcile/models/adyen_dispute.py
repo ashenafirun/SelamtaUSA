@@ -91,6 +91,8 @@ class AdyenDispute(models.Model):
     fee_amount = fields.Monetary(readonly=True)
     fee_invoice_id = fields.Many2one('account.move', 'Fee invoice', readonly=True)
     ach_turned_off = fields.Boolean('ACH turned off', readonly=True)
+    ach_kept_on = fields.Boolean('ACH kept on (customer exempt)', readonly=True,
+                                 help='The rule would have turned ACH off, but the customer is set to keep it.')
     customer_emailed = fields.Boolean(readonly=True)
     payload = fields.Text('Adyen message', readonly=True)
 
@@ -437,7 +439,10 @@ class AdyenDispute(models.Model):
             vals['fee_status'] = 'no_product'
         elif status == 'charged':
             vals['fee_invoice_id'] = self._create_fee_invoice(product).id
-        if dispute_rules.turn_off_ach(number) and not customer.selamta_ach_blocked:
+        if dispute_rules.turn_off_ach(number) and not customer.selamta_ach_blocked \
+                and not customer.selamta_ach_auto_off:
+            vals['ach_kept_on'] = True
+        elif dispute_rules.turn_off_ach(number) and not customer.selamta_ach_blocked:
             customer.write({
                 'selamta_ach_blocked': True,
                 'selamta_ach_blocked_note': _('Turned off automatically on %(day)s: %(nth)s chargeback incident '
@@ -554,6 +559,9 @@ class AdyenDispute(models.Model):
             if self.ach_turned_off:
                 lines.append(Markup('<b>%s</b>') % _('ACH is now turned off for this customer. Turn it back on in '
                                                        'the customer\'s Chargebacks tab.'))
+            elif self.ach_kept_on:
+                lines.append(Markup('<b>%s</b>') % _('ACH left on: this customer is set not to lose ACH '
+                                                       'automatically (Chargebacks tab).'))
             if self.customer_emailed:
                 lines.append(_('Customer emailed at %s.', customer.email))
             else:
