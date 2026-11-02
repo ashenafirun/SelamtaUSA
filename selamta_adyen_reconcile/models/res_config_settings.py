@@ -21,3 +21,7 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.adyen_rec_deposit_account_id', readonly=False)
     adyen_rec_review_user_id = fields.Many2one(
         related='company_id.adyen_rec_review_user_id', readonly=False)
+    adyen_rec_dispute_channel_id = fields.Many2one(
+        related='company_id.adyen_rec_dispute_channel_id', readonly=False)
+    adyen_rec_cb_fee_product_id = fields.Many2one(
+        related='company_id.adyen_rec_cb_fee_product_id', readonly=False)

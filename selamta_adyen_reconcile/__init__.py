@@ -23,3 +23,21 @@ def _post_init_hook(env):
         vals = {k: v for k, v in vals.items() if v}
         if vals:
             company.write(vals)
+    _set_chargeback_defaults(env)
+
+
+def _set_chargeback_defaults(env):
+    """Point chargeback alerts at the "office" channel and the fee at "Chargeback payment fee", if they exist.
+
+    Called on install and by the 18.0.1.1.0 upgrade.
+    """
+    channel = env['discuss.channel'].search([('channel_type', '=', 'channel'), ('name', '=ilike', 'office')], limit=1)
+    product = env['product.product'].search([('name', '=ilike', 'chargeback payment fee')], limit=1)
+    for company in env['res.company'].search([]):
+        vals = {}
+        if not company.adyen_rec_dispute_channel_id and channel:
+            vals['adyen_rec_dispute_channel_id'] = channel.id
+        if not company.adyen_rec_cb_fee_product_id and product:
+            vals['adyen_rec_cb_fee_product_id'] = product.id
+        if vals:
+            company.write(vals)
