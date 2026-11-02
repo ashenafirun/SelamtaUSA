@@ -7,9 +7,17 @@
         <field name="arch" type="xml">
             <xpath expr="//notebook" position="inside">
                 <page string="Southeastern" name="sefl" invisible="delivery_type != 'sefl'">
-                    <div class="alert alert-info" role="alert">
+                    <div class="alert alert-info" role="alert" invisible="sefl_book_pickups">
                         Rates, tracking and delivery documents. Choosing Southeastern in the rate shop saves the
-                        quote; book on sefl.com and type the PRO.
+                        quote; book on sefl.com and type the PRO. Turning on "Book pickups through the API" books
+                        real pickups.
+                    </div>
+                    <div class="alert alert-warning" role="alert" invisible="not sefl_book_pickups or sefl_test_mode">
+                        Booking is on: choosing Southeastern in the rate shop requests a real pickup and takes a PRO
+                        from Southeastern for our BOL.
+                    </div>
+                    <div class="alert alert-info" role="alert" invisible="not sefl_book_pickups or not sefl_test_mode">
+                        Test mode: pickup requests are checked by Southeastern but nothing is scheduled.
                     </div>
                     <group>
                         <group string="MySEFL login (sefl.com)">
@@ -19,6 +27,13 @@
                             <field name="sefl_send_dimensions"/>
                             <button name="action_sefl_test_connection" type="object" string="Test MySEFL login (sample rate)"
                                     class="btn-secondary" groups="base.group_system" colspan="2"/>
+                        </group>
+                        <group string="Booking">
+                            <field name="sefl_book_pickups"/>
+                            <field name="sefl_test_mode" invisible="not sefl_book_pickups"/>
+                            <field name="sefl_contact_name" placeholder="Whoever books"/>
+                            <field name="sefl_contact_phone" placeholder="Our dock phone"/>
+                            <field name="sefl_contact_email" placeholder="Our company email"/>
                         </group>
                     </group>
                 </page>
