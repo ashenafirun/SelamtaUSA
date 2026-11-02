@@ -69,6 +69,7 @@
                             <field name="customer_ids" widget="many2many_tags" invisible="not consolidated"
                                    string="Orders for"/>
                             <field name="shipper_id" readonly="state not in ('draft', 'booked')"/>
+                            <field name="is_inbound" invisible="not is_inbound"/>
                             <field name="ship_date"/>
                             <label for="pickup_ready_time" string="Pickup window"/>
                             <div class="o_row">

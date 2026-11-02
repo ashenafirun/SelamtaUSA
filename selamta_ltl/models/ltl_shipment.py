@@ -76,6 +76,10 @@ class LtlShipment(models.Model):
         precompute=True, required=True, tracking=True,
         help='Ticked in the Freight Charges box of the BOL. Filled in from the carrier (LTL '
              'tab); Priority1 loads are Third party.')
+    is_inbound = fields.Boolean(
+        'Coming to us', compute='_compute_is_inbound',
+        help='We are the consignee and someone else ships it, e.g. a vendor\'s freight to our '
+             'warehouse. We pay as consignee (Collect) unless a broker bills it.')
     bill_to_id = fields.Many2one(
         'res.partner', 'Third party bill to', compute='_compute_bill_to_id', store=True,
         readonly=False, precompute=True, tracking=True,
@@ -205,13 +209,26 @@ class LtlShipment(models.Model):
                 shipment.pickup_ready_time = shipment.pickup_ready_time or DEFAULT_READY_TIME
                 shipment.pickup_close_time = shipment.pickup_close_time or DEFAULT_CLOSE_TIME
 
-    @api.depends('carrier_id')
+    @api.depends('shipper_id', 'partner_id', 'company_id')
+    def _compute_is_inbound(self):
+        for shipment in self:
+            us = shipment.company_id.partner_id.commercial_partner_id
+            shipment.is_inbound = bool(
+                us and shipment.partner_id.commercial_partner_id == us
+                and shipment.shipper_id and shipment.shipper_id.commercial_partner_id != us)
+
+    @api.depends('carrier_id', 'shipper_id', 'partner_id')
     def _compute_freight_terms(self):
+        """From the carrier. A load coming to us (we are the consignee and pay) is Collect,
+        unless the carrier is billed to a third party (a broker such as Priority1)."""
         for shipment in self:
             if shipment.carrier_id:
-                shipment.freight_terms = shipment.carrier_id.ltl_freight_terms or 'prepaid'
+                terms = shipment.carrier_id.ltl_freight_terms or 'prepaid'
             else:
-                shipment.freight_terms = shipment.freight_terms or 'prepaid'
+                terms = shipment.freight_terms or 'prepaid'
+            if shipment.is_inbound and terms == 'prepaid':
+                terms = 'collect'
+            shipment.freight_terms = terms
 
     @api.depends('carrier_id', 'freight_terms')
     def _compute_bill_to_id(self):
