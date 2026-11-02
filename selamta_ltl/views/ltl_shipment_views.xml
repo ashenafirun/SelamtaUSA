@@ -86,6 +86,9 @@
                                    readonly="state not in ('draft', 'booked')"/>
                             <field name="vendor_id"/>
                             <field name="freight_terms"/>
+                            <field name="bill_to_id" invisible="freight_terms != 'third_party'"
+                                   required="freight_terms == 'third_party'"
+                                   context="{'show_address': 1}" options="{'always_reload': True}"/>
                             <field name="pro_number"/>
                             <field name="bol_reference"/>
                             <field name="bol_number" invisible="not bol_number"/>

@@ -9,8 +9,8 @@ from odoo.exceptions import RedirectWarning, UserError
 from odoo.tools import float_round
 
 from .ltl_common import (
-    DEFAULT_CLOSE_TIME, DEFAULT_DESCRIPTION, DEFAULT_READY_TIME, FREIGHT_CLASSES, UNIT_TYPES,
-    class_number, digits_only,
+    DEFAULT_CLOSE_TIME, DEFAULT_DESCRIPTION, DEFAULT_READY_TIME, FREIGHT_CLASSES, FREIGHT_TERMS,
+    UNIT_TYPES, class_number, digits_only,
 )
 
 _logger = logging.getLogger(__name__)
@@ -72,8 +72,16 @@ class LtlShipment(models.Model):
         readonly=False, index=True, tracking=True,
         help='The vendor whose bill pays for this shipment. Taken from the carrier.')
     freight_terms = fields.Selection(
-        [('prepaid', 'Prepaid'), ('collect', 'Collect'), ('third_party', 'Third party')],
-        default='prepaid', required=True)
+        FREIGHT_TERMS, compute='_compute_freight_terms', store=True, readonly=False,
+        precompute=True, required=True, tracking=True,
+        help='Ticked in the Freight Charges box of the BOL. Filled in from the carrier (LTL '
+             'tab); Priority1 loads are Third party.')
+    bill_to_id = fields.Many2one(
+        'res.partner', 'Third party bill to', compute='_compute_bill_to_id', store=True,
+        readonly=False, precompute=True, tracking=True,
+        help='Who the carrier bills when the freight terms are Third party; printed on the BOL '
+             'under "Bill freight charges to". Filled in from the carrier; open it to change '
+             'the address.')
     ship_date = fields.Date(
         'Pickup date', default=lambda self: self._default_ship_date(), tracking=True,
         help='The day the carrier picks up. Sent with the rate request and the pickup booking.')
@@ -197,6 +205,31 @@ class LtlShipment(models.Model):
                 shipment.pickup_ready_time = shipment.pickup_ready_time or DEFAULT_READY_TIME
                 shipment.pickup_close_time = shipment.pickup_close_time or DEFAULT_CLOSE_TIME
 
+    @api.depends('carrier_id')
+    def _compute_freight_terms(self):
+        for shipment in self:
+            if shipment.carrier_id:
+                shipment.freight_terms = shipment.carrier_id.ltl_freight_terms or 'prepaid'
+            else:
+                shipment.freight_terms = shipment.freight_terms or 'prepaid'
+
+    @api.depends('carrier_id', 'freight_terms')
+    def _compute_bill_to_id(self):
+        for shipment in self:
+            if shipment.freight_terms != 'third_party':
+                shipment.bill_to_id = False
+            else:
+                shipment.bill_to_id = shipment.carrier_id.ltl_bill_to_id or shipment.bill_to_id
+
+    def _bol_bill_to(self):
+        """Who is printed under "Bill freight charges to" on the BOL."""
+        self.ensure_one()
+        if self.freight_terms == 'third_party':
+            return self.bill_to_id
+        if self.freight_terms == 'collect':
+            return self.partner_id
+        return self.company_id.partner_id
+
     @api.depends('ship_date', 'pickup_ready_time', 'pickup_close_time', 'state')
     def _compute_pickup_warning(self):
         today = fields.Date.context_today(self)
@@ -243,6 +276,9 @@ class LtlShipment(models.Model):
                 raise UserError(_('The pickup date on %s is in the past.', shipment.name))
             if shipment.pickup_close_time <= shipment.pickup_ready_time:
                 raise UserError(_('On %s the dock closes before the freight is ready.', shipment.name))
+            if shipment.freight_terms == 'third_party' and not shipment.bill_to_id:
+                raise UserError(_('%s is billed to a third party: fill in "Third party bill to" first.',
+                                  shipment.name))
 
     @api.depends('carrier_id')
     def _compute_vendor_id(self):

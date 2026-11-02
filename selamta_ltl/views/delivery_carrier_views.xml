@@ -19,6 +19,10 @@
                         <group invisible="not ltl_enabled">
                             <field name="ltl_vendor_id" required="ltl_enabled"/>
                             <field name="ltl_match_on"/>
+                            <field name="ltl_freight_terms"/>
+                            <field name="ltl_bill_to_id" invisible="ltl_freight_terms != 'third_party'"
+                                   required="ltl_enabled and ltl_freight_terms == 'third_party'"
+                                   context="{'show_address': 1}" options="{'always_reload': True}"/>
                         </group>
                     </group>
                 </page>
