@@ -255,7 +255,7 @@ class TestSaia(TransactionCase):
         self.assertEqual(get(req, 'PickupDate'), self.shipment.ship_date.strftime('%Y-%m-%d'))
         item = req.find('%sDetails/%sDetailItem' % (p, p))
         self.assertEqual([get(item, n) for n in ('DestinationZipcode', 'Pieces', 'Package', 'Weight', 'SaiaGuaranteed')],
-                         ['28202', '2', 'SK', '1801', 'N'])
+                         ['28202', '2', 'SK', '1801', ''])
         self.assertIn('BOL %s' % self.shipment.bol_reference, get(req, 'SpecialInstructions'))
         b = '{http://www.SaiaSecure.com/WebService/BOL}'
         bol = self._body(bol_call).find('.//%srequest' % b)
@@ -272,9 +272,61 @@ class TestSaia(TransactionCase):
         self.assertEqual([g(line, n) for n in ('Class', 'Package', 'Pieces', 'Weight', 'FoodItem', 'Description')],
                          ['85', 'SK', '2', '1801', 'Y', 'Teff flour'])
         self.assertEqual(bol.findtext('%sAccessorials/%sAccessorialItem/%sCode' % (b, b, b)), 'LiftgateService')
+        self.assertEqual(g(bol, 'GuaranteedDelivery'), '')
         self.assertEqual((result['pickup_number'], result['pro_number']), ('8812345', '10730500824'))
         self.assertEqual(result['documents'][0][1], PDF)
         self.assertNotIn('pw-secret-1', self.shipment.message_ids[:1].body)
+
+    def test_inbound_load_billed_collect_to_us(self):
+        """A vendor's freight coming to our warehouse: pickup at the vendor with the vendor's phone,
+        our account on the consignee, Collect."""
+        self._ready_to_book()
+        md = self.env['res.country.state'].search([('code', '=', 'MD'), ('country_id.code', '=', 'US')])
+        vendor = self.env['res.partner'].create({
+            'name': 'Sample Vendor LLC', 'is_company': True, 'street': '9007 Example Ave', 'city': 'Laurel',
+            'zip': '20707', 'state_id': md.id, 'country_id': self.env.ref('base.us').id,
+            'mobile': '+1 470-555-0169'})
+        shipment = self.env['selamta.ltl.shipment'].create({
+            'shipper_id': vendor.id, 'partner_id': self.env.company.partner_id.id, 'carrier_id': self.carrier.id,
+            'ship_date': self.shipment.ship_date, 'pickup_ready_time': 14.0, 'pickup_close_time': 18.0,
+            'unit_ids': [(0, 0, {'quantity': 1, 'unit_type': 'pallet', 'length': 40, 'width': 48, 'height': 40,
+                                 'weight': 330})]})
+        self.assertTrue(shipment.is_inbound)
+        self.assertEqual(shipment.freight_terms, 'collect')
+        self.assertEqual(shipment._bol_bill_to(), self.env.company.partner_id)
+        self.answers['/pickup/soap.asmx'] = self._pickup_ok()
+        self.answers['/BOL/soap.asmx'] = self._bol_ok()
+        self.carrier.ltl_book(shipment, {'total': 300.0, 'saia_service': 'STD'})
+        p = '{http://www.SaiaSecure.com/WebService/Pickup}'
+        req = self._body(self.calls[0]).find('.//%srequest' % p)
+        get = lambda name: req.findtext(p + name)  # noqa: E731
+        self.assertEqual((get('CompanyName'), get('City'), get('State'), get('Zipcode')),
+                         ('Sample Vendor LLC', 'Laurel', 'MD', '20707'))
+        self.assertEqual((get('ContactPhone'), get('AccountNumber')), ('4705550169', '1055993'))
+        self.assertEqual(req.findtext('%sDetails/%sDetailItem/%sDestinationZipcode' % (p, p, p)), '30035')
+        b = '{http://www.SaiaSecure.com/WebService/BOL}'
+        bol = self._body(self.calls[1]).find('.//%srequest' % b)
+        self.assertEqual(bol.findtext(b + 'BillingTerms'), 'Collect')
+        self.assertEqual(bol.findtext('%sShipper/%sAccountNumber' % (b, b)), '')
+        self.assertEqual(bol.findtext('%sShipper/%sContactName' % (b, b)), 'Sample Vendor LLC')
+        self.assertEqual(bol.findtext('%sConsignee/%sAccountNumber' % (b, b)), '1055993')
+        # Our own outbound loads stay prepaid with our account on the shipper.
+        self.assertFalse(self.shipment.is_inbound)
+        self.assertEqual(self.shipment.freight_terms, 'prepaid')
+
+    def test_guaranteed_codes(self):
+        # Saia: "Incorrect value. Enter 12, 10, 5 or leave blank." (SaiaGuaranteed, 2 Nov 2026)
+        code = self.carrier._saia_guaranteed_code
+        self.assertEqual([code({'saia_service': s}) for s in ('STD', 'GSS12', 'GSS10', 'GSS5')], ['', '12', '10', '5'])
+        self.assertEqual(code({}), '')
+        self._ready_to_book()
+        self.answers['/pickup/soap.asmx'] = self._pickup_ok()
+        self.answers['/BOL/soap.asmx'] = self._bol_ok()
+        self.carrier.ltl_book(self.shipment, {'total': 901.39, 'saia_service': 'GSS12'})
+        p = '{http://www.SaiaSecure.com/WebService/Pickup}'
+        b = '{http://www.SaiaSecure.com/WebService/BOL}'
+        self.assertEqual(self._body(self.calls[0]).findtext('.//%sSaiaGuaranteed' % p), '12')
+        self.assertEqual(self._body(self.calls[1]).findtext('.//%sGuaranteedDelivery' % b), '12')
 
     def test_book_through_rate_shop_sets_shipment(self):
         self._ready_to_book()

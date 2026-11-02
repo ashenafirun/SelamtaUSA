@@ -89,6 +89,8 @@ SOAP_ENV = 'http://schemas.xmlsoap.org/soap/envelope/'
 BOL_NS = 'http://www.SaiaSecure.com/WebService/BOL'
 PICKUP_NS = 'http://www.SaiaSecure.com/WebService/Pickup'
 PACKAGES = {'pallet': 'SK', 'box': 'BX'}
+# Guaranteed service on a pickup or BOL: Saia accepts 12, 10, 5 or blank (standard).
+GUARANTEED_CODES = {'GSS12': '12', 'GSS10': '10', 'GSS5': '5'}
 BILLING_TERMS = {'prepaid': 'Prepaid', 'collect': 'Collect'}
 
 
@@ -492,12 +494,23 @@ class DeliveryCarrier(models.Model):
         return '%02d:%02d:00' % (min(hour, 23), minute)
 
     def _saia_contact(self, shipment):
+        """Who the driver calls at the pickup. On a load coming to us that is the shipper
+        (the vendor), not our dock; our email still gets Saia's messages."""
         shipper, company = shipment.shipper_id, shipment.company_id
+        our_email = self.saia_contact_email or company.email or ''
+        if shipment.is_inbound:
+            return {
+                'name': ((shipper.name if shipper.parent_id else False) or _('Shipping')).strip()[:30],
+                'phone': self._saia_phone(shipper.phone or shipper.mobile or shipper.commercial_partner_id.phone
+                                          or shipper.commercial_partner_id.mobile,
+                                          _('shipper %s (the pickup is at their dock)', shipper.display_name)),
+                'email': our_email,
+            }
         return {
             'name': (self.saia_contact_name or self.env.user.name or company.name or '')[:30],
             'phone': self._saia_phone(self.saia_contact_phone or shipper.phone or shipper.mobile or company.phone,
                                       _('pickup contact (Saia tab or the shipper)')),
-            'email': self.saia_contact_email or shipper.email or company.email or '',
+            'email': self.saia_contact_email or shipper.email or our_email,
         }
 
     @api.model
@@ -505,6 +518,12 @@ class DeliveryCarrier(models.Model):
         if not partner.street or not partner.city or not partner.state_id:
             raise UserError(_('%(name)s needs a street, city and state for a Saia booking (%(label)s).',
                               name=partner.display_name, label=label))
+
+    @api.model
+    def _saia_guaranteed_code(self, rate):
+        """Saia's guaranteed service for a booking: '12' (by noon), '10' (by 10 AM), '5' (by 5 PM),
+        or '' for standard service. Saia refuses anything else ("Enter 12, 10, 5 or leave blank")."""
+        return GUARANTEED_CODES.get(rate.get('saia_service') or 'STD', '')
 
     def _saia_test_flag(self):
         return 'Y' if self.saia_test_mode else 'N'
@@ -524,7 +543,7 @@ class DeliveryCarrier(models.Model):
         units = self._saia_units(shipment)
         contact = self._saia_contact(shipment)
         ship_date = shipment.ship_date or fields.Date.context_today(self)
-        guaranteed = 'Y' if (rate.get('saia_service') or 'STD') != 'STD' else 'N'
+        guaranteed = self._saia_guaranteed_code(rate)
         request = etree.Element('{%s}request' % ns)
         add = lambda name, value=None, parent=request: self._saia_add(parent, ns, name, value)  # noqa: E731
         item = add('DetailItem', parent=add('Details'))
@@ -581,8 +600,12 @@ class DeliveryCarrier(models.Model):
             add('Zipcode', self._saia_zip(partner), block)
             add('Zipcode4', '', block)
 
-        party('Shipper', shipper, (self.saia_account_code or '').strip(), contact['name'])
-        party('Consignee', consignee, '',
+        # Our Saia account goes on our side: the shipper on our own loads, the consignee on a
+        # load coming to us (billed Collect to us).
+        account = (self.saia_account_code or '').strip()
+        party('Shipper', shipper, '' if shipment.is_inbound else account,
+              shipper.commercial_partner_id.name if shipment.is_inbound else contact['name'])
+        party('Consignee', consignee, account if shipment.is_inbound else '',
               consignee.commercial_partner_id.name if consignee.parent_id else consignee.name or '')
         cod = add('COD')
         add('CompanyCheck', '', cod)
@@ -624,7 +647,7 @@ class DeliveryCarrier(models.Model):
         add('Email', contact['email'][:50])
         add('PrintRates', 'N')
         add('Customs', 'N')
-        add('GuaranteedDelivery', 'Y' if (rate.get('saia_service') or 'STD') != 'STD' else '')
+        add('GuaranteedDelivery', self._saia_guaranteed_code(rate))
         add('EmergencyPhone', 0)
         add('SpecialInstructions', '. '.join(shipment._bol_delivery_lines())[:250])
         add('VICS', 'N')

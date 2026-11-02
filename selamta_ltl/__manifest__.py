@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta LTL Freight',
-    'version': '18.0.1.6.0',
+    'version': '18.0.1.7.0',
     'category': 'Inventory/Delivery',
     'summary': 'Book LTL freight from delivery orders, print the BOL, and check every carrier bill against its quote',
     'description': """
@@ -39,7 +39,9 @@ Foundation for booking LTL freight directly with each carrier, replacing Freight
   quote; for an API carrier it books the shipment.
 * Freight terms (Prepaid, Collect, Third party) and the third-party bill-to address per
   carrier (LTL tab), filled in on each shipment and changeable there. Priority1 loads are
-  Third party, billed to Priority1's accounts payable; the BOL prints that address.
+  Third party, billed to Priority1's accounts payable; the BOL prints that address. A load
+  coming to us (we are the consignee, a vendor ships it) is Collect, billed to us, unless a
+  broker bills it.
 * Straight bill of lading (US Letter) printed from the shipment, with a large PRO barcode.
 * 4x6 shipping labels: two per pallet (one for each side) and one per box, numbered
   1 of N over the shipment, with consignee, carrier, PRO barcode (BOL number until there
