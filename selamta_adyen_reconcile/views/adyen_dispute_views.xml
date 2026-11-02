@@ -61,6 +61,7 @@
                             <field name="fee_status"/>
                             <field name="fee_invoice_id"/>
                             <field name="ach_turned_off"/>
+                            <field name="ach_kept_on" invisible="not ach_kept_on"/>
                             <field name="customer_emailed"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                             <field name="currency_id" invisible="1"/>
@@ -124,6 +125,9 @@
                         <group>
                             <field name="selamta_ach_blocked"/>
                             <field name="selamta_ach_blocked_note" invisible="not selamta_ach_blocked"/>
+                        </group>
+                        <group>
+                            <field name="selamta_ach_auto_off"/>
                         </group>
                     </group>
                     <field name="selamta_dispute_ids" readonly="1">
