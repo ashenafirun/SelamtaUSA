@@ -354,8 +354,9 @@ class AdyenDispute(models.Model):
         try:
             with self.env.cr.savepoint():
                 emailed = self._email_customer()
-        except Exception:  # noqa: BLE001 - the booking stands; the office is told the email failed
+        except Exception as error:  # noqa: BLE001 - the booking stands; the office is told the email failed
             _logger.exception('Chargeback email for %s failed', self.name)
+            self.message_post(body=_('The customer email could not be sent: %s', error))
             emailed = False
         self.write({'customer_emailed': emailed, 'state': 'done'})
         self._notify_office('chargeback')
@@ -471,7 +472,8 @@ class AdyenDispute(models.Model):
             return False
         template = template.with_context(lang=customer.lang or self.env.lang)
         subject = template._render_field('subject', chargeback.ids)[chargeback.id]
-        body = template._render_field('body_html', chargeback.ids, post_process=True)[chargeback.id]
+        # body_html is rendered with QWeb and post-processed (links) by its field definition.
+        body = template._render_field('body_html', chargeback.ids)[chargeback.id]
         company = self.company_id
         chargeback.with_context(mail_post_autofollow=False).message_post(
             body=body,
@@ -539,7 +541,7 @@ class AdyenDispute(models.Model):
                 'waived_first': _('%(nth)s chargeback in 12 months: %(fee)s fee waived; the email says the next one '
                                   'carries it.', nth=nth, fee=fee),
                 'charged': _('%(nth)s chargeback in 12 months: %(fee)s fee charged.', nth=nth, fee=fee),
-                'same_incident': _('Part of a chargeback incident earlier this week: no extra fee.'),
+                'same_incident': _('Same incident as a chargeback in the last few days: no extra fee.'),
                 'processing_error': _('Looks like a processing error: no fee charged.'),
                 'no_product': _('%(nth)s chargeback in 12 months. No fee product is set in settings, so no fee.',
                                 nth=nth),
