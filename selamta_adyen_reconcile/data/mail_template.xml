@@ -23,7 +23,8 @@
         was returned by your bank, so the payment did not go through.<t t-if="dispute.reason"> The reason your bank gave was: <t t-out="dispute.reason">insufficient funds (R01)</t>.</t>
     </p>
     <p style="margin: 0px 0 16px 0;" t-if="dispute.invoice_names">
-        <t t-out="dispute.invoice_names">INV/0001</t> now shows <strong t-out="format_amount(dispute.amount, dispute.currency_id)">$0.00</strong> due again.
+        <t t-if="len(dispute.invoice_ids) > 1">Invoices <t t-out="dispute.invoice_names">INV/0001</t> now show</t><t t-else="">Invoice <t t-out="dispute.invoice_names">INV/0001</t> now shows</t>
+        <strong t-out="format_amount(dispute.reopened_amount, dispute.currency_id)">$0.00</strong> due again.
     </p>
     <p style="margin: 0px 0 16px 0;" t-if="dispute.fee_status == 'waived_first'">
         As stated in the Terms of Service on our website, a chargeback fee of <t t-out="format_amount(dispute.fee_amount, dispute.currency_id)">$20.00</t>

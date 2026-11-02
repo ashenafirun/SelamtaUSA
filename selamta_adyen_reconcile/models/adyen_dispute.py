@@ -84,6 +84,7 @@ class AdyenDispute(models.Model):
     invoice_ids = fields.Many2many('account.move', 'selamta_adyen_dispute_invoice_rel', 'dispute_id', 'move_id',
                                    string='Invoices reopened', readonly=True)
     invoice_names = fields.Char(compute='_compute_invoice_names')
+    reopened_amount = fields.Monetary('Due again on those invoices', readonly=True)
     incident_number = fields.Integer('Chargeback incident in 12 months', readonly=True,
                                      help='1 = first chargeback incident in the last 12 months.')
     fee_status = fields.Selection(FEE_SELECTION, string='Chargeback fee', readonly=True)
@@ -406,7 +407,11 @@ class AdyenDispute(models.Model):
         (cb_line | counterpart).reconcile()
         if not (cb_line.reconciled and counterpart.reconciled):
             raise AdyenDisputeException(_('The chargeback could not be matched with payment %s.', payment.name))
-        self.write({'chargeback_payment_id': chargeback.id, 'invoice_ids': [Command.set(invoices.ids)]})
+        self.write({
+            'chargeback_payment_id': chargeback.id,
+            'invoice_ids': [Command.set(invoices.ids)],
+            'reopened_amount': sum(invoices.mapped('amount_residual')),
+        })
         self.message_post(body=_(
             'Chargeback payment %(cb)s booked; payment %(pay)s taken off %(inv)s, which are due again.',
             cb=chargeback.name, pay=payment.name, inv=self.invoice_names or _('no invoice')))
@@ -521,8 +526,12 @@ class AdyenDispute(models.Model):
         elif customer:
             lines.append(_('No phone number on file for this customer.'))
         if self.invoice_ids:
+            links = Markup(', ').join(
+                Markup('%s (%s)') % (self._link(inv, inv.name), format_amount(self.env, inv.amount_residual, cur))
+                if kind == 'chargeback' else self._link(inv, inv.name)
+                for inv in self.invoice_ids)
             label = _('Due again:') if kind == 'chargeback' else _('Invoices:')
-            lines.append(Markup('%s %s') % (label, Markup(', ').join(self._link(inv, inv.name) for inv in self.invoice_ids)))
+            lines.append(Markup('%s %s') % (label, links))
         if kind == 'chargeback':
             nth = _ordinal(self.incident_number or 1)
             fee = format_amount(self.env, self.fee_amount, cur)
