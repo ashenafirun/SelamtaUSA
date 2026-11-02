@@ -31,6 +31,18 @@
                             </div>
                         </div>
                     </setting>
+                    <setting string="Chargebacks" help="Booked, emailed to the customer and posted to this channel automatically. The fee is invoiced from the second chargeback incident in 12 months; ACH is turned off from the third.">
+                        <div class="content-group">
+                            <div class="row mt8">
+                                <label for="adyen_rec_dispute_channel_id" class="col-lg-4 o_light_label"/>
+                                <field name="adyen_rec_dispute_channel_id"/>
+                            </div>
+                            <div class="row">
+                                <label for="adyen_rec_cb_fee_product_id" class="col-lg-4 o_light_label"/>
+                                <field name="adyen_rec_cb_fee_product_id"/>
+                            </div>
+                        </div>
+                    </setting>
                     <setting string="Adyen connection" groups="base.group_system"
                              help="Report user API key, and the HMAC key of the Report available webhook pointed at /selamta_adyen/report_webhook.">
                         <div class="content-group">

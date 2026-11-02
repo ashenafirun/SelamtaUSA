@@ -180,6 +180,7 @@ class AdyenSettlement(models.Model):
                 self._download()
             if self.state == 'new':
                 self._load_rows()  # only touches this record, so the rows stay visible on a failure
+                self._handle_report_chargebacks()  # each one commits or flags on its own
                 with self.env.cr.savepoint():
                     self._check()
             if self.state == 'checked':
@@ -232,6 +233,24 @@ class AdyenSettlement(models.Model):
             raise AdyenSettlementException(' '.join(summary['problems']))
         if float_is_zero(self.payout_amount, precision_rounding=self.currency_id.rounding):
             raise AdyenSettlementException(_('The payout is zero.'))
+
+    def _handle_report_chargebacks(self):
+        """Book chargebacks that reach Odoo only through the report (the webhook missed them).
+
+        Runs before the batch check so the chargeback payment exists when the rows are matched.
+        """
+        journal = self.company_id.adyen_rec_journal_id
+        if not journal:
+            return
+        Payment = self.env['account.payment']
+        Dispute = self.env['selamta.adyen.dispute']
+        for line in self.line_ids.filtered(lambda l: l.row_type == 'Chargeback' and l.psp_reference):
+            if Payment.search_count([('journal_id', '=', journal.id), ('payment_type', '=', 'outbound'),
+                                     ('state', '!=', 'canceled'), ('memo', 'ilike', line.psp_reference)]):
+                continue
+            dispute = Dispute._register_report_chargeback(line)
+            if dispute.state == 'new':
+                dispute._run()
 
     def _check(self):
         self._match_lines()
@@ -548,6 +567,9 @@ class AdyenSettlementLine(models.Model):
 
 class AccountPayment(models.Model):
     _inherit = 'account.payment'
+
+    selamta_dispute_id = fields.Many2one('selamta.adyen.dispute', 'Adyen chargeback', readonly=True, copy=False,
+                                         index='btree_not_null')
 
     def _selamta_outstanding_line(self):
         """The payment's open line on its outstanding receipts/payments account."""

@@ -4,3 +4,5 @@ access_adyen_settlement_manager,adyen settlement manager,model_selamta_adyen_set
 access_adyen_settlement_line_user,adyen settlement line user,model_selamta_adyen_settlement_line,account.group_account_user,1,0,0,0
 access_adyen_settlement_line_manager,adyen settlement line manager,model_selamta_adyen_settlement_line,account.group_account_manager,1,1,1,1
 access_adyen_settlement_upload_manager,adyen settlement upload manager,model_selamta_adyen_settlement_upload,account.group_account_manager,1,1,1,1
+access_adyen_dispute_user,adyen dispute user,model_selamta_adyen_dispute,account.group_account_invoice,1,0,0,0
+access_adyen_dispute_manager,adyen dispute manager,model_selamta_adyen_dispute,account.group_account_manager,1,1,1,1

@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_adyen_dispute_list" model="ir.ui.view">
+        <field name="name">selamta.adyen.dispute.list</field>
+        <field name="model">selamta.adyen.dispute</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="state == 'exception'" decoration-muted="state == 'done' and event_code != 'CHARGEBACK'">
+                <field name="event_date"/>
+                <field name="event_code"/>
+                <field name="partner_id"/>
+                <field name="amount" sum="Total"/>
+                <field name="reason" optional="show"/>
+                <field name="invoice_ids" widget="many2many_tags" optional="show"/>
+                <field name="incident_number" optional="show"/>
+                <field name="fee_status" optional="show"/>
+                <field name="ach_turned_off" optional="hide"/>
+                <field name="psp_reference" optional="hide"/>
+                <field name="source" optional="hide"/>
+                <field name="state" widget="badge" decoration-success="state == 'done'"
+                       decoration-danger="state == 'exception'"/>
+                <field name="currency_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_adyen_dispute_form" model="ir.ui.view">
+        <field name="name">selamta.adyen.dispute.form</field>
+        <field name="model">selamta.adyen.dispute</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_process" type="object" string="Process" class="oe_highlight"
+                            invisible="state != 'new'"/>
+                    <button name="action_retry" type="object" string="Retry" class="oe_highlight"
+                            invisible="state != 'exception'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="new,done"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-warning" role="alert" invisible="state != 'exception'">
+                        <field name="exception_reason" nolabel="1"/>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="partner_id" readonly="1" placeholder="Customer"/></h1>
+                        <field name="event_code"/>
+                    </div>
+                    <group>
+                        <group string="Adyen">
+                            <field name="event_date"/>
+                            <field name="amount"/>
+                            <field name="reason"/>
+                            <field name="psp_reference"/>
+                            <field name="merchant_reference"/>
+                            <field name="payment_method"/>
+                            <field name="source"/>
+                        </group>
+                        <group string="Odoo">
+                            <field name="original_payment_id"/>
+                            <field name="chargeback_payment_id"/>
+                            <field name="invoice_ids" widget="many2many_tags"/>
+                            <field name="incident_number"/>
+                            <field name="fee_status"/>
+                            <field name="fee_invoice_id"/>
+                            <field name="ach_turned_off"/>
+                            <field name="ach_kept_on" invisible="not ach_kept_on"/>
+                            <field name="customer_emailed"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Adyen message" name="payload" invisible="not payload">
+                            <field name="payload"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_adyen_dispute_search" model="ir.ui.view">
+        <field name="name">selamta.adyen.dispute.search</field>
+        <field name="model">selamta.adyen.dispute</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="partner_id"/>
+                <field name="psp_reference"/>
+                <field name="merchant_reference"/>
+                <filter name="chargebacks" string="Chargebacks" domain="[('event_code', '=', 'CHARGEBACK')]"/>
+                <filter name="needs_review" string="Needs review" domain="[('state', '=', 'exception')]"/>
+                <filter name="fee_charged" string="Fee charged" domain="[('fee_status', '=', 'charged')]"/>
+                <filter name="ach_off" string="ACH turned off" domain="[('ach_turned_off', '=', True)]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_partner" string="Customer" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_month" string="Month" context="{'group_by': 'event_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_adyen_dispute" model="ir.actions.act_window">
+        <field name="name">Adyen Chargebacks</field>
+        <field name="res_model">selamta.adyen.dispute</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_chargebacks': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No chargebacks yet</p>
+            <p>When Adyen takes an ACH payment back, Odoo books the chargeback, reopens the invoice, emails the
+                customer and alerts the office channel. Each one is listed here.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_adyen_dispute" name="Chargebacks" parent="menu_adyen_settlement_root"
+              action="action_adyen_dispute" sequence="3"/>
+
+    <record id="view_partner_form_adyen_chargebacks" model="ir.ui.view">
+        <field name="name">res.partner.form.adyen.chargebacks</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Chargebacks" name="selamta_chargebacks" groups="account.group_account_invoice"
+                      invisible="not is_company and parent_id">
+                    <group>
+                        <group>
+                            <field name="selamta_ach_blocked"/>
+                            <field name="selamta_ach_blocked_note" invisible="not selamta_ach_blocked"/>
+                        </group>
+                        <group>
+                            <field name="selamta_ach_auto_off"/>
+                        </group>
+                    </group>
+                    <field name="selamta_dispute_ids" readonly="1">
+                        <list>
+                            <field name="event_date"/>
+                            <field name="event_code"/>
+                            <field name="amount"/>
+                            <field name="reason"/>
+                            <field name="invoice_ids" widget="many2many_tags"/>
+                            <field name="fee_status"/>
+                            <field name="state" widget="badge"/>
+                            <field name="currency_id" column_invisible="1"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
