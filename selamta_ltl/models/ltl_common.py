@@ -15,6 +15,14 @@ UNIT_TYPES = [
     ('box', 'Box'),
 ]
 
+# Who pays the carrier, as ticked in the Freight Charges box of the BOL. A broker such as
+# Priority1 pays the carrier itself: Third party, billed to the broker.
+FREIGHT_TERMS = [
+    ('prepaid', 'Prepaid'),
+    ('collect', 'Collect'),
+    ('third_party', 'Third party'),
+]
+
 # Commodity description a pallet or box line starts with (BOL and carrier APIs). Change it
 # with the system parameter selamta_ltl.default_description; staff can edit it per line.
 DEFAULT_DESCRIPTION = 'Foodstuff'

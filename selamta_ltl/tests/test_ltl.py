@@ -498,6 +498,44 @@ class TestLtl(AccountTestInvoicingCommon):
         self.assertEqual(labelled.display_name, 'S00701 (%s)' % ours.name)
         self.assertEqual(ours.display_name, ours.name)
 
+    def test_third_party_billing_from_carrier(self):
+        ap = self.env['res.partner'].create({
+            'parent_id': self.p1.id, 'type': 'invoice', 'name': 'Accounts Payable',
+            'street': 'P.O. Box 398', 'city': 'North Little Rock', 'zip': '72115',
+            'state_id': self.env.ref('base.state_us_4').id, 'country_id': self.env.ref('base.us').id,
+            'phone': '+1 (501) 487-6420'})
+        self.c_p1.write({'ltl_freight_terms': 'third_party', 'ltl_bill_to_id': ap.id})
+        # A shipment with Priority1 is third party, billed to Priority1's accounts payable.
+        shipment = self._shipment(self.c_p1, pro='599224231')
+        self.assertEqual((shipment.freight_terms, shipment.bill_to_id), ('third_party', ap))
+        html = ' '.join(self.env['ir.actions.report']._render_qweb_html(
+            'selamta_ltl.report_ltl_bol', shipment.ids)[0].decode().split())
+        self.assertIn('3rd party bill to:', html)
+        self.assertIn('ATTN: Accounts Payable', html)
+        self.assertIn('P.O. Box 398', html)
+        self.assertIn('Priority1', html)
+        # Choosing another carrier's quote goes back to prepaid, billed to us.
+        shipment._apply_quote({'total': 300.0}, self.c_tforce, 'website')
+        self.assertEqual((shipment.freight_terms, shipment.bill_to_id.id), ('prepaid', False))
+        self.assertEqual(shipment._bol_bill_to(), self.env.company.partner_id)
+        # ...and choosing a Priority1 quote makes it third party again.
+        shipment._apply_quote({'total': 290.0}, self.c_p1, 'website')
+        self.assertEqual((shipment.freight_terms, shipment.bill_to_id), ('third_party', ap))
+        # Staff can bill someone else on one shipment; booking needs a bill-to.
+        other = self.env['res.partner'].create({'name': 'Other broker', 'street': '1 Way',
+                                                'city': 'Austin', 'zip': '73301'})
+        shipment.bill_to_id = other
+        self.assertEqual(shipment._bol_bill_to(), other)
+        shipment.bill_to_id = False
+        monday = fields.Date.add(fields.Date.today(), days=(7 - fields.Date.today().weekday()))
+        shipment.ship_date = monday
+        with self.assertRaisesRegex(Exception, 'Third party bill to'):
+            shipment.action_confirm_booking()
+        # Collect bills the consignee.
+        shipment.freight_terms = 'collect'
+        self.assertEqual(shipment._bol_bill_to(), self.customer)
+        self.assertFalse(shipment.bill_to_id)
+
     def test_bol_renders(self):
         shipment = self._shipment(self.c_tforce, pro='246813579', quoted=300)
         shipment.accessorial_ids = self.env.ref('selamta_ltl.accessorial_liftgate_delivery')

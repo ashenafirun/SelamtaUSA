@@ -28,7 +28,8 @@
     <template id="report_ltl_bol_address">
         <div t-if="partner">
             <strong t-out="partner.commercial_partner_id.name if partner.parent_id else partner.name"/>
-            <div t-if="partner.parent_id and partner.name" t-out="partner.name"/>
+            <div t-if="partner.parent_id and partner.name and attn">ATTN: <t t-out="partner.name"/></div>
+            <div t-elif="partner.parent_id and partner.name" t-out="partner.name"/>
             <div t-out="partner.street"/>
             <div t-if="partner.street2" t-out="partner.street2"/>
             <div><t t-out="partner.city"/>, <t t-out="partner.state_id.code"/> <t t-out="partner.zip"/></div>
@@ -63,8 +64,10 @@
                         <div>BOL number: <strong style="font-size: 16px;" t-out="doc.bol_reference"/></div>
                         <div>Date: <strong t-out="doc.ship_date" t-options="{'widget': 'date'}"/></div>
                         <div t-if="doc.pro_number">PRO: <strong style="font-size: 16px;" t-out="doc.pro_number"/></div>
+                        <!-- Wide and tall so handheld scanners read it first time. The image has no
+                             quiet zone of its own (quiet 0); the 10% margins on each side are it. -->
                         <div t-if="doc.pro_number" t-field="doc.pro_number"
-                             t-options="{'widget': 'barcode', 'symbology': 'Code128', 'width': 600, 'height': 100, 'img_style': 'width: 62mm; height: 11mm; margin-top: 2px;'}"/>
+                             t-options="{'widget': 'barcode', 'symbology': 'Code128', 'width': 1200, 'height': 240, 'quiet': 0, 'img_style': 'display: block; width: 80%; height: 20mm; margin: 4px auto 2px auto;'}"/>
                     </td>
                 </tr>
             </table>
@@ -97,9 +100,14 @@
                             <span class="box" style="margin-left: 10px;"><t t-if="doc.freight_terms == 'collect'">X</t></span>Collect
                             <span class="box" style="margin-left: 10px;"><t t-if="doc.freight_terms == 'third_party'">X</t></span>Third party
                         </div>
-                        <div t-if="doc.freight_terms == 'prepaid'" style="margin-top: 4px;">
-                            Bill freight charges to:
-                            <t t-call="selamta_ltl.report_ltl_bol_address"><t t-set="partner" t-value="doc.company_id.partner_id"/></t>
+                        <t t-set="bill_to" t-value="doc._bol_bill_to()"/>
+                        <div t-if="bill_to" style="margin-top: 4px;">
+                            <t t-if="doc.freight_terms == 'third_party'">3rd party bill to:</t>
+                            <t t-else="">Bill freight charges to:</t>
+                            <t t-call="selamta_ltl.report_ltl_bol_address">
+                                <t t-set="partner" t-value="bill_to"/>
+                                <t t-set="attn" t-value="True"/>
+                            </t>
                         </div>
                     </td>
                 </tr>

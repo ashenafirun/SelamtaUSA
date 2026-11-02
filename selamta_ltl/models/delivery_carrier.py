@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import fields, models
 
-from .ltl_common import DEFAULT_CLOSE_TIME, DEFAULT_READY_TIME
+from .ltl_common import DEFAULT_CLOSE_TIME, DEFAULT_READY_TIME, FREIGHT_TERMS
 
 
 class DeliveryCarrier(models.Model):
@@ -51,6 +51,15 @@ class DeliveryCarrier(models.Model):
              'bills. GlobalTranz bills on the BOL number; Priority1 and R+L bills carry '
              'their own invoice number, so those are linked by hand.')
     ltl_scac = fields.Char('SCAC', help='Carrier code printed on the BOL, e.g. XPOL, UPGF.')
+    ltl_freight_terms = fields.Selection(
+        FREIGHT_TERMS, 'Freight terms', default='prepaid', required=True,
+        help='Ticked in the Freight Charges box of the BOL on shipments with this carrier. '
+             'Brokers such as Priority1 pay the carrier themselves: use Third party.')
+    ltl_bill_to_id = fields.Many2one(
+        'res.partner', 'Third party bill to',
+        help='Printed under "Bill freight charges to" on the BOL when the freight terms are '
+             'Third party, e.g. Priority1 Inc., Accounts Payable, P.O. Box 398, North Little '
+             'Rock, AR 72115.')
     ltl_dock_open_time = fields.Float(
         'Dock opens', default=8.0, help='When our dock opens for this carrier (sent with pickups).')
     ltl_ready_time = fields.Float(
