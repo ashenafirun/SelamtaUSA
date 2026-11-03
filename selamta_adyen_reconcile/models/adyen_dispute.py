@@ -6,7 +6,7 @@ from markupsafe import Markup
 
 from odoo import _, api, fields, models
 from odoo.fields import Command
-from odoo.tools.misc import format_amount
+from odoo.tools.misc import format_amount, format_date
 
 from ..tools import dispute_rules
 
@@ -454,14 +454,31 @@ class AdyenDispute(models.Model):
         self.write(vals)
 
     def _create_fee_invoice(self, product):
+        """Separate $20 invoice that says which payment bounced and how it was booked.
+
+        Reference: "Chargeback fee - <invoices>". Notes: what was paid, when, toward which invoices and why it
+        came back; then the Odoo payment and Adyen reference of the returned payment and the chargeback payment.
+        """
+        payment = self.original_payment_id
+        chargeback = self.chargeback_payment_id
+        invoices = self.invoice_names or _('your account')
+        returned = _('Returned ACH payment of %(amount)s, paid %(paid)s toward %(invoices)s, returned by the bank on '
+                     '%(returned)s', amount=format_amount(self.env, self.amount, self.currency_id),
+                     paid=format_date(self.env, payment.date) if payment else '-', invoices=invoices,
+                     returned=format_date(self.env, self.event_date) if self.event_date else '-')
+        if self.reason:
+            returned += _(' (%s)', self.reason)
+        references = _('Returned payment %(pay)s (Adyen reference %(psp)s); chargeback %(cb)s.',
+                       pay=payment.name or '-', psp=self.psp_reference, cb=chargeback.name or '-')
         invoice = self.env['account.move'].create({
             'move_type': 'out_invoice',
             'partner_id': self.partner_id.id,
             'invoice_date': fields.Date.context_today(self),
+            'ref': _('Chargeback fee - %s', invoices),
             'invoice_line_ids': [
                 Command.create({'product_id': product.id, 'quantity': 1, 'price_unit': product.lst_price}),
-                Command.create({'display_type': 'line_note',
-                                'name': _('Chargeback payment fee for reference %s', self.psp_reference)}),
+                Command.create({'display_type': 'line_note', 'name': returned + '.'}),
+                Command.create({'display_type': 'line_note', 'name': references}),
             ],
         })
         invoice.action_post()
