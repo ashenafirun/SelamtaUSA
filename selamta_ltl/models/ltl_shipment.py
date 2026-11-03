@@ -558,14 +558,8 @@ class LtlShipment(models.Model):
         Lines start without height (and without length/width when the type has none):
         the class is worked out once they are measured.
         """
-        to_inch = self.env.ref('uom.product_uom_inch')
         to_lb = self.env.ref('uom.product_uom_lb')
-        product_tmpl = self.env['product.template']
-        length_uom = product_tmpl._get_length_uom_id_from_ir_config_parameter()
-        weight_uom = product_tmpl._get_weight_uom_id_from_ir_config_parameter()
-
-        def inches(value):
-            return float_round(length_uom._compute_quantity(value or 0.0, to_inch, round=False), 1)
+        weight_uom = self.env['product.template']._get_weight_uom_id_from_ir_config_parameter()
 
         def pounds(value):
             return float_round(weight_uom._compute_quantity(value or 0.0, to_lb, round=False), 0)
@@ -583,15 +577,16 @@ class LtlShipment(models.Model):
             package_type = package.package_type_id
             weight = package.shipping_weight or (package_type.base_weight or 0.0) + sum(
                 line_qty(ml) * ml.product_id.weight for ml in package_lines)
+            length, width, height = package_type._ltl_dimensions()
             units.append({
                 'quantity': 1,
                 'unit_type': package_type.ltl_unit_type,
                 'package_type_id': package_type.id,
                 'package_id': package.id,
                 'picking_ids': [(6, 0, package_lines.picking_id.ids)],
-                'length': inches(package_type.packaging_length),
-                'width': inches(package_type.width),
-                'height': inches(package_type.height),
+                'length': length,
+                'width': width,
+                'height': height,
                 'weight': pounds(weight),
                 'description': description,
                 'nmfc_item': nmfc_item,
@@ -793,7 +788,10 @@ class LtlShipment(models.Model):
                             'active_id': shipment.id, 'active_ids': shipment.ids,
                             'active_model': shipment._name}) from error
                     raise UserError(message) from error
-                if isinstance(result, str) and result:
+                if isinstance(result, str) and result and carrier.ltl_parcel:
+                    reminders.append('%s: %s' % (shipment.name, result))
+                    shipment.message_post(body=result)
+                elif isinstance(result, str) and result:
                     reminders.append('%s: %s' % (shipment.name, result))
                     shipment.message_post(body=_('Pickup cancelled with %(carrier)s. %(note)s',
                                                  carrier=carrier.name, note=result))
@@ -1085,18 +1083,13 @@ class LtlShipmentUnit(models.Model):
         package_type = self.package_type_id
         if not package_type:
             return
-        to_inch = self.env.ref('uom.product_uom_inch')
-        length_uom = self.env['product.template']._get_length_uom_id_from_ir_config_parameter()
-
-        def inches(value):
-            return float_round(length_uom._compute_quantity(value or 0.0, to_inch, round=False), 1)
-
+        length, width, height = package_type._ltl_dimensions()
         if package_type.ltl_unit_type:
             self.unit_type = package_type.ltl_unit_type
-        self.length = inches(package_type.packaging_length) or self.length
-        self.width = inches(package_type.width) or self.width
-        if package_type.height:
-            self.height = inches(package_type.height)
+        self.length = length or self.length
+        self.width = width or self.width
+        if height:
+            self.height = height
 
     @api.depends('quantity', 'length', 'width', 'height', 'weight', 'nmfc_item')
     def _compute_density(self):

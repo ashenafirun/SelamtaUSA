@@ -8,13 +8,16 @@
                 <header>
                     <button name="action_open_rate_shop" type="object" string="Get rates"
                             class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_parcel_labels" type="object" string="UPS labels"
+                            class="oe_highlight" invisible="not parcel_label_id"
+                            help="The 4x6 UPS labels, one per box: print them and stick one on each box."/>
                     <button name="action_confirm_booking" type="object" string="Confirm booking"
-                            invisible="state != 'draft' or not carrier_id"
+                            invisible="state != 'draft' or not carrier_id or ltl_parcel"
                             help="Use after booking on the carrier's website or by phone; enter the PRO first."/>
                     <button name="action_print_bol" type="object" string="Print BOL"
-                            invisible="state == 'cancel'"/>
+                            invisible="state == 'cancel' or ltl_parcel"/>
                     <button name="action_print_labels" type="object" string="Print labels"
-                            invisible="state == 'cancel'"
+                            invisible="state == 'cancel' or ltl_parcel"
                             help="4x6 labels: two per pallet, one per box, numbered 1 of N."/>
                     <button name="action_add_deliveries" type="object" string="Add deliveries"
                             invisible="state not in ('draft', 'booked')"/>
@@ -25,7 +28,7 @@
                     <button name="action_update_tracking" type="object" string="Update tracking"
                             invisible="state not in ('booked', 'in_transit')"/>
                     <button name="action_fetch_documents" type="object" string="Get carrier documents"
-                            invisible="state not in ('in_transit', 'delivered')"/>
+                            invisible="state not in ('in_transit', 'delivered') or ltl_parcel"/>
                     <button name="action_open_rate_shop" type="object" string="Re-shop rates"
                             invisible="state != 'booked'"/>
                     <button name="action_cancel" type="object" string="Cancel"
@@ -85,15 +88,19 @@
                         <group string="Carrier">
                             <field name="carrier_id" options="{'no_create': True}"
                                    readonly="state not in ('draft', 'booked')"/>
-                            <field name="vendor_id"/>
-                            <field name="freight_terms"/>
-                            <field name="bill_to_id" invisible="freight_terms != 'third_party'"
-                                   required="freight_terms == 'third_party'"
+                            <field name="ltl_parcel" invisible="1"/>
+                            <field name="parcel_label_id" invisible="1"/>
+                            <field name="vendor_id" invisible="ltl_parcel"/>
+                            <field name="freight_terms" invisible="ltl_parcel"/>
+                            <field name="bill_to_id" invisible="freight_terms != 'third_party' or ltl_parcel"
+                                   required="freight_terms == 'third_party' and not ltl_parcel"
                                    context="{'show_address': 1}" options="{'always_reload': True}"/>
-                            <field name="pro_number"/>
-                            <field name="bol_reference"/>
-                            <field name="bol_number" invisible="not bol_number"/>
-                            <field name="pickup_number"/>
+                            <field name="parcel_tracking_ref" invisible="not ltl_parcel and not parcel_tracking_ref"/>
+                            <field name="parcel_shipment_number" invisible="not parcel_shipment_number"/>
+                            <field name="pro_number" invisible="ltl_parcel"/>
+                            <field name="bol_reference" invisible="ltl_parcel"/>
+                            <field name="bol_number" invisible="not bol_number or ltl_parcel"/>
+                            <field name="pickup_number" invisible="ltl_parcel"/>
                             <field name="tracking_status" invisible="not tracking_status"/>
                             <field name="delivered_date" invisible="state != 'delivered'"/>
                         </group>
@@ -206,6 +213,7 @@
                 <field name="carrier_id"/>
                 <field name="vendor_id" optional="hide"/>
                 <field name="pro_number"/>
+                <field name="parcel_tracking_ref" optional="hide"/>
                 <field name="total_units" optional="show"/>
                 <field name="total_weight" optional="show" sum="Total"/>
                 <field name="quoted_amount" sum="Total"/>
@@ -232,6 +240,7 @@
             <search>
                 <field name="name"/>
                 <field name="pro_number"/>
+                <field name="parcel_tracking_ref"/>
                 <field name="partner_id"/>
                 <field name="carrier_id"/>
                 <field name="vendor_id"/>

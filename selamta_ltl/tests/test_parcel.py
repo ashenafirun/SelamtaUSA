@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
 """Parcel next to LTL: parcel quotes in the rate shop, choosing parcel, UPS tracking."""
+import base64
+import io
 import json
+import re
 from unittest.mock import patch
+
+from odoo.exceptions import UserError
 
 from odoo.tests import TransactionCase, tagged
 
@@ -53,10 +58,8 @@ class TestParcel(TransactionCase):
     def test_parcel_box_created_in_database_units(self):
         box = self.env['stock.package.type'].search([('name', '=', 'Parcel box 20x12x12')])
         self.assertEqual(len(box), 1)
-        inch = self.env.ref('uom.product_uom_inch')
-        length_uom = self.env['product.template']._get_length_uom_id_from_ir_config_parameter()
-        self.assertAlmostEqual(length_uom._compute_quantity(box.packaging_length, inch, round=False), 20, places=2)
-        self.assertAlmostEqual(length_uom._compute_quantity(box.height, inch, round=False), 12, places=2)
+        self.assertEqual(box._ltl_dimensions(), (20.0, 12.0, 12.0))  # no UPS connector here: database units
+        self.assertEqual(box.ltl_unit_type, 'box')
         self.env['stock.package.type']._ltl_ensure_parcel_box()  # runs again on update: no duplicate
         self.assertEqual(self.env['stock.package.type'].search_count([('name', '=', 'Parcel box 20x12x12')]), 1)
 
@@ -127,3 +130,231 @@ class TestParcel(TransactionCase):
                 picking._parcel_update_tracking(raise_errors=True)
             self.assertEqual(str(picking.parcel_delivered_date), '2026-11-04')
             self.assertEqual(len([c for c in calls if c[1].endswith('/oauth/token')]), 1)  # token reused
+
+
+def _gif(width=1400, height=800):
+    """A label-like GIF lying on its side, as UPS sends them."""
+    from PIL import Image, ImageDraw
+    image = Image.new('L', (width, height), 255)
+    ImageDraw.Draw(image).rectangle((20, 20, 1200, 780), outline=0, width=8)
+    buffer = io.BytesIO()
+    image.save(buffer, 'GIF')
+    return buffer.getvalue()
+
+
+@tagged('post_install', '-at_install')
+class TestUpsFromShipment(TransactionCase):
+    """UPS priced and shipped from the boxes typed on the shipment."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        env = cls.env
+        us = env.ref('base.us')
+        georgia = env['res.country.state'].search([('country_id', '=', us.id), ('code', '=', 'GA')], limit=1)
+        env.company.partner_id.write({
+            'street': '5335 Dividend Dr', 'street2': 'Suite C', 'city': 'Decatur', 'zip': '30035',
+            'state_id': georgia.id, 'country_id': us.id, 'phone': '+1 (404) 555-0100'})
+        cls.customer = env['res.partner'].create({
+            'name': 'Parcel Market', 'is_company': True, 'street': '1 Main St', 'city': 'Urbana',
+            'zip': '61801-2233', 'country_id': us.id, 'phone': '217-555-0199'})
+        freight = env['product.product'].create({'name': 'Shipping', 'type': 'service'})
+        cls.ups = env['delivery.carrier'].create({
+            'name': 'UPS US', 'product_id': freight.id, 'delivery_type': 'fixed', 'fixed_price': 1.0,
+            'ltl_parcel': True})
+        cls.ltl = env['delivery.carrier'].create({
+            'name': 'LTL Co', 'product_id': freight.id, 'ltl_enabled': True,
+            'ltl_vendor_id': env['res.partner'].create({'name': 'LTL Co', 'is_company': True}).id})
+        cls.product = env['product.product'].create({
+            'name': 'Teff flour 25 lb', 'is_storable': True, 'weight': 11.34, 'list_price': 40})
+
+    def setUp(self):
+        super().setUp()
+        self.calls = []
+        self.answers = {}
+        ups = self.ups
+        original = type(ups)._ltl_method
+
+        def ltl_method(carrier, operation):
+            if carrier == ups:  # in production this is Odoo's UPS provider (ups_rest)
+                return getattr(carrier, 'ups_rest_ltl_%s' % operation, None)
+            return original(carrier, operation)
+
+        def fake_request(method, url, **kwargs):
+            self.calls.append((method, url, kwargs))
+            if url.endswith('/security/v1/oauth/token'):
+                return FakeResponse(200, {'access_token': 'tok', 'expires_in': '14399'})
+            for key, answer in self.answers.items():
+                if key in url:
+                    return answer
+            return FakeResponse(500, {'response': {'errors': [{'code': '1', 'message': 'unexpected %s' % url}]}})
+
+        for patcher in (
+                patch.object(type(ups), '_ltl_method', ltl_method),
+                patch.object(type(ups), '_ltl_ups_credentials', lambda self: ('id', 'secret', '0X74Y8', 'production')),
+                patch(PARCEL + '.requests.request', side_effect=fake_request)):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def _shipment(self, lines, pickings=None):
+        shipment = self.env['selamta.ltl.shipment'].create({
+            'partner_id': self.customer.id,
+            'unit_ids': [(0, 0, dict({'unit_type': 'box', 'description': 'Foodstuff'}, **line)) for line in lines],
+        })
+        if pickings:
+            pickings.ltl_shipment_id = shipment
+        return shipment
+
+    def _rate_answer(self):
+        return FakeResponse(200, {'RateResponse': {'Response': {'ResponseStatus': {'Code': '1'}}, 'RatedShipment': [
+            {'Service': {'Code': '02'}, 'TotalCharges': {'MonetaryValue': '120.10'},
+             'NegotiatedRateCharges': {'TotalCharge': {'MonetaryValue': '88.00'}},
+             'GuaranteedDelivery': {'BusinessDaysInTransit': '2'}},
+            {'Service': {'Code': '03'}, 'TotalCharges': {'MonetaryValue': '52.40'},
+             'NegotiatedRateCharges': {'TotalCharge': {'MonetaryValue': '35.20'}},
+             'TimeInTransit': {'ServiceSummary': {'EstimatedArrival': {'BusinessDaysInTransit': '3'}}}},
+        ]}})
+
+    def _ship_answer(self, numbers):
+        label = base64.b64encode(_gif()).decode()
+        return FakeResponse(200, {'ShipmentResponse': {'ShipmentResults': {
+            'ShipmentIdentificationNumber': numbers[0],
+            'ShipmentCharges': {'TotalCharges': {'MonetaryValue': '52.40'}},
+            'NegotiatedRateCharges': {'TotalCharge': {'MonetaryValue': '35.20'}},
+            'PackageResults': [{'TrackingNumber': n, 'ShippingLabel': {'ImageFormat': {'Code': 'GIF'},
+                                                                        'GraphicImage': label}} for n in numbers],
+        }}})
+
+    def _wizard(self, shipment):
+        return self.env['selamta.ltl.rate.wizard'].browse(shipment.action_open_rate_shop()['res_id'])
+
+    def test_ups_rates_from_typed_boxes_without_a_delivery(self):
+        shipment = self._shipment([
+            {'quantity': 3, 'length': 20, 'width': 12, 'height': 12, 'weight': 90},
+            {'quantity': 1, 'length': 24, 'width': 18, 'height': 12, 'weight': 41},
+        ])
+        self.answers['/api/rating/v2409/Shoptimeintransit'] = self._rate_answer()
+        wizard = self._wizard(shipment)
+        lines = wizard.line_ids.filtered('parcel')
+        self.assertEqual([(l.service, l.total, l.transit_days) for l in lines.sorted('total')],
+                         [('UPS Ground', 35.20, 3), ('UPS 2nd Day Air', 88.00, 2)])
+        request = [c for c in self.calls if '/rating/' in c[1]][0][2]
+        self.assertEqual(request['headers']['Authorization'], 'Bearer tok')
+        sent = request['json']['RateRequest']['Shipment']
+        self.assertEqual([p['PackageWeight']['Weight'] for p in sent['Package']], ['30.0', '30.0', '30.0', '41.0'])
+        self.assertEqual(sent['Package'][3]['Dimensions'],
+                         {'UnitOfMeasurement': {'Code': 'IN'}, 'Length': '24.0', 'Width': '18.0', 'Height': '12.0'})
+        self.assertEqual(sent['Package'][0]['PackagingType'], {'Code': '02'})
+        self.assertEqual(sent['Shipper']['ShipperNumber'], '0X74Y8')
+        self.assertEqual(sent['PaymentDetails']['ShipmentCharge'][0]['BillShipper']['AccountNumber'], '0X74Y8')
+        self.assertEqual(sent['ShipTo']['Address']['PostalCode'], '618012233')
+        self.assertEqual(sent['ShipTo']['Phone'], {'Number': '2175550199'})
+        self.assertEqual(sent['ShipFrom']['Address']['AddressLine'], ['5335 Dividend Dr', 'Suite C'])
+        self.assertEqual(sent['ShipmentTotalWeight']['Weight'], '131.0')
+        self.assertEqual(sent['DeliveryTimeInformation']['PackageBillType'], '03')
+        self.assertNotIn('ResidentialAddressIndicator', sent['ShipTo']['Address'])
+
+    def test_ups_says_what_is_missing(self):
+        shipment = self._shipment([{'unit_type': 'pallet', 'length': 48, 'width': 40, 'height': 40, 'weight': 200}])
+        error = self._wizard(shipment).line_ids.filtered('parcel').error
+        self.assertIn('boxes only', error)
+        shipment.unit_ids.write({'unit_type': 'box', 'height': 0})
+        self.assertIn('Measure every box', self._wizard(shipment).line_ids.filtered('parcel').error)
+        shipment.unit_ids.write({'length': 20, 'width': 12, 'height': 12, 'weight': 160})
+        self.assertIn('up to 150 lb', self._wizard(shipment).line_ids.filtered('parcel').error)
+        self.assertFalse([c for c in self.calls if '/api/' in c[1]])  # nothing was sent to UPS
+
+    def test_falls_back_to_rates_without_transit_days(self):
+        shipment = self._shipment([{'quantity': 1, 'length': 20, 'width': 12, 'height': 12, 'weight': 30}])
+        self.answers['/Shoptimeintransit'] = FakeResponse(400, {'response': {'errors': [
+            {'code': '111500', 'message': 'Time in transit not available'}]}})
+        self.answers['/api/rating/v2409/Shop'] = self._rate_answer()
+        lines = self._wizard(shipment).line_ids.filtered('parcel')
+        self.assertEqual(len(lines), 2)
+        self.assertFalse(lines.filtered('error'))
+
+    def test_choosing_ups_makes_labels_on_the_shipment(self):
+        order = self.env['sale.order'].create({
+            'partner_id': self.customer.id,
+            'order_line': [(0, 0, {'product_id': self.product.id, 'product_uom_qty': 10})],
+        })
+        order.action_confirm()
+        picking = order.picking_ids  # the whole order: we only send part of it today
+        shipment = self._shipment([{'quantity': 2, 'length': 20, 'width': 12, 'height': 12, 'weight': 50}], picking)
+        shipment.accessorial_ids = self.env['selamta.ltl.accessorial'].search([('code', '=', 'RESIDENTIAL_DEL')])
+        self.answers['/api/rating/v2409/Shoptimeintransit'] = self._rate_answer()
+        ground = self._wizard(shipment).line_ids.filtered(lambda l: l.service == 'UPS Ground')
+        self.answers['/api/shipments/v2409/ship'] = self._ship_answer(['1Z0X74Y80300000011', '1Z0X74Y80300000022'])
+        ground.action_choose()
+
+        sent = [c for c in self.calls if c[1].endswith('/ship')][0][2]['json']['ShipmentRequest']
+        self.assertEqual(sent['Shipment']['Service']['Code'], '03')
+        self.assertEqual(len(sent['Shipment']['Package']), 2)
+        self.assertEqual(sent['Shipment']['Package'][0]['Packaging'], {'Code': '02'})
+        self.assertEqual(sent['Shipment']['Package'][0]['ReferenceNumber'][0], {'Value': shipment.name})
+        self.assertEqual(sent['Shipment']['PaymentInformation']['ShipmentCharge'][0]['Type'], '01')
+        self.assertEqual(sent['Shipment']['ShipTo']['Address']['ResidentialAddressIndicator'], 'Y')
+        self.assertEqual(sent['LabelSpecification']['LabelStockSize'], {'Height': '6', 'Width': '4'})
+
+        self.assertEqual(shipment.state, 'booked')
+        self.assertEqual(shipment.carrier_id, self.ups)
+        self.assertTrue(shipment.ltl_parcel)
+        self.assertEqual(shipment.parcel_tracking_ref, '1Z0X74Y80300000011 1Z0X74Y80300000022')
+        self.assertEqual(shipment.parcel_shipment_number, '1Z0X74Y80300000011')
+        self.assertEqual(shipment.quoted_amount, 35.20)
+        label = shipment.parcel_label_id
+        self.assertTrue(label.raw.startswith(b'%PDF'))
+        self.assertEqual(len(re.findall(rb'/Type\s*/Page\b', label.raw)), 2)  # one 4x6 page per box
+        self.assertEqual(shipment.action_parcel_labels()['url'], '/web/content/%s' % label.id)
+        self.assertEqual((picking.carrier_id, picking.carrier_tracking_ref),
+                         (self.ups, '1Z0X74Y80300000011,1Z0X74Y80300000022'))
+
+        # Validating the delivery buys no second label: it already has the tracking numbers.
+        with patch.object(type(self.ups), 'send_shipping', side_effect=AssertionError('second label')):
+            picking.move_ids.write({'quantity': 10, 'picked': True})
+            picking.button_validate()
+        self.assertEqual(picking.state, 'done')
+
+        # Re-shopping a shipment that has labels asks to cancel (void) first.
+        wizard = self._wizard(shipment)
+        with self.assertRaisesRegex(UserError, 'already has UPS labels'):
+            wizard.line_ids.filtered(lambda l: l.service == 'UPS Ground').action_choose()
+
+    def test_ups_refusal_changes_nothing(self):
+        shipment = self._shipment([{'quantity': 1, 'length': 20, 'width': 12, 'height': 12, 'weight': 30}])
+        self.answers['/api/rating/v2409/Shoptimeintransit'] = self._rate_answer()
+        ground = self._wizard(shipment).line_ids.filtered(lambda l: l.service == 'UPS Ground')
+        self.answers['/api/shipments/v2409/ship'] = FakeResponse(400, {'response': {'errors': [
+            {'code': '120802', 'message': 'Address Validation Error on ShipTo address'}]}})
+        with self.assertRaisesRegex(UserError, 'Address Validation Error'):
+            ground.action_choose()
+        self.assertEqual((shipment.state, shipment.carrier_id.id, shipment.parcel_tracking_ref), ('draft', False, False))
+
+    def test_cancel_voids_with_ups_and_tracking_follows(self):
+        shipment = self._shipment([{'quantity': 1, 'length': 20, 'width': 12, 'height': 12, 'weight': 30}])
+        shipment.write({'carrier_id': self.ups.id, 'state': 'booked',
+                        'parcel_tracking_ref': '1Z0X74Y80300000033', 'parcel_shipment_number': '1Z0X74Y80300000033'})
+
+        self.answers['/api/track/v1/details/1Z0X74Y80300000033'] = FakeResponse(200, {'trackResponse': {'shipment': [{
+            'package': [{'currentStatus': {'description': 'On the Way', 'code': '005'},
+                         'activity': [{'status': {'type': 'I'}, 'date': '20261104',
+                                       'location': {'address': {'city': 'URBANA', 'stateProvince': 'IL'}}}]}]}]}})
+        shipment._ltl_update_tracking()
+        self.assertEqual((shipment.state, shipment.tracking_status), ('in_transit', 'On the Way - URBANA, IL'))
+        shipment.state = 'booked'
+
+        self.answers['/void/cancel/1Z0X74Y80300000033'] = FakeResponse(200, {'VoidShipmentResponse': {
+            'Response': {'ResponseStatus': {'Code': '1'}}, 'SummaryResult': {'Status': {'Code': '1', 'Description': 'Voided'}}}})
+        result = shipment.action_cancel()
+        void = [c for c in self.calls if '/void/cancel/' in c[1]][0]
+        self.assertEqual(void[0], 'DELETE')
+        self.assertEqual(void[2]['headers']['shipperNumber'], '0X74Y8')
+        self.assertEqual(shipment.state, 'cancel')
+        self.assertFalse(shipment.parcel_tracking_ref)
+        self.assertIn('throw away its labels', result['params']['message'])
+
+    def test_label_pdf_is_upright_4x6(self):
+        pdf = self.ups._ltl_ups_labels_pdf([_gif(), _gif()])
+        self.assertTrue(pdf.startswith(b'%PDF'))
+        boxes = re.findall(rb'/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)\s*\]', pdf)
+        self.assertEqual([(float(w), float(h)) for w, h in boxes], [(288.0, 432.0)] * 2)  # 4 x 6 in, portrait

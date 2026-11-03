@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta LTL Freight',
-    'version': '18.0.1.7.0',
+    'version': '18.0.1.8.0',
     'category': 'Inventory/Delivery',
     'summary': 'Book LTL freight from delivery orders, print the BOL, and check every carrier bill against its quote',
     'description': """
@@ -52,12 +52,17 @@ Foundation for booking LTL freight directly with each carrier, replacing Freight
   Never by amount. Shows quoted vs billed and the variance on the bill and the shipment.
   Matching runs when a bill is confirmed, from the "Match LTL shipment" button, and daily.
 
-* Parcel next to LTL: a shipping method marked "Parcel carrier" (UPS through Odoo's own UPS
-  connector) is quoted in the rate shop for loads up to 300 lb (system parameter
-  selamta_ltl.parcel_max_weight); choosing it sends the deliveries by parcel. Parcel
-  deliveries are listed under LTL & Parcel with their tracking number, UPS status and
-  delivered date (UPS Track API, every two hours). A "Parcel box 20x12x12" package type is
-  added for UPS. Labels are still made the standard way: validate the delivery.
+* Parcel next to LTL, on the same shipment: a shipping method marked "Parcel carrier" (UPS
+  through Odoo's own UPS connector and its UPS app) is quoted in the rate shop for loads up
+  to 300 lb (system parameter selamta_ltl.parcel_max_weight). UPS is priced from the boxes
+  typed on the shipment (count, L x W x H, weight), one line per UPS service with transit
+  days, so it works without a delivery order and when the delivery is not the whole sales
+  order. Choosing a UPS line makes the UPS labels on the shipment (one per box, 4x6 PDF),
+  puts the tracking numbers on the shipment and its deliveries (validating a delivery then
+  buys no second label), and Cancel voids them with UPS. Tracking follows the UPS Track API.
+  Parcel deliveries are listed under LTL & Parcel with their tracking number, UPS status and
+  delivered date. A "Parcel box 20x12x12" package type (UPS, a box on shipments) is added;
+  package types for a carrier connection hold their sizes in inches.
 
 Carrier connections (TForce, XPO, Daylight, Roadrunner, Priority1, AAA Cooper) are added
 as separate small modules that implement the methods described in
