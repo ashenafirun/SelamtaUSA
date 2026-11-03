@@ -61,7 +61,9 @@ class LtlRateWizard(models.TransientModel):
         return True
 
     def _parcel_lines(self, shipment):
-        """Parcel quotes (UPS...) for loads light enough to go by parcel."""
+        """Parcel quotes (UPS...) for loads light enough to go by parcel. A carrier with a
+        rate hook (UPS) is priced from the boxes on the shipment, one line per service;
+        others through the sales orders of the shipment's deliveries."""
         limit = float(self.env['ir.config_parameter'].sudo().get_param(
             'selamta_ltl.parcel_max_weight', 300) or 0)
         if not limit or shipment.total_weight > limit:
@@ -74,6 +76,22 @@ class LtlRateWizard(models.TransientModel):
         for carrier in carriers:
             vals = {'carrier_id': carrier.id, 'source': 'api', 'parcel': True,
                     'service': _('%s (parcel)', carrier.name)}
+            if carrier.ltl_can('rate'):
+                try:
+                    rates = carrier.ltl_rate(shipment) or []
+                except Exception as error:  # a parcel quote failing must not hide the LTL quotes
+                    _logger.warning('Parcel rate failed for %s: %s', carrier.name, error)
+                    lines.append(dict(vals, error=str(error)[:250]))
+                    continue
+                for rate in rates:
+                    lines.append(dict(
+                        vals,
+                        service=rate.get('service') or vals['service'],
+                        total=rate.get('total') or 0.0,
+                        transit_days=rate.get('transit_days') or 0,
+                        rate_json=json.dumps(rate, default=str),
+                    ))
+                continue
             try:
                 total, note = carrier.ltl_parcel_rate(shipment)
             except Exception as error:  # a parcel quote failing must not hide the LTL quotes
@@ -136,6 +154,10 @@ class LtlRateWizardLine(models.TransientModel):
         if self.total <= 0:
             raise UserError(_('Enter the quoted total first.'))
         shipment = self.wizard_id.shipment_id
+        if shipment.state == 'booked' and shipment.parcel_shipment_number:
+            raise UserError(_(
+                '%s already has UPS labels. Cancel it first (that voids the labels with UPS), then '
+                'reset it to not booked and choose again.', shipment.name))
         if self.parcel:
             return self._choose_parcel(shipment)
         rate = self._rate()
@@ -152,10 +174,20 @@ class LtlRateWizardLine(models.TransientModel):
         return {'type': 'ir.actions.act_window_close'}
 
     def _choose_parcel(self, shipment):
-        """Send the shipment's deliveries by parcel instead: the deliveries get the parcel
-        shipping method and the LTL shipment is cancelled. Labels are made the standard way:
-        put the boxes in packs and validate the delivery."""
+        """Ship the boxes by parcel.
+
+        With a carrier that books from the shipment (UPS), the labels are made right here:
+        the carrier is asked first, and only what it returned is saved, so a refusal changes
+        nothing. Otherwise the deliveries get the parcel shipping method and the LTL shipment
+        is cancelled; labels are then made the standard way (put in packs, validate)."""
         self.ensure_one()
+        carrier = self.carrier_id
+        if carrier.ltl_can('book'):
+            rate = self._rate()
+            result = carrier.ltl_book(shipment, rate) or {}
+            shipment._apply_quote(rate, carrier, self.source)
+            shipment._apply_parcel_booking(result)
+            return {'type': 'ir.actions.act_window_close'}
         pickings = shipment.picking_ids
         pickings.write({'carrier_id': self.carrier_id.id})
         shipment.message_post(body=_(
