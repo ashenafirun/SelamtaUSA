@@ -263,6 +263,69 @@ class TestDaylight(TransactionCase):
         self.assertIn('Daylight BOL (carrier copy) 4796689.pdf', names)
         self.assertEqual(shipment.message_main_attachment_id.name, 'BOL %s.pdf' % shipment.name)  # ours to print
 
+    def _add_pro_block(self):
+        return self.env['selamta.ltl.pro.block'].create({
+            'carrier_id': self.carrier.id, 'first_base': '18417693', 'last_base': '18419192',
+            'next_base': '18417750'})
+
+    def test_book_pickup_with_preassigned_pro(self):
+        """With Daylight's electronic PROs on the shipping method, the booking takes the next
+        one and our BOL prints it for the driver to scan."""
+        self._add_pro_block()
+        self.carrier.dylt_book_pickups = True
+        self.answers['/rateQuote'] = FakeResponse(200, rate_answer())
+        self.answers['/pickup'] = FakeResponse(200, {'dyltPickupResp': {
+            'reservationStatus': 'A', 'bookingNumber': 5896084, 'reason': ''}})
+        self.answers['/image/booking/5896084/bol'] = FakeResponse(200, content=PDF)
+        action = self.shipment.action_open_rate_shop()
+        wizard = self.env['selamta.ltl.rate.wizard'].browse(action['res_id'])
+        wizard.line_ids.filtered(lambda l: l.carrier_id == self.carrier).action_choose()
+        shipment = self.shipment
+        self.assertEqual((shipment.state, shipment.pickup_number), ('booked', '5896084'))
+        self.assertEqual(shipment.pro_number, '184177509')
+        self.assertTrue(shipment.pro_preassigned)
+        self.assertEqual(shipment.message_main_attachment_id.name, 'BOL 184177509.pdf')
+        self.assertTrue(any('driver scans it at pickup' in body for body in shipment.message_ids.mapped('body')))
+
+    def test_preassigned_pro_scanned_at_pickup(self):
+        self.shipment.write({'pickup_number': '5896084', 'state': 'booked',
+                             'pro_number': '184177509', 'pro_preassigned': True})
+        # Before pickup Daylight shows its pickup number; our PRO is not looked up yet.
+        self.answers['/externalTrace/booking/5896084'] = FakeResponse(200, {
+            'billNumber': 'P0176589', 'currentStatus': 'ASSIGNED', 'actualDeliveryDate': None})
+        self.shipment.action_update_tracking()
+        self.assertFalse(self._calls_to('/externalTrace/184177509'))
+        self.assertEqual((self.shipment.pro_number, self.shipment.state), ('184177509', 'booked'))
+        # Picked up: the driver scanned our label, so Daylight's bill is our PRO.
+        self.answers['/externalTrace/booking/5896084'] = FakeResponse(200, {
+            'billNumber': 184177509, 'currentStatus': 'Picked Up', 'actualDeliveryDate': None})
+        self.shipment.action_update_tracking()
+        self.assertEqual((self.shipment.pro_number, self.shipment.state), ('184177509', 'in_transit'))
+        self.assertTrue(self.shipment.pro_preassigned)
+        self.answers['/externalTrace/booking/5896084'] = FakeResponse(200, {
+            'billNumber': 184177509, 'currentStatus': 'Delivered', 'actualDeliveryDate': '2026-11-06T11:00:00'})
+        self.answers['/image/184177509/dr/pdf'] = FakeResponse(200, content=PDF)
+        self.shipment.action_update_tracking()
+        self.assertEqual((self.shipment.state, str(self.shipment.delivered_date)), ('delivered', '2026-11-06'))
+        self.assertTrue(self._calls_to('/image/184177509/dr/pdf'))  # documents by our PRO
+
+    def test_preassigned_pro_not_scanned(self):
+        """This morning's case: the scan failed and the driver used a Daylight PRO."""
+        self.shipment.write({'pickup_number': '5896084', 'state': 'booked',
+                             'pro_number': '184177509', 'pro_preassigned': True})
+        # Picked up but Daylight still answers with the pickup number: nothing to follow yet.
+        self.answers['/externalTrace/booking/5896084'] = FakeResponse(200, {
+            'billNumber': 'P0176589', 'currentStatus': 'Picked Up', 'actualDeliveryDate': None})
+        self.shipment.action_update_tracking()
+        self.assertEqual((self.shipment.pro_number, self.shipment.state), ('184177509', 'in_transit'))
+        self.answers['/externalTrace/booking/5896084'] = FakeResponse(200, {
+            'billNumber': 175642396, 'currentStatus': 'Picked Up', 'actualDeliveryDate': None})
+        self.shipment.action_update_tracking()
+        self.assertEqual(self.shipment.pro_number, '175642396')
+        self.assertFalse(self.shipment.pro_preassigned)
+        self.assertEqual(self.shipment.state, 'in_transit')
+        self.assertTrue(any('did not scan our label' in body for body in self.shipment.message_ids.mapped('body')))
+
     def test_declined_pickup(self):
         self.carrier.dylt_book_pickups = True
         self.answers['/pickup'] = FakeResponse(200, {'dyltPickupResp': {

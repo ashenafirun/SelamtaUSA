@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import fields, models
+from odoo import api, fields, models
 
 from .ltl_common import DEFAULT_CLOSE_TIME, DEFAULT_READY_TIME, FREIGHT_TERMS
 
@@ -20,7 +20,10 @@ class DeliveryCarrier(models.Model):
         (list of ``(file name, bytes)``, e.g. the BOL PDF and labels).
     ``<type>_ltl_track(shipments)``
         Return ``{shipment.id: {...}}`` with any of ``state`` (``in_transit`` or
-        ``delivered``), ``status`` (text), ``pro_number``, ``delivered_date``.
+        ``delivered``), ``status`` (text), ``pro_number``, ``delivered_date``. A
+        ``pro_number`` only fills an empty PRO, unless ``replace_pro`` is true (the carrier
+        moved the freight under its own PRO instead of our pre-assigned one); ``note`` is
+        posted on the shipment.
     ``<type>_ltl_documents(shipment)``
         Return a list of ``(file name, bytes)``: delivery receipt, weight & inspection
         certificate, invoice image...
@@ -68,6 +71,16 @@ class DeliveryCarrier(models.Model):
     ltl_close_time = fields.Float(
         'Dock usually closes at', default=DEFAULT_CLOSE_TIME,
         help='Filled in on new shipments as the time the dock closes; change it per shipment.')
+    ltl_pro_block_ids = fields.One2many(
+        'selamta.ltl.pro.block', 'carrier_id', 'Pre-assigned PROs',
+        help='PRO numbers the carrier reserved for us. Each booking takes the next unused one, '
+             'so our BOL and labels carry a PRO barcode the driver scans at pickup.')
+    ltl_pro_remaining = fields.Integer('Pre-assigned PROs left', compute='_compute_ltl_pro_remaining')
+
+    @api.depends('ltl_pro_block_ids.remaining')
+    def _compute_ltl_pro_remaining(self):
+        for carrier in self:
+            carrier.ltl_pro_remaining = sum(carrier.ltl_pro_block_ids.mapped('remaining'))
 
     def _ltl_method(self, operation):
         self.ensure_one()

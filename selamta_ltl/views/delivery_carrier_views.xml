@@ -25,6 +25,17 @@
                                    context="{'show_address': 1}" options="{'always_reload': True}"/>
                         </group>
                     </group>
+                    <group string="Pre-assigned PROs" invisible="not ltl_enabled or ltl_parcel">
+                        <div class="text-muted" colspan="2">
+                            PRO numbers this carrier reserved for us (Daylight's "electronic PROs").
+                            Type each block's first and last number as the carrier sends them,
+                            without the check digit. Every booking takes the next unused PRO, so the
+                            BOL and labels print a PRO barcode the driver scans at pickup.
+                        </div>
+                        <field name="ltl_pro_remaining" invisible="not ltl_pro_block_ids"/>
+                        <field name="ltl_pro_block_ids" nolabel="1" colspan="2"
+                               context="{'default_carrier_id': id}"/>
+                    </group>
                 </page>
             </xpath>
         </field>
