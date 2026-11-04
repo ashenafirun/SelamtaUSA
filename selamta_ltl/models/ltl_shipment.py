@@ -89,7 +89,14 @@ class LtlShipment(models.Model):
              'the address.')
     ship_date = fields.Date(
         'Pickup date', default=lambda self: self._default_ship_date(), tracking=True,
-        help='The day the carrier picks up. Sent with the rate request and the pickup booking.')
+        help='The day the carrier picks up (or the day we drop off). Sent with the rate request '
+             'and the booking.')
+    request_pickup = fields.Boolean(
+        'Request pickup', default=True, tracking=True,
+        help='On: booking asks the carrier to pick up at our dock (for UPS, an on-call pickup '
+             'after the labels are made). Off: we take the freight to the carrier\'s terminal '
+             '(UPS: a UPS Store or drop-off location); the BOL and PRO are still made where the '
+             'carrier allows, and the BOL says the shipper drops off.')
     pickup_ready_time = fields.Float(
         'Ready at', compute='_compute_pickup_times', store=True, readonly=False, tracking=True,
         help='When the freight is ready for the driver. Filled in from the carrier; change it '
@@ -253,7 +260,7 @@ class LtlShipment(models.Model):
             return self.partner_id
         return self.company_id.partner_id
 
-    @api.depends('ship_date', 'pickup_ready_time', 'pickup_close_time', 'state')
+    @api.depends('ship_date', 'pickup_ready_time', 'pickup_close_time', 'state', 'request_pickup')
     def _compute_pickup_warning(self):
         today = fields.Date.context_today(self)
         for shipment in self:
@@ -264,7 +271,7 @@ class LtlShipment(models.Model):
                 elif shipment.ship_date.weekday() >= 5:
                     warning = _('The pickup date is a %s: most LTL carriers do not pick up on weekends.',
                                 shipment.ship_date.strftime('%A'))
-            if shipment.pickup_close_time <= shipment.pickup_ready_time:
+            if shipment.request_pickup and shipment.pickup_close_time <= shipment.pickup_ready_time:
                 warning = _('The dock closes before the freight is ready: check the pickup times.')
             shipment.pickup_warning = warning
 
@@ -297,7 +304,7 @@ class LtlShipment(models.Model):
                 raise UserError(_('Set the pickup date on %s.', shipment.name))
             if shipment.ship_date < today:
                 raise UserError(_('The pickup date on %s is in the past.', shipment.name))
-            if shipment.pickup_close_time <= shipment.pickup_ready_time:
+            if shipment.request_pickup and shipment.pickup_close_time <= shipment.pickup_ready_time:
                 raise UserError(_('On %s the dock closes before the freight is ready.', shipment.name))
             if shipment.freight_terms == 'third_party' and not shipment.bill_to_id:
                 raise UserError(_('%s is billed to a third party: fill in "Third party bill to" first.',
@@ -682,7 +689,10 @@ class LtlShipment(models.Model):
             lines.append(_('Pickup number: %s', self.pickup_number))
         if self.quote_number:
             lines.append(_('Carrier quote number: %s', self.quote_number))
-        if self.ship_date:
+        if not self.request_pickup:
+            lines.append('%s%s' % (self._drop_off_note(),
+                                   self.ship_date and self.ship_date.strftime(' (%a %m/%d/%Y)') or ''))
+        elif self.ship_date:
             lines.append(_('Pickup %(day)s %(date)s, ready %(ready)s, dock closes %(close)s',
                            day=self.ship_date.strftime('%a'), date=self.ship_date.strftime('%m/%d/%Y'),
                            ready=self._format_time(self.pickup_ready_time),
@@ -692,6 +702,12 @@ class LtlShipment(models.Model):
         if self.pickup_instructions:
             lines.extend(l.strip() for l in self.pickup_instructions.splitlines() if l.strip())
         return lines
+
+    def _drop_off_note(self):
+        """'SHIPPER DROPS OFF AT TERMINAL - NO PICKUP' when no pickup is requested, else ''.
+        Printed at the top of our BOL and sent in the carrier's own BOL instructions."""
+        self.ensure_one()
+        return '' if self.request_pickup else _('SHIPPER DROPS OFF AT TERMINAL - NO PICKUP')
 
     def _bol_delivery_lines(self):
         """Lines for the Delivery Instructions box on the BOL (and the carrier's own BOL):
@@ -856,6 +872,11 @@ class LtlShipment(models.Model):
                 shipment.message_post(body=_(
                     'Cancelled in Odoo only; the pickup was cancelled with %s outside Odoo.',
                     carrier.name or _('the carrier')))
+            elif booked and not shipment.request_pickup and not shipment.pickup_number \
+                    and not carrier.ltl_parcel:
+                shipment.message_post(body=_(
+                    'Cancelled. No pickup was requested (we drop off), so there is nothing to cancel with '
+                    '%s: just do not take the freight to the terminal.', carrier.name or _('the carrier')))
             elif booked and carrier and carrier.ltl_can('cancel'):
                 try:
                     result = carrier.ltl_cancel(shipment)

@@ -76,9 +76,13 @@
                                    string="Orders for"/>
                             <field name="shipper_id" readonly="state not in ('draft', 'booked')"/>
                             <field name="is_inbound" invisible="not is_inbound"/>
-                            <field name="ship_date"/>
-                            <label for="pickup_ready_time" string="Pickup window"/>
-                            <div class="o_row">
+                            <field name="request_pickup" widget="boolean_toggle" invisible="is_inbound"
+                                   readonly="state != 'draft'"/>
+                            <label for="ship_date" string="Pickup date" invisible="not request_pickup"/>
+                            <label for="ship_date" string="Drop-off date" invisible="request_pickup"/>
+                            <field name="ship_date" nolabel="1"/>
+                            <label for="pickup_ready_time" string="Pickup window" invisible="not request_pickup"/>
+                            <div class="o_row" invisible="not request_pickup">
                                 <span>ready</span>
                                 <field name="pickup_ready_time" widget="selamta_time_select" class="oe_inline"/>
                                 <span class="ms-3">dock closes</span>
@@ -219,6 +223,7 @@
                 <field name="vendor_id" optional="hide"/>
                 <field name="pro_number"/>
                 <field name="parcel_tracking_ref" optional="hide"/>
+                <field name="request_pickup" string="Pickup" optional="hide"/>
                 <field name="total_units" optional="show"/>
                 <field name="total_weight" optional="show" sum="Total"/>
                 <field name="quoted_amount" sum="Total"/>
@@ -252,6 +257,7 @@
                 <filter name="not_booked" string="Not booked" domain="[('state', '=', 'draft')]"/>
                 <filter name="open" string="Booked or in transit" domain="[('state', 'in', ('booked', 'in_transit'))]"/>
                 <filter name="delivered" string="Delivered" domain="[('state', '=', 'delivered')]"/>
+                <filter name="drop_off" string="We drop off" domain="[('request_pickup', '=', False)]"/>
                 <separator/>
                 <filter name="over" string="Billed over quote" domain="[('bill_status', '=', 'over')]"/>
                 <filter name="no_quote" string="Billed, no quote" domain="[('bill_status', '=', 'no_quote')]"/>

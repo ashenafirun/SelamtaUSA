@@ -219,6 +219,19 @@ class TestAaaCooper(TransactionCase):
         self.assertEqual(shipment.aact_terminal, 'SAA (4043631336)')
         self.assertEqual(shipment.message_main_attachment_id.name, 'BOL %s.pdf' % shipment.name)  # our BOL
 
+
+    def test_drop_off_sends_nothing(self):
+        self.carrier.aact_book_pickups = True
+        self.shipment.request_pickup = False
+        self.answers['/sapi30/wsGenEst'] = FakeResponse(200, content=rate_answer())
+        wizard = self.env['selamta.ltl.rate.wizard'].browse(self.shipment.action_open_rate_shop()['res_id'])
+        wizard.line_ids.filtered(lambda l: l.carrier_id == self.carrier).action_choose()
+        self.assertFalse(self._calls_to('wsPickUpRq'))
+        self.assertEqual(self.shipment.state, 'booked')
+        self.assertIn('nothing was sent to AAA Cooper', ' '.join(self.shipment.message_ids.mapped('body')))
+        self.shipment.action_cancel()  # no pickup to cancel with AAA Cooper
+        self.assertEqual(self.shipment.state, 'cancel')
+
     def test_pickup_error(self):
         self.carrier.aact_book_pickups = True
         self.answers['/sapi30/wsPickUpRq'] = FakeResponse(200, content=envelope(

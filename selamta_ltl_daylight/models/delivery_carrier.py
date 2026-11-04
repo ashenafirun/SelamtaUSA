@@ -566,6 +566,16 @@ class DeliveryCarrier(models.Model):
         if not self.dylt_book_pickups:
             raise UserError(_('Booking through the Daylight API is off on %s; book the pickup on '
                               'MyDaylight and type the PRO.', self.name))
+        if not shipment.request_pickup:
+            # Daylight's booking is the pickup request: nothing to send when we drop off.
+            if shipment.pro_number or self.sudo().ltl_pro_remaining:
+                pro_note = _('Our pre-assigned PRO is on the BOL and labels: the terminal scans it.')
+            else:
+                pro_note = _('Daylight assigns the PRO there: type it on the shipment so tracking works.')
+            shipment.message_post(body=_(
+                'No pickup requested: nothing was sent to Daylight. Take the freight and our BOL to the Daylight '
+                'terminal. %s', pro_note))
+            return {}
         data = self._dylt_call('POST', '/pickup', self._dylt_pickup_request(shipment))
         answer = data.get('dyltPickupResp') or (data.get('dyltPickupResps') or {}).get('dyltPickupResp') or data
         status = str(answer.get('reservationStatus') or '').upper()

@@ -478,6 +478,8 @@ class DeliveryCarrier(models.Model):
         if not self.sefl_book_pickups:
             raise UserError(_('Pickup requests through the Southeastern API are off on %s; book on sefl.com and '
                               'type the PRO.', self.name))
+        if not shipment.request_pickup:
+            return self._sefl_book_drop_off(shipment)
         account, body = self._sefl_pickup_body(shipment, rate)
         response = self._sefl_request('POST', PICKUP_URL, json=body,
                                       headers={'shipper_account': account, 'Content-Type': 'application/json'})
@@ -502,6 +504,22 @@ class DeliveryCarrier(models.Model):
             else:
                 notes.append(_('Southeastern gave no PRO (%s): the driver puts a PRO sticker on the BOL; type it in '
                                'so tracking works.', reason))
+        shipment.message_post(body=Markup('<br/>').join(notes))
+        return result
+
+    def _sefl_book_drop_off(self, shipment):
+        """We drop off at Southeastern's terminal: no pickup request, only a PRO for our BOL."""
+        result, notes = {}, [_('No pickup requested: we drop off at the Southeastern terminal with our BOL.')]
+        if self.sefl_test_mode:
+            notes.append(_('Southeastern TEST mode: no PRO taken.'))
+        else:
+            pro, reason = self._sefl_take_pro()
+            if pro:
+                result['pro_number'] = pro
+                notes.append(_('PRO %s from Southeastern: it is printed on our BOL and labels.', pro))
+            else:
+                notes.append(_('Southeastern gave no PRO (%s): the terminal puts a PRO sticker on our BOL; type it '
+                               'in so tracking works.', reason))
         shipment.message_post(body=Markup('<br/>').join(notes))
         return result
 

@@ -59,6 +59,9 @@
                     <td style="width: 60%; border: none; padding-left: 0;">
                         <div style="font-size: 20px; font-weight: bold;">STRAIGHT BILL OF LADING</div>
                         <div>Short form, not negotiable</div>
+                        <div t-if="not doc.request_pickup"
+                             style="display: inline-block; margin-top: 6px; padding: 4px 10px; border: 3px solid #000; font-size: 18px; font-weight: bold; letter-spacing: 1px;"
+                             t-out="doc._drop_off_note()"/>
                     </td>
                     <td style="width: 40%;">
                         <div>BOL number: <strong style="font-size: 16px;" t-out="doc.bol_reference"/></div>

@@ -649,7 +649,8 @@ class DeliveryCarrier(models.Model):
         add('Customs', 'N')
         add('GuaranteedDelivery', self._saia_guaranteed_code(rate))
         add('EmergencyPhone', 0)
-        add('SpecialInstructions', '. '.join(shipment._bol_delivery_lines())[:250])
+        add('SpecialInstructions', '. '.join(filter(None, [shipment._drop_off_note()] +
+                                                     list(shipment._bol_delivery_lines())))[:250])
         add('VICS', 'N')
         add('WeightUnits', 'LBS')
         add('TotalCube', 0)
@@ -674,6 +675,8 @@ class DeliveryCarrier(models.Model):
         if not self.saia_book_shipments:
             raise UserError(_('Booking through the Saia API is off on %s; book on saia.com and type the PRO.',
                               self.name))
+        if not shipment.request_pickup:
+            return self._saia_book_drop_off(shipment, rate)
         pickup = self._saia_soap('pickup', PICKUP_NS, self._saia_pickup_request(shipment, rate))
         error = self._saia_result_error(pickup, PICKUP_NS)
         if error:
@@ -714,6 +717,30 @@ class DeliveryCarrier(models.Model):
                     result['documents'].append(('Saia BOL (carrier copy) %s.pdf' % (pro or shipment.name), pdf))
         if self.saia_test_mode:
             notes.append(_('Sent in Saia TEST mode: nothing is filed and nothing will be picked up.'))
+        shipment.message_post(body=Markup('<br/>').join(notes))
+        return result
+
+    def _saia_book_drop_off(self, shipment, rate):
+        """We drop off at Saia's terminal: file the BOL only (PRO and Saia's BOL), no pickup.
+        When Saia refuses the BOL nothing is booked."""
+        bol = self._saia_soap('BOL', BOL_NS, self._saia_bol_request(shipment, rate))
+        error = self._saia_result_error(bol, BOL_NS)
+        if error:
+            raise UserError(_('Saia did not file the BOL: %s', error))
+        pro = self._saia_bol_pro(bol)
+        result = {'pro_number': pro, 'documents': []}
+        pdf_text = self._saia_result(bol, BOL_NS, 'PDF').replace(' ', '')
+        if pdf_text:
+            try:
+                pdf = base64.b64decode(pdf_text)
+            except (ValueError, TypeError):
+                pdf = b''
+            if pdf[:4] == b'%PDF':
+                result['documents'].append(('Saia BOL (carrier copy) %s.pdf' % (pro or shipment.name), pdf))
+        notes = [_('Saia BOL filed, PRO %s. No pickup requested: we drop off at the Saia terminal with our BOL.',
+                   pro or '-')]
+        if self.saia_test_mode:
+            notes.append(_('Sent in Saia TEST mode: nothing is filed.'))
         shipment.message_post(body=Markup('<br/>').join(notes))
         return result
 

@@ -294,6 +294,28 @@ class TestXpo(TransactionCase):
                                                   ('res_id', '=', self.shipment.id)]).mapped('name')
         self.assertIn('XPO BOL (carrier copy) 123456782.pdf', names)
 
+
+    def test_drop_off_creates_bol_without_pickup(self):
+        self.shipment.request_pickup = False
+        answer = FakeResponse(201, {'code': '201', 'data': {'bolInfo': {
+            'bolInstId': '4659194715665', 'pkupTrmnlSic': 'XAT'}}})  # no pickup call sequence: no pickup
+        self.carrier.write({'xpo_book_shipments': True})
+        self.answers['/rating/1.0/ratequotes'] = rate_answer()
+        self.answers['/billoflading/1.0/billsoflading'] = answer
+        self.answers['/billsoflading/4659194715665/requester'] = FakeResponse(200, {
+            'code': '200', 'data': {'bol': {'bolInstId': '4659194715665', 'proNbr': '123456782'}}})
+        self.answers['/billsoflading/4659194715665/pdf'] = FakeResponse(200, None, text='', content=PDF)
+        rate = self.carrier.ltl_rate(self.shipment)[0]
+        self.shipment._apply_quote(rate, self.carrier, 'api')
+        result = self.carrier.ltl_book(self.shipment, rate)
+        self.shipment._apply_booking(result)
+        self.assertFalse(result['pickup_number'])
+        bol = self._calls_to('/billoflading/1.0/billsoflading')[0]['json']['bol']
+        self.assertNotIn('pickupInfo', bol)
+        self.assertTrue(bol['remarks'].startswith('SHIPPER DROPS OFF AT TERMINAL - NO PICKUP'))
+        self.assertEqual((self.shipment.state, result['pro_number']), ('booked', '123456782'))
+        self.assertIn('we drop off at the XPO terminal XAT', ' '.join(self.shipment.message_ids.mapped('body')))
+
     def test_book_in_test_mode_without_pickup(self):
         self._book(xpo_environment='test', xpo_schedule_pickup=False, xpo_rate_account='shipper')
         call = self._calls_to('/billoflading/1.0/billsoflading')[0]

@@ -4,6 +4,7 @@ import base64
 import io
 import json
 import re
+from datetime import date
 from unittest.mock import patch
 
 from odoo.exceptions import UserError
@@ -240,6 +241,7 @@ class TestUpsFromShipment(TransactionCase):
                          [('UPS Ground', 35.20, 3), ('UPS 2nd Day Air', 88.00, 2)])
         request = [c for c in self.calls if '/rating/' in c[1]][0][2]
         self.assertEqual(request['headers']['Authorization'], 'Bearer tok')
+        self.assertEqual(request['json']['RateRequest']['PickupType'], {'Code': '06'})  # UPS picks up
         sent = request['json']['RateRequest']['Shipment']
         self.assertEqual([p['PackageWeight']['Weight'] for p in sent['Package']], ['30.0', '30.0', '30.0', '41.0'])
         self.assertEqual(sent['Package'][3]['Dimensions'],
@@ -285,7 +287,33 @@ class TestUpsFromShipment(TransactionCase):
         self.answers['/api/rating/v2409/Shoptimeintransit'] = self._rate_answer()
         ground = self._wizard(shipment).line_ids.filtered(lambda l: l.service == 'UPS Ground')
         self.answers['/api/shipments/v2409/ship'] = self._ship_answer(['1Z0X74Y80300000011', '1Z0X74Y80300000022'])
+        self.answers['/api/pickupcreation/v2409/pickup'] = FakeResponse(200, {'PickupCreationResponse': {
+            'Response': {'ResponseStatus': {'Code': '1'}}, 'PRN': '2929602E9CP', 'RateStatus': {'Code': '01'},
+            'RateResult': {'RateType': 'FD', 'CurrencyCode': 'USD', 'GrandTotalOfAllCharge': '8.30'}}})
+        shipment.write({'pickup_ready_time': 13.0, 'pickup_close_time': 17.5,
+                        'pickup_instructions': 'Ring the bell at door C'})
         ground.action_choose()
+
+        pickup = [c for c in self.calls if '/pickupcreation/' in c[1]][0][2]['json']['PickupCreationRequest']
+        self.assertEqual(pickup['Shipper']['Account'], {'AccountNumber': '0X74Y8', 'AccountCountryCode': 'US'})
+        self.assertEqual(pickup['PickupDateInfo']['ReadyTime'], '1300')
+        self.assertEqual(pickup['PickupDateInfo']['CloseTime'], '1730')
+        self.assertEqual(pickup['PickupDateInfo']['PickupDate'], max(shipment.ship_date, date.today()).strftime('%Y%m%d'))
+        self.assertEqual(pickup['PickupAddress']['AddressLine'], ['5335 Dividend Dr'])
+        self.assertEqual(pickup['PickupAddress']['Room'], 'Suite C')
+        self.assertEqual(pickup['PickupAddress']['PostalCode'], '30035')
+        self.assertEqual(pickup['PickupAddress']['Phone'], {'Number': '4045550100'})
+        self.assertEqual(pickup['AlternateAddressIndicator'], 'N')
+        self.assertEqual(pickup['PickupPiece'], [{'ServiceCode': '003', 'Quantity': '2', 'DestinationCountryCode': 'US',
+                                                  'ContainerCode': '01'}])
+        self.assertEqual(pickup['TotalWeight'], {'Weight': '50.0', 'UnitOfMeasurement': 'LBS'})
+        self.assertEqual(pickup['OverweightIndicator'], 'N')
+        self.assertEqual((pickup['PaymentMethod'], pickup['ShippingLabelsAvailable']), ('01', 'Y'))
+        self.assertEqual(pickup['TrackingData'], [{'TrackingNumber': '1Z0X74Y80300000011'},
+                                                  {'TrackingNumber': '1Z0X74Y80300000022'}])
+        self.assertEqual(pickup['SpecialInstruction'], 'Ring the bell at door C')
+        self.assertEqual(shipment.pickup_number, '2929602E9CP')
+        self.assertIn('UPS pickup charge 8.30 USD', ' '.join(shipment.message_ids.mapped('body')))
 
         sent = [c for c in self.calls if c[1].endswith('/ship')][0][2]['json']['ShipmentRequest']
         self.assertEqual(sent['Shipment']['Service']['Code'], '03')
@@ -332,7 +360,7 @@ class TestUpsFromShipment(TransactionCase):
 
     def test_cancel_voids_with_ups_and_tracking_follows(self):
         shipment = self._shipment([{'quantity': 1, 'length': 20, 'width': 12, 'height': 12, 'weight': 30}])
-        shipment.write({'carrier_id': self.ups.id, 'state': 'booked',
+        shipment.write({'carrier_id': self.ups.id, 'state': 'booked', 'pickup_number': '2929602E9CP',
                         'parcel_tracking_ref': '1Z0X74Y80300000033', 'parcel_shipment_number': '1Z0X74Y80300000033'})
 
         self.answers['/api/track/v1/details/1Z0X74Y80300000033'] = FakeResponse(200, {'trackResponse': {'shipment': [{
@@ -345,13 +373,50 @@ class TestUpsFromShipment(TransactionCase):
 
         self.answers['/void/cancel/1Z0X74Y80300000033'] = FakeResponse(200, {'VoidShipmentResponse': {
             'Response': {'ResponseStatus': {'Code': '1'}}, 'SummaryResult': {'Status': {'Code': '1', 'Description': 'Voided'}}}})
+        self.answers['/api/shipments/v2409/pickup/02'] = FakeResponse(200, {'PickupCancelResponse': {
+            'Response': {'ResponseStatus': {'Code': '1'}}, 'PickupType': '01'}})
         result = shipment.action_cancel()
+        cancel = [c for c in self.calls if c[1].endswith('/pickup/02')][0]
+        self.assertEqual((cancel[0], cancel[2]['headers']['Prn']), ('DELETE', '2929602E9CP'))
+        self.assertIn('UPS pickup 2929602E9CP cancelled', result['params']['message'])
         void = [c for c in self.calls if '/void/cancel/' in c[1]][0]
         self.assertEqual(void[0], 'DELETE')
         self.assertEqual(void[2]['headers']['shipperNumber'], '0X74Y8')
         self.assertEqual(shipment.state, 'cancel')
         self.assertFalse(shipment.parcel_tracking_ref)
         self.assertIn('throw away its labels', result['params']['message'])
+
+    def test_drop_off_makes_labels_only(self):
+        shipment = self._shipment([{'quantity': 1, 'length': 20, 'width': 12, 'height': 12, 'weight': 30}])
+        shipment.request_pickup = False
+        answer = self._rate_answer()
+        answer._data['RateResponse']['RatedShipment'].append(  # UPS answering a service twice
+            {'Service': {'Code': '03'}, 'TotalCharges': {'MonetaryValue': '64.00'},
+             'NegotiatedRateCharges': {'TotalCharge': {'MonetaryValue': '41.90'}}})
+        self.answers['/api/rating/v2409/Shoptimeintransit'] = answer
+        lines = self._wizard(shipment).line_ids.filtered('parcel')
+        self.assertEqual(sorted(lines.mapped('total')), [35.20, 88.00])  # one line per service, the lower price
+        rating = [c for c in self.calls if '/rating/' in c[1]][0][2]['json']['RateRequest']
+        self.assertEqual(rating['PickupType'], {'Code': '03'})  # we take it to UPS
+        self.answers['/api/shipments/v2409/ship'] = self._ship_answer(['1Z0X74Y80300000044'])
+        lines.filtered(lambda l: l.service == 'UPS Ground').action_choose()
+        self.assertFalse([c for c in self.calls if '/pickup' in c[1]])
+        self.assertEqual((shipment.state, shipment.pickup_number), ('booked', False))
+        self.assertIn('take the boxes to a UPS Store', ' '.join(shipment.message_ids.mapped('body')))
+
+    def test_refused_pickup_keeps_the_labels(self):
+        shipment = self._shipment([{'quantity': 1, 'length': 20, 'width': 12, 'height': 12, 'weight': 80}])
+        self.answers['/api/rating/v2409/Shoptimeintransit'] = self._rate_answer()
+        ground = self._wizard(shipment).line_ids.filtered(lambda l: l.service == 'UPS Ground')
+        self.answers['/api/shipments/v2409/ship'] = self._ship_answer(['1Z0X74Y80300000055'])
+        self.answers['/api/pickupcreation/v2409/pickup'] = FakeResponse(400, {'response': {'errors': [
+            {'code': '9510131', 'message': 'Order has successfully been submitted, but the Pickup is past cutoff'}]}})
+        ground.action_choose()
+        sent = [c for c in self.calls if '/pickupcreation/' in c[1]][0][2]['json']['PickupCreationRequest']
+        self.assertEqual(sent['OverweightIndicator'], 'Y')  # over 70 lb
+        self.assertEqual((shipment.state, shipment.parcel_tracking_ref, shipment.pickup_number),
+                         ('booked', '1Z0X74Y80300000055', False))
+        self.assertIn('Schedule the pickup on ups.com', ' '.join(shipment.message_ids.mapped('body')))
 
     def test_label_pdf_is_upright_4x6(self):
         pdf = self.ups._ltl_ups_labels_pdf([_gif(), _gif()])

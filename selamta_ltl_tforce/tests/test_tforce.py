@@ -186,6 +186,19 @@ class TestTForce(TransactionCase):
         self.assertIn('TEST environment', messages)
         self.assertNotIn('&lt;br', messages)
 
+
+    def test_drop_off_books_bol_without_pickup(self):
+        self.shipment.request_pickup = False
+        self.answers['/rating/getRate'] = FakeResponse(200, RATE_ANSWER)
+        self.answers['/shipping/bol/create'] = FakeResponse(200, BOL_ANSWER)
+        wizard = self.env['selamta.ltl.rate.wizard'].browse(self.shipment.action_open_rate_shop()['res_id'])
+        wizard.line_ids.filtered(lambda l: l.carrier_id == self.carrier).action_choose()
+        bol = [c for c in self.calls if c['url'].endswith('/shipping/bol/create')][0]['json']
+        self.assertNotIn('pickupRequest', bol)
+        self.assertEqual(bol['instructions']['pickup'], 'SHIPPER DROPS OFF AT TERMINAL - NO PICKUP')
+        self.assertEqual((self.shipment.state, self.shipment.pro_number), ('booked', '062108025'))
+        self.assertIn('No pickup requested', ' '.join(self.shipment.message_ids.mapped('body')))
+
     def test_track_and_documents_on_delivery(self):
         self.shipment.write({'pro_number': '062108025', 'state': 'in_transit'})
         self.answers['/track/pro/multiple'] = FakeResponse(200, {'detail': [{

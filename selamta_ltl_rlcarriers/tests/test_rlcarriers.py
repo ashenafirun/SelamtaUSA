@@ -260,6 +260,25 @@ class TestRlCarriers(TransactionCase):
         self.assertEqual(self._calls_to('/RateQuote')[0]['url'], 'https://api.rlc.com/RateQuote')
         self.assertIn('SANDBOX', ' '.join(self.shipment.message_ids.mapped('body')))
 
+
+    def test_drop_off_creates_bol_without_pickup(self):
+        self.carrier.rlc_book_shipments = True
+        self.shipment.request_pickup = False
+        self.answers['/RateQuote'] = FakeResponse(200, rate_answer())
+        self.answers['/BillOfLading'] = FakeResponse(200, {
+            'ProNumber': '41388591', 'Code': 0, 'Errors': [], 'Messages': []})
+        self.answers['/BillOfLading/PrintBOL'] = FakeResponse(200, {
+            'BolDocument': base64.b64encode(PDF).decode(), 'Code': 200, 'Errors': [], 'Messages': []})
+        rate = self.carrier.ltl_rate(self.shipment)[0]
+        self.shipment._apply_quote(rate, self.carrier, 'api')
+        self.shipment._apply_booking(self.carrier.ltl_book(self.shipment, rate))
+        request = self._calls_to('/BillOfLading')[0]['json']
+        self.assertNotIn('PickupRequest', request)
+        self.assertTrue(request['BillOfLading']['SpecialInstructions'].startswith('SHIPPER DROPS OFF AT TERMINAL'))
+        self.assertEqual((self.shipment.state, self.shipment.pro_number), ('booked', '41388591'))
+        self.assertIn('drop off at the R+L service center Atlanta, GA',
+                      ' '.join(self.shipment.message_ids.mapped('body')))
+
     def test_book_error(self):
         self.carrier.rlc_book_shipments = True
         self.answers['/BillOfLading'] = FakeResponse(400, {

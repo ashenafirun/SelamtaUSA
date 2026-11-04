@@ -339,6 +339,24 @@ class TestSaia(TransactionCase):
                          ('booked', '10730500824', '8812345'))
         self.assertTrue(any('Saia BOL' in name for name in self.shipment.message_ids.attachment_ids.mapped('name')))
 
+
+    def test_drop_off_files_bol_without_pickup(self):
+        self._ready_to_book()
+        self.shipment.request_pickup = False
+        self.answers['/BOL/soap.asmx'] = self._bol_ok()
+        result = self.carrier.ltl_book(self.shipment, {'total': 742.5, 'quote_number': 1})
+        self.assertEqual([c['url'].split('/')[-2] for c in self.calls], ['BOL'])  # no pickup request
+        self.assertIn('SHIPPER DROPS OFF AT TERMINAL', self.calls[0]['data'].decode()
+                      if isinstance(self.calls[0]['data'], bytes) else self.calls[0]['data'])
+        self.assertEqual(result['pro_number'], '10730500824')
+        self.assertNotIn('pickup_number', result)
+        self.assertIn('we drop off at the Saia terminal', self.shipment.message_ids[:1].body)
+        self.calls.clear()
+        self.answers['/BOL/soap.asmx'] = self._soap('http://www.SaiaSecure.com/WebService/BOL', (
+            '<Code>B01</Code><Element>Consignee</Element><Fault>C</Fault><Message>Bad zip</Message>'))
+        with self.assertRaisesRegex(UserError, 'Bad zip'):
+            self.carrier.ltl_book(self.shipment, {'total': 742.5})
+
     def test_pickup_refused_books_nothing(self):
         self._ready_to_book()
         self.answers['/pickup/soap.asmx'] = self._soap('http://www.SaiaSecure.com/WebService/Pickup', (

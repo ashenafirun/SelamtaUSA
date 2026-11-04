@@ -213,6 +213,17 @@ class TestPriority1(TransactionCase):
         self.assertIn('Pickup requested', messages)
         self.assertNotIn('&lt;br', messages)
 
+
+    def test_drop_off_is_refused(self):
+        self.carrier.p1_book_shipments = True
+        self.shipment.request_pickup = False
+        self.answers['/v2/ltl/quotes/rates'] = FakeResponse(200, RATE_ANSWER)
+        wizard = self.env['selamta.ltl.rate.wizard'].browse(self.shipment.action_open_rate_shop()['res_id'])
+        line = wizard.line_ids.filtered(lambda l: l.carrier_id == self.carrier).sorted('total')[0]
+        with self.assertRaisesRegex(UserError, 'always sends a truck'):
+            line.action_choose()
+        self.assertFalse(self._calls_to('/dispatch'))
+
     def test_track_and_documents(self):
         self.shipment.write({'bol_number': '60100000123', 'state': 'booked'})
         self.answers['/v2/ltl/shipments/status'] = FakeResponse(200, {'shipments': [{

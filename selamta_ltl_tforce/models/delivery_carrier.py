@@ -329,9 +329,10 @@ class DeliveryCarrier(models.Model):
         delivery_lines = shipment._bol_delivery_lines()
         if delivery_lines:
             request['instructions'] = {'delivery': ', '.join(delivery_lines)[:300]}
-        if shipment.pickup_instructions:
-            request.setdefault('instructions', {})['pickup'] = ' '.join(
-                shipment.pickup_instructions.split())[:200]
+        pickup_note = '. '.join(filter(None, [shipment._drop_off_note(),
+                                              ' '.join((shipment.pickup_instructions or '').split())]))
+        if pickup_note:
+            request.setdefault('instructions', {})['pickup'] = pickup_note[:200]
         options = self._tforce_service_options(shipment)
         if options:
             request['serviceOptions'] = options
@@ -341,7 +342,7 @@ class DeliveryCarrier(models.Model):
                 'label': {'type': self.tforce_label_type, 'startPosition': 1,
                           'numberOfStickers': max(shipment.total_units, 1)},
             })
-        if self.tforce_schedule_pickup:
+        if self.tforce_schedule_pickup and shipment.request_pickup:
             company = shipment.company_id
             phone = digits_only(self.tforce_contact_phone or shipment.shipper_id.phone or company.phone)
             email = self.tforce_contact_email or shipment.shipper_id.email or company.email
@@ -466,6 +467,9 @@ class DeliveryCarrier(models.Model):
                     notes.append(_('TForce alert: %s', alert['message']))
         shipment.write({'tforce_bol_id': str(detail.get('bolId') or '') or False,
                         'tforce_origin_terminal': detail.get('originServiceCenter') or False})
+        if not shipment.request_pickup:
+            notes.append(_('No pickup requested: we drop off at the TForce service center%s with our BOL.',
+                           _(' %s', shipment.tforce_origin_terminal) if shipment.tforce_origin_terminal else ''))
         if notes:
             shipment.message_post(body=Markup('<br/>').join(notes))
         if self.tforce_environment != 'production':

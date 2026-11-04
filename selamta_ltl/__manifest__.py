@@ -60,6 +60,12 @@ Foundation for booking LTL freight directly with each carrier, replacing Freight
   Never by amount. Shows quoted vs billed and the variance on the bill and the shipment.
   Matching runs when a bill is confirmed, from the "Match LTL shipment" button, and daily.
 
+* "Request pickup" on each shipment (on by default). Off, we drop off: no pickup request
+  is sent, the BOL says the shipper drops off at the terminal and the pickup window is
+  hidden. XPO, R+L, TForce, Roadrunner and Saia still create the BOL and PRO; Southeastern
+  gives a PRO; Daylight and AAA Cooper (whose booking is the pickup) get nothing and assign
+  the PRO at the terminal; Priority1 cannot be booked for a drop-off. UPS: labels only (on:
+  an on-call UPS pickup is requested after the labels).
 * Parcel next to LTL, on the same shipment: a shipping method marked "Parcel carrier" (UPS
   through Odoo's own UPS connector and its UPS app) is quoted in the rate shop for loads up
   to 300 lb (system parameter selamta_ltl.parcel_max_weight). UPS is priced from the boxes

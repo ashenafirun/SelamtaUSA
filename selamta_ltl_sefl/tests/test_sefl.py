@@ -224,6 +224,17 @@ class TestSefl(TransactionCase):
         self.assertEqual((self.shipment.state, self.shipment.pickup_number, self.shipment.pro_number),
                          ('booked', 'WEB12345', '123456789'))
 
+
+    def test_drop_off_takes_pro_without_pickup(self):
+        self._ready_to_book()
+        self.shipment.request_pickup = False
+        self.answers['/generatePro/PreAssigned'] = FakeResponse(200, {
+            'errorMessage': '', 'pro': '123456789', 'errorOccurred': False})
+        result = self.carrier.ltl_book(self.shipment, {'total': 667.26})
+        self.assertEqual(result, {'pro_number': '123456789'})
+        self.assertFalse(self._calls_to('/pickup-web/api/pickup'))
+        self.assertIn('we drop off at the Southeastern terminal', self.shipment.message_ids[:1].body)
+
     def test_pickup_refused_and_no_pro(self):
         self._ready_to_book()
         self.answers['/pickup-web/api/pickup'] = FakeResponse(400, {
