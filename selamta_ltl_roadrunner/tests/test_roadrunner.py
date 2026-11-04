@@ -275,6 +275,38 @@ class TestRoadrunner(TransactionCase):
         with self.assertRaisesRegex(UserError, 'at most 9'):
             self.carrier._rrts_bol_request(self.shipment)
 
+    def test_track_live_pickup_shape(self):
+        """The live API after pickup: PickedUp false, ActivityCode null, ActualDeparture set."""
+        self.shipment.write({'pickup_number': '15010145', 'state': 'booked'})
+        self.answers['api/values/'] = FakeResponse(200, {'SearchResults': [{
+            'SearchItem': '15010145',
+            'Shipment': {'ProNumber': '586893885', 'PickedUp': False, 'Location': None,
+                         'OperationalStatus': 'PICK', 'Status': 'P',
+                         'ActualDeparture': '2026-11-03T16:19:00',
+                         'DeliveredDateTime': '0001-01-01T00:00:00',
+                         'Comments': [
+                             {'ActivityCode': None, 'StatusDateTime': '2026-11-03T13:05:00',
+                              'StatusComment': '11/03/2026 01:05 PM Pickup Request Received.'},
+                             {'ActivityCode': None, 'StatusDateTime': '2026-11-03T16:19:00',
+                              'StatusComment': '11/03/2026 04:19 PM Shipment was picked up'}]},
+        }]})
+        self.shipment.action_update_tracking()
+        self.assertEqual(self.shipment.state, 'in_transit')
+        self.assertEqual(self.shipment.tracking_status, '11/03/2026 04:19 PM Shipment was picked up')
+
+    def test_track_pickup_requested_stays_booked(self):
+        self.shipment.write({'pickup_number': '15010145', 'state': 'booked'})
+        self.answers['api/values/'] = FakeResponse(200, {'SearchResults': [{
+            'SearchItem': '15010145',
+            'Shipment': {'ProNumber': None, 'PickedUp': False, 'OperationalStatus': 'PICK',
+                         'ActualDeparture': '0001-01-01T00:00:00',
+                         'DeliveredDateTime': '0001-01-01T00:00:00',
+                         'Comments': [{'ActivityCode': None, 'StatusDateTime': '2026-11-03T13:05:00',
+                                       'StatusComment': '11/03/2026 01:05 PM Pickup Request Received.'}]},
+        }]})
+        self.shipment.action_update_tracking()
+        self.assertEqual(self.shipment.state, 'booked')
+
     def test_track_by_pickup_then_pro_and_delivery_receipt(self):
         self.shipment.write({'pickup_number': '55471537', 'state': 'booked'})
         self.answers['api/values/'] = FakeResponse(200, {'SearchResults': [{

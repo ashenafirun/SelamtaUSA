@@ -609,7 +609,11 @@ class DeliveryCarrier(models.Model):
             info['state'] = 'delivered'
             if delivered:
                 info['delivered_date'] = delivered
-        elif details.get('PickedUp') or codes & MOVING_CODES:
+        elif (details.get('PickedUp') or codes & MOVING_CODES
+              or self._rrts_valid_date(details.get('ActualDeparture'))
+              or any('picked up' in (c.get('StatusComment') or '').lower() for c in comments)):
+            # The live tracking API sends PickedUp=false and ActivityCode=null even after
+            # pickup; ActualDeparture and the "Shipment was picked up" comment are what it fills.
             info['state'] = 'in_transit'
         latest = max(comments, key=lambda c: c.get('StatusDateTime') or '', default=None)
         status = (latest or {}).get('StatusComment') or details.get('OperationalStatus') or ''

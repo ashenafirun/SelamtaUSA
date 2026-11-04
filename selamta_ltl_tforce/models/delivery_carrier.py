@@ -59,6 +59,9 @@ CHARGE_NAMES = {
     'EXLI': 'Extreme length',
 }
 TRACKING_STATE = {'005': 'in_transit', '006': 'in_transit', '011': 'delivered'}
+# Live TForce answers carry "In Transit" under codes not listed above, so the
+# description is the fallback.
+MOVING_WORDS = ('transit', 'picked up', 'arrived', 'departed', 'out for delivery', 'loaded')
 DOCUMENT_CATEGORIES = ['DR', 'WGHT', 'BOL', 'INVC']
 DOCUMENT_NAMES = {
     'DR': 'Delivery receipt', 'WGHT': 'Weight and inspection', 'BOL': 'TForce BOL',
@@ -473,6 +476,15 @@ class DeliveryCarrier(models.Model):
             'documents': documents,
         }
 
+    @api.model
+    def _tforce_state_from_text(self, description):
+        text = (description or '').strip().lower()
+        if text.startswith('delivered'):
+            return 'delivered'
+        if any(word in text for word in MOVING_WORDS):
+            return 'in_transit'
+        return False
+
     def tforce_ltl_track(self, shipments):
         self.ensure_one()
         by_pro = {}
@@ -491,7 +503,8 @@ class DeliveryCarrier(models.Model):
                 current = detail.get('currentStatus') or {}
                 delivery = detail.get('delivery') or {}
                 info = {}
-                state = TRACKING_STATE.get(current.get('code'))
+                state = TRACKING_STATE.get(current.get('code')) or self._tforce_state_from_text(
+                    current.get('description'))
                 if state:
                     info['state'] = state
                 status = current.get('description') or ''
