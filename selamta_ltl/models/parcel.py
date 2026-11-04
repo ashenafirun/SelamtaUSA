@@ -11,7 +11,11 @@ match a sales order:
 * Choosing a UPS rate creates the UPS shipment (Shipping API): one label per box, saved on
   the shipment as a 4x6 PDF, and the tracking numbers on the shipment and on its delivery
   orders (so validating a delivery does not buy a second label).
-* Cancelling the shipment voids it with UPS. Tracking comes from the UPS Track API.
+* "Request pickup" on the shipment: on, an on-call UPS pickup is requested for the pickup
+  date and window after the labels are made (UPS may charge for it; the charge UPS quotes is
+  noted); off, labels only and the boxes go to a UPS Store or drop-off location.
+* Cancelling the shipment voids it with UPS (and cancels the pickup). Tracking comes from
+  the UPS Track API.
 
 The UPS app is the one of Odoo's own UPS connector (client ID, secret and account number
 on the shipping method); the app needs the Rating, Shipping and Tracking API products on
@@ -49,6 +53,8 @@ UPS_MAX_LENGTH = 108.0
 UPS_MAX_SIZE = 165.0
 UPS_MAX_PACKAGES = 200
 UPS_CUSTOMER_PACKAGE = '02'
+UPS_PICKUP_DAILY, UPS_PICKUP_COUNTER, UPS_PICKUP_ONE_TIME = '01', '03', '06'
+UPS_OVERWEIGHT = 70.0  # lb; the pickup request says when a box is heavier
 
 UPS_SERVICE_NAMES = {
     '03': 'UPS Ground',
@@ -344,16 +350,17 @@ class DeliveryCarrier(models.Model):
             'Pickup': {'Date': self._ltl_ups_pickup_date(shipment).strftime('%Y%m%d')},
         }
         reference = {'CustomerContext': shipment.name}
+        pickup_type = {'Code': UPS_PICKUP_ONE_TIME if shipment.request_pickup else UPS_PICKUP_COUNTER}
         try:
             answer = self._ltl_ups_api('POST', '/rating/%s/Shoptimeintransit' % UPS_API_VERSION, {'RateRequest': {
                 'Request': {'RequestOption': 'Shoptimeintransit', 'TransactionReference': reference},
-                'Shipment': timed}})
+                'PickupType': pickup_type, 'Shipment': timed}})
         except UserError as error:
             # Prices without transit days are better than none.
             _logger.info('UPS rating with transit times failed for %s (%s); asking without.', shipment.name, error)
             answer = self._ltl_ups_api('POST', '/rating/%s/Shop' % UPS_API_VERSION, {'RateRequest': {
                 'Request': {'RequestOption': 'Shop', 'TransactionReference': reference},
-                'Shipment': data}})
+                'PickupType': pickup_type, 'Shipment': data}})
         rates = []
         for rated in _as_list((answer.get('RateResponse') or {}).get('RatedShipment')):
             code = str((rated.get('Service') or {}).get('Code') or '')
@@ -379,7 +386,12 @@ class DeliveryCarrier(models.Model):
             })
         if not rates:
             raise UserError(_('UPS returned no price for these boxes.'))
-        return sorted(rates, key=lambda rate: rate['total'])
+        # UPS can answer a service twice (one service code, two prices). Booking sends only
+        # the code, so one line per service: the lower price.
+        best = {}
+        for rate in sorted(rates, key=lambda rate: rate['total']):
+            best.setdefault(rate['ups_service'], rate)
+        return sorted(best.values(), key=lambda rate: rate['total'])
 
     def ups_rest_ltl_book(self, shipment, rate):
         """Create the UPS shipment for the boxes: one label per box. Returns the tracking
@@ -415,13 +427,105 @@ class DeliveryCarrier(models.Model):
             image = ((package.get('ShippingLabel') or {}).get('GraphicImage'))
             if image:
                 images.append(base64.b64decode(image))
-        return {
+        result = {
             'tracking_numbers': numbers or [shipment_number],
             'ups_shipment_id': shipment_number,
             'total': total,
             'service': UPS_SERVICE_NAMES.get(service, service),
             'documents': self._ltl_ups_label_documents(shipment, images, label_type),
+            'notes': [],
         }
+        if shipment.request_pickup:
+            # The labels are bought: a pickup UPS refuses must not lose them.
+            try:
+                number, charge = self._ltl_ups_request_pickup(shipment, boxes, service, numbers)
+            except UserError as error:
+                result['notes'].append(_(
+                    'UPS did not take the pickup request (%s). Schedule the pickup on ups.com, or take the '
+                    'boxes to a UPS Store or drop-off location.', error.args[0] if error.args else error))
+            else:
+                result['pickup_number'] = number
+                result['notes'].append(_('UPS pickup %(number)s requested for %(date)s, %(ready)s to %(close)s%(charge)s.',
+                                         number=number, date=self._ltl_ups_pickup_date(shipment).strftime('%a %m/%d'),
+                                         ready=shipment._format_time(shipment.pickup_ready_time),
+                                         close=shipment._format_time(shipment.pickup_close_time),
+                                         charge=charge and _('; UPS pickup charge %s', charge) or ''))
+        else:
+            result['notes'].append(_('No UPS pickup requested: take the boxes to a UPS Store or UPS drop-off '
+                                     'location (not a USPS post office).'))
+        return result
+
+    @api.model
+    def _ltl_ups_hhmm(self, hours):
+        minutes = int(round((hours or 0.0) * 60))
+        return '%02d%02d' % divmod(min(max(minutes, 0), 23 * 60 + 59), 60)
+
+    def _ltl_ups_request_pickup(self, shipment, boxes, service, numbers):
+        """Ask UPS for an on-call pickup of the labelled boxes at the ship-from address.
+        Returns (pickup request number, the charge UPS quotes as text or '')."""
+        self.ensure_one()
+        account = self._ltl_ups_credentials()[2]
+        origin = shipment.shipper_id
+        party = self._ltl_ups_party(origin, _('ship-from address'))
+        phone = (party.get('Phone') or {}).get('Number')
+        if not phone:
+            raise UserError(_('the ship-from address (%s) has no phone number for the driver', origin.display_name))
+        address = party['Address']
+        company = origin.commercial_partner_id
+        contact = origin.name if origin.parent_id else (self.env.user.name or company.name)
+        if shipment.pickup_close_time <= shipment.pickup_ready_time:
+            raise UserError(_('the dock closes before the freight is ready'))
+        count = sum(count for _unit, count, _each in boxes)
+        weight = sum(count * each for _unit, count, each in boxes)
+        request = {
+            'Request': {'TransactionReference': {'CustomerContext': shipment.name}},
+            'RatePickupIndicator': 'Y',
+            'Shipper': {'Account': {'AccountNumber': account,
+                                    'AccountCountryCode': shipment.company_id.country_id.code or 'US'}},
+            'PickupDateInfo': {
+                'ReadyTime': self._ltl_ups_hhmm(shipment.pickup_ready_time),
+                'CloseTime': self._ltl_ups_hhmm(shipment.pickup_close_time),
+                'PickupDate': self._ltl_ups_pickup_date(shipment).strftime('%Y%m%d'),
+            },
+            'PickupAddress': {
+                'CompanyName': (company.name or '')[:27],
+                'ContactName': (contact or '')[:22],
+                'AddressLine': address['AddressLine'][:1],
+                'City': address['City'],
+                'StateProvince': address['StateProvinceCode'],
+                'PostalCode': address['PostalCode'][:5] if address['CountryCode'] == 'US' else address['PostalCode'][:8],
+                'CountryCode': address['CountryCode'],
+                'ResidentialIndicator': 'N',
+                'Phone': {'Number': phone},
+            },
+            'AlternateAddressIndicator': 'N' if origin.commercial_partner_id == shipment.company_id.partner_id else 'Y',
+            'PickupPiece': [{'ServiceCode': str(service).zfill(3), 'Quantity': str(count),
+                             'DestinationCountryCode': shipment.partner_id.country_id.code or 'US',
+                             'ContainerCode': '01'}],
+            'TotalWeight': {'Weight': '%.1f' % weight, 'UnitOfMeasurement': 'LBS'},
+            'OverweightIndicator': 'Y' if any(each > UPS_OVERWEIGHT for _u, _c, each in boxes) else 'N',
+            'PaymentMethod': '01',
+            'ShippingLabelsAvailable': 'Y',
+            'ReferenceNumber': shipment.name[:35],
+        }
+        if origin.street2:
+            request['PickupAddress']['Room'] = origin.street2[:8]
+        if numbers:
+            request['TrackingData'] = [{'TrackingNumber': number} for number in numbers[:30]]
+        instructions = ' '.join((shipment.pickup_instructions or '').split())
+        if instructions:
+            request['SpecialInstruction'] = instructions[:57]
+        answer = self._ltl_ups_api('POST', '/pickupcreation/%s/pickup' % UPS_API_VERSION,
+                                   {'PickupCreationRequest': request})
+        created = answer.get('PickupCreationResponse') or {}
+        number = str(created.get('PRN') or '').strip()
+        if not number:
+            raise UserError(_('UPS answered without a pickup request number'))
+        rated = created.get('RateResult') or {}
+        charge = rated.get('GrandTotalOfAllIncentedCharge') or rated.get('GrandTotalOfAllCharge') or ''
+        if charge:
+            charge = '%s %s' % (charge, rated.get('CurrencyCode') or 'USD')
+        return number, charge
 
     @api.model
     def _ltl_ups_label_documents(self, shipment, images, label_type):
@@ -470,7 +574,18 @@ class DeliveryCarrier(models.Model):
             raise UserError(_('UPS did not void %(number)s: %(status)s', number=number,
                               status=status.get('Description') or _('no answer')))
         shipment._parcel_clear_tracking()
-        return _('UPS shipment %s voided: throw away its labels.', number)
+        message = _('UPS shipment %s voided: throw away its labels.', number)
+        pickup = (shipment.pickup_number or '').strip()
+        if pickup:
+            try:
+                self._ltl_ups_api('DELETE', '/shipments/%s/pickup/02' % UPS_API_VERSION,
+                                  extra_headers={'Prn': pickup})
+            except UserError as error:
+                message += ' ' + _('UPS did not cancel pickup %(pickup)s (%(error)s): cancel it on ups.com.',
+                                   pickup=pickup, error=error.args[0] if error.args else error)
+            else:
+                message += ' ' + _('UPS pickup %s cancelled.', pickup)
+        return message
 
     def ups_rest_ltl_track(self, shipments):
         """Tracking for shipments shipped by UPS from the LTL shipment."""
@@ -591,6 +706,7 @@ class LtlShipment(models.Model):
             'state': 'booked',
             'parcel_tracking_ref': ' '.join(numbers),
             'parcel_shipment_number': result.get('ups_shipment_id') or False,
+            'pickup_number': result.get('pickup_number') or False,
         }
         if result.get('total'):
             vals['quoted_amount'] = result['total']
@@ -602,6 +718,8 @@ class LtlShipment(models.Model):
         if attachments:
             self.parcel_label_id = attachments[:1]
             self.message_main_attachment_id = attachments[:1]
+        for note in result.get('notes') or []:
+            self.message_post(body=note)
         pickings = self.picking_ids.filtered(lambda p: p.state != 'cancel')
         if pickings:
             # With the tracking number on it, validating a delivery does not buy a second label.

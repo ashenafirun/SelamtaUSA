@@ -411,6 +411,11 @@ class DeliveryCarrier(models.Model):
         if not self.p1_book_shipments:
             raise UserError(_('Dispatching through the Priority1 API is off on %s; book the load on '
                               'Priority1\'s website and type the PRO.', self.name))
+        if not shipment.request_pickup:
+            raise UserError(_(
+                'Priority1 always sends a truck to pick up. To drop off at a terminal, choose a carrier we book '
+                'directly (Saia, XPO, R+L, TForce, Roadrunner, Southeastern...), or turn "Request pickup" back '
+                'on. Nothing was booked.'))
         data = self._p1_call('/v2/ltl/shipments/dispatch', self._p1_dispatch_request(shipment, rate))
         identifiers = data.get('shipmentIdentifiers') or []
         bol = self._p1_identifier(identifiers, 'BILL_OF_LADING')

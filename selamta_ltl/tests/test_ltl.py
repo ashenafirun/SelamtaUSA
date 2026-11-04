@@ -2,6 +2,7 @@
 from unittest.mock import patch
 
 from odoo import fields
+from odoo.exceptions import UserError
 from odoo.tests import tagged
 
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
@@ -554,6 +555,31 @@ class TestLtl(AccountTestInvoicingCommon):
         self.assertEqual(pickup[:2], ['Pickup number: WBU41464319', 'Carrier quote number: 800389657'])
         self.assertEqual(pickup[-1], 'Freight at door 2')
         self.assertIn('>85<', html)
+
+    def test_drop_off_bol_and_checks(self):
+        shipment = self._shipment(self.c_tforce, pro='246813579')
+        self.assertTrue(shipment.request_pickup)  # carriers pick up unless switched off
+        shipment.write({'request_pickup': False, 'pickup_ready_time': 17.0, 'pickup_close_time': 9.0})
+        self.assertFalse(shipment.pickup_warning)  # no window to check when we drop off
+        shipment._check_pickup()
+        lines = shipment._bol_pickup_lines()
+        self.assertTrue(lines[0].startswith('SHIPPER DROPS OFF AT TERMINAL - NO PICKUP'))
+        self.assertFalse([line for line in lines if 'dock closes' in line])
+        html = self.env['ir.actions.report']._render_qweb_html('selamta_ltl.report_ltl_bol', shipment.ids)[0].decode()
+        self.assertEqual(html.count('SHIPPER DROPS OFF AT TERMINAL - NO PICKUP'), 2)  # top banner and pickup box
+        shipment.request_pickup = True
+        with self.assertRaisesRegex(UserError, 'dock closes before'):
+            shipment._check_pickup()
+
+    def test_cancel_drop_off_without_carrier(self):
+        shipment = self._shipment(self.c_tforce, pro='246813579')
+        shipment.write({'request_pickup': False, 'state': 'booked'})
+        Carrier = type(self.env['delivery.carrier'])
+        with patch.object(Carrier, 'ltl_can', lambda self, operation: True), \
+                patch.object(Carrier, 'ltl_cancel', side_effect=AssertionError('no pickup to cancel')):
+            shipment.action_cancel()
+        self.assertEqual(shipment.state, 'cancel')
+        self.assertIn('nothing to cancel', shipment.message_ids[:1].body)
 
     def test_rate_shop_and_booking_through_connection(self):
         shipment = self._shipment(self.c_tforce)

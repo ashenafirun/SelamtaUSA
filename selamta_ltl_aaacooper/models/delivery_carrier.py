@@ -377,6 +377,12 @@ class DeliveryCarrier(models.Model):
         if not self.aact_book_pickups:
             raise UserError(_('Pickup requests through the AAA Cooper API are off on %s; request the pickup on '
                               'aaacooper.com and type the PRO.', self.name))
+        if not shipment.request_pickup:
+            # AAA Cooper's booking is the pickup request: nothing to send when we drop off.
+            shipment.message_post(body=_(
+                'No pickup requested: nothing was sent to AAA Cooper. Take the freight and our BOL to the AAA '
+                'Cooper terminal; AAA Cooper assigns the PRO there. Type it on the shipment so tracking works.'))
+            return {}
         answer = self._aact_soap('wsPickUpRq', self._aact_pickup_body(shipment, rate))
         number = self._aact_text(answer, 'PickupRequestNumber').lstrip('0')
         error = self._aact_text(answer, 'ErrorMessage')

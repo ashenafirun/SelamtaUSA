@@ -326,6 +326,16 @@ class TestDaylight(TransactionCase):
         self.assertEqual(self.shipment.state, 'in_transit')
         self.assertTrue(any('did not scan our label' in body for body in self.shipment.message_ids.mapped('body')))
 
+    def test_drop_off_sends_nothing(self):
+        self.carrier.dylt_book_pickups = True
+        self.shipment.request_pickup = False
+        self.answers['/rateQuote'] = FakeResponse(200, rate_answer())
+        wizard = self.env['selamta.ltl.rate.wizard'].browse(self.shipment.action_open_rate_shop()['res_id'])
+        wizard.line_ids.filtered(lambda l: l.carrier_id == self.carrier).action_choose()
+        self.assertFalse(self._calls_to('/pickup'))
+        self.assertEqual((self.shipment.state, self.shipment.pickup_number), ('booked', False))
+        self.assertIn('nothing was sent to Daylight', ' '.join(self.shipment.message_ids.mapped('body')))
+
     def test_declined_pickup(self):
         self.carrier.dylt_book_pickups = True
         self.answers['/pickup'] = FakeResponse(200, {'dyltPickupResp': {

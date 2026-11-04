@@ -327,7 +327,7 @@ class DeliveryCarrier(models.Model):
         return po, sale
 
     def _rlc_instructions(self, shipment):
-        lines = list(shipment._bol_delivery_lines())
+        lines = [note for note in [shipment._drop_off_note()] if note] + list(shipment._bol_delivery_lines())
         if shipment.pickup_instructions:
             lines.append('PICKUP: %s' % ' '.join(shipment.pickup_instructions.split()))
         return ', '.join(lines)[:250]
@@ -382,7 +382,7 @@ class DeliveryCarrier(models.Model):
         if instructions:
             bill['SpecialInstructions'] = instructions
         request = {'BillOfLading': bill, 'GenerateUniversalPro': bool(self.rlc_universal_pro)}
-        if self.rlc_schedule_pickup:
+        if self.rlc_schedule_pickup and shipment.request_pickup:
             pickup = {
                 'PickupDate': ship_date.strftime('%m/%d/%Y'),
                 'ReadyTime': self._rlc_time(shipment.pickup_ready_time),
@@ -525,6 +525,9 @@ class DeliveryCarrier(models.Model):
         notes = [_('R+L BOL created, PRO %s.', pro)]
         if pickup:
             notes.append(_('R+L pickup request %s.', pickup))
+        elif not shipment.request_pickup:
+            notes.append(_('No pickup requested: we drop off at the R+L service center%s with our BOL.',
+                           _(' %s', rate['rlc_service_center']) if rate.get('rlc_service_center') else ''))
         elif self.rlc_schedule_pickup:
             notes.append(_('R+L did not confirm a pickup request: schedule the pickup on rlcarriers.com.'))
         documents = []

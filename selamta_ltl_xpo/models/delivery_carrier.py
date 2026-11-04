@@ -488,7 +488,7 @@ class DeliveryCarrier(models.Model):
         return po
 
     def _xpo_remarks(self, shipment, rate):
-        lines = list(shipment._bol_delivery_lines())
+        lines = [note for note in [shipment._drop_off_note()] if note] + list(shipment._bol_delivery_lines())
         if shipment.pickup_instructions:
             lines.append('PICKUP: %s' % ' '.join(shipment.pickup_instructions.split()))
         po = self._xpo_references(shipment)
@@ -556,7 +556,7 @@ class DeliveryCarrier(models.Model):
         remarks = self._xpo_remarks(shipment, rate)
         if remarks:
             bol['remarks'] = remarks
-        if self.xpo_schedule_pickup:
+        if self.xpo_schedule_pickup and shipment.request_pickup:
             ready = self._xpo_moment(ship_date, shipment.pickup_ready_time, shipper)
             close = self._xpo_moment(ship_date, shipment.pickup_close_time, shipper)
             pickup_contact = {'companyName': shipper_contact['companyName'], 'fullName': contact_name[:40],
@@ -706,6 +706,9 @@ class DeliveryCarrier(models.Model):
                                   call_date and ' (%s)' % call_date.strftime('%m/%d') or '')
         if pickup:
             notes.append(_('XPO pickup request %s.', pickup))
+        elif not shipment.request_pickup:
+            notes.append(_('No pickup requested: we drop off at the XPO terminal%s with our BOL.',
+                           _(' %s', shipment.xpo_terminal) if shipment.xpo_terminal else ''))
         elif self.xpo_schedule_pickup:
             notes.append(_('XPO did not confirm a pickup request: schedule the pickup on ltl.xpo.com.'))
         documents = []

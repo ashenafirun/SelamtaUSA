@@ -307,6 +307,9 @@ class DeliveryCarrier(models.Model):
         if shipment.pickup_instructions:
             pickup = ' '.join(shipment.pickup_instructions.split())
             text = '%s; PICKUP: %s' % (text, pickup) if text else 'PICKUP: %s' % pickup
+        drop_off = shipment._drop_off_note()
+        if drop_off:
+            text = '%s; %s' % (drop_off, text) if text else drop_off
         return text[:MAX_INSTRUCTIONS]
 
     @api.model
@@ -358,7 +361,7 @@ class DeliveryCarrier(models.Model):
             po = next((r['RefNo'] for r in references if r['RefType'] == 'PO'), False)
             if po:
                 request['PONumber'] = po
-        if self.rrts_schedule_pickup:
+        if self.rrts_schedule_pickup and shipment.request_pickup:
             request.update({
                 'QuickPickup': True,
                 'FreightReady': self._rrts_time(shipment.pickup_ready_time),
@@ -550,6 +553,9 @@ class DeliveryCarrier(models.Model):
                                           data.get('TerminalPhone') and '(%s)' % data['TerminalPhone']]))
         if terminal:
             shipment.rrts_terminal = terminal
+        if not shipment.request_pickup:
+            notes.append(_('No pickup requested: we drop off at the Roadrunner terminal%s with our BOL.',
+                           _(' %s', terminal) if terminal else ''))
         if self.rrts_environment != 'production':
             notes.append(_('Booked in the Roadrunner TEST system: nothing will be picked up.'))
         if notes:

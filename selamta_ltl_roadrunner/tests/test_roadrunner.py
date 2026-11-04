@@ -236,6 +236,20 @@ class TestRoadrunner(TransactionCase):
         self.assertIn('TEST system', messages)
         self.assertNotIn('&lt;br', messages)  # line breaks, not escaped tags
 
+
+    def test_drop_off_books_bol_without_pickup(self):
+        self.carrier.rrts_schedule_pickup = True
+        self.shipment.request_pickup = False
+        self.answers['ratequote.asmx'] = FakeResponse(200, content=soap_rate())
+        self.answers['bolrequest'] = FakeResponse(200, BOL_ANSWER)
+        wizard = self.env['selamta.ltl.rate.wizard'].browse(self.shipment.action_open_rate_shop()['res_id'])
+        wizard.line_ids.filtered(lambda l: l.carrier_id == self.carrier).action_choose()
+        bol = self._calls_to('bolrequest')[0]['json']
+        self.assertNotIn('QuickPickup', bol)
+        self.assertTrue(bol['Instructions'].startswith('SHIPPER DROPS OFF AT TERMINAL - NO PICKUP; '))
+        self.assertEqual(self.shipment.state, 'booked')
+        self.assertIn('we drop off at the Roadrunner terminal', ' '.join(self.shipment.message_ids.mapped('body')))
+
     def test_booking_errors_and_production(self):
         self.answers['bolrequest'] = FakeResponse(200, {'HasError': True, 'ErrorMessage': 'Ship date is in the past'})
         with self.assertRaisesRegex(UserError, 'Ship date is in the past'):
