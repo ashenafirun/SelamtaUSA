@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta LTL: Daylight Transport',
-    'version': '18.0.1.0.4',
+    'version': '18.0.1.0.5',
     'category': 'Inventory/Delivery',
     'summary': 'Daylight Transport API connection for Selamta LTL shipments: rates, pickup booking, tracking, delivery receipts',
     'description': """
@@ -19,6 +19,12 @@ Connects Daylight Transport to Selamta LTL shipments through Daylight's ship-day
 * Daylight returns a booking number, not a PRO. Tracking (every two hours) looks the
   shipment up by booking number until Daylight assigns the PRO (when it assigns a driver), then by PRO;
   on delivery it attaches the delivery receipt and weight & inspection certificate.
+* Pre-assigned PROs (Daylight's electronic PROs): add each block Daylight sends on the
+  shipping method's LTL freight tab (first and last number without the check digit). Booking
+  takes the next unused PRO and prints it as a barcode on our BOL and labels; the driver
+  scans it at pickup. Until pickup, tracking follows the booking number; if Daylight picks
+  up under its own PRO instead (label not scanned), the shipment switches to Daylight's PRO
+  and says so in the chatter.
 * Accessorial codes: our standard services get Daylight's codes from the Accessorial Matrix
   on Daylight's API portal ("Lift Gate Delivery", "Residential Delivery"...); see and change
   them under Inventory > Configuration > LTL services (Daylight code column).

@@ -13,3 +13,5 @@ access_ltl_density_manager,ltl.density manager,model_selamta_ltl_density_scale,s
 access_ltl_rate_wizard,ltl.rate.wizard,model_selamta_ltl_rate_wizard,stock.group_stock_user,1,1,1,1
 access_ltl_rate_wizard_line,ltl.rate.wizard.line,model_selamta_ltl_rate_wizard_line,stock.group_stock_user,1,1,1,1
 access_ltl_drop_wizard,ltl.drop.wizard,model_selamta_ltl_drop_wizard,stock.group_stock_user,1,1,1,1
+access_ltl_pro_block_user,ltl.pro.block user,model_selamta_ltl_pro_block,stock.group_stock_user,1,0,0,0
+access_ltl_pro_block_manager,ltl.pro.block manager,model_selamta_ltl_pro_block,stock.group_stock_manager,1,1,1,1

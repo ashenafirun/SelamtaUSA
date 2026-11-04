@@ -10,7 +10,9 @@ host api.dylt.com, portal dylt-portalapi.apigee.io).
 * POST /rateQuote  {"dyltRateQuoteReq": {...}} -> flat response (success YES/NO,
   quoteNumber, totalCharges...). No dimensions: weight, pieces, pallets and class.
 * POST /pickup  {"dyltPickupReqs": {"dyltPickupReq": {...}}} -> {"dyltPickupResp":
-  {reservationStatus A/D/P, bookingNumber, reason}}. No PRO: Daylight assigns it at pickup.
+  {reservationStatus A/D/P, bookingNumber, reason}}. No PRO in or out: with a block of
+  pre-assigned PROs on the shipping method, Odoo puts the next one on our BOL and labels and
+  the driver scans it; without one, Daylight assigns its own.
 * GET /externalTrace/{probill}, /externalTrace/booking/{bookingNumber} -> billNumber,
   currentStatus, actualDeliveryDate, statHistArr.
 * GET /image/{probill}/{dr|wic|bol|invoice}/pdf, /image/booking/{bookingNumber}/bol.
@@ -30,6 +32,7 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 from odoo.addons.selamta_ltl.models.ltl_common import digits_only
+from odoo.addons.selamta_ltl.models.ltl_pro_block import pro_passes_check_digit
 
 _logger = logging.getLogger(__name__)
 
@@ -572,8 +575,12 @@ class DeliveryCarrier(models.Model):
                               answer.get('reason') or self._dylt_error(data)))
         reservation = _('Accepted') if status == 'A' else _('Adjusted: %s', answer.get('reason') or '-')
         shipment.dylt_reservation = reservation
-        notes = [_('Daylight booking number %(booking)s (%(status)s). Daylight assigns the PRO when '
-                   'it assigns a driver; tracking fills it in.', booking=booking, status=reservation)]
+        if shipment.pro_number or self.sudo().ltl_pro_remaining:
+            notes = [_('Daylight booking number %(booking)s (%(status)s). Our pre-assigned PRO is on the '
+                       'BOL and labels: the driver scans it at pickup.', booking=booking, status=reservation)]
+        else:
+            notes = [_('Daylight booking number %(booking)s (%(status)s). Daylight assigns the PRO when '
+                       'it assigns a driver; tracking fills it in.', booking=booking, status=reservation)]
         if rate.get('quote_number'):
             notes.append(_('Quote %s: give it to Daylight if the bill differs.', rate['quote_number']))
         shipment.message_post(body=Markup('<br/>').join(notes))
@@ -594,7 +601,13 @@ class DeliveryCarrier(models.Model):
         for shipment in shipments:
             pro = digits_only(shipment.pro_number)
             booking = digits_only(shipment.pickup_number)
-            if pro:
+            # Daylight opens the freight bill under a number of its own as soon as the pickup is
+            # requested; it moves to our pre-assigned PRO when the driver scans our label. So
+            # with a pre-assigned PRO, follow the booking: it shows whichever PRO Daylight uses
+            # (and, if the label was not scanned, lets us switch to Daylight's PRO).
+            if booking and shipment.pro_preassigned:
+                path = '/externalTrace/booking/%s' % booking
+            elif pro:
                 path = '/externalTrace/%s' % pro
             elif booking:
                 path = '/externalTrace/booking/%s' % booking
@@ -614,14 +627,23 @@ class DeliveryCarrier(models.Model):
     def _dylt_tracking_info(self, shipment, data):
         info = {}
         bill = str(data.get('billNumber') or '').strip()
-        if bill and bill != '0' and not shipment.pro_number:
-            info['pro_number'] = bill
         delivered = self._dylt_date(data.get('actualDeliveryDate'))
         if delivered:
             info['state'] = 'delivered'
             info['delivered_date'] = fields.Date.to_string(delivered)
         elif self._dylt_picked_up(data):
             info['state'] = 'in_transit'
+        if bill and bill != '0':
+            if not shipment.pro_number:
+                info['pro_number'] = bill
+            elif shipment.pro_preassigned and info.get('state') and bill.isdigit() \
+                    and pro_passes_check_digit(bill) and bill != digits_only(shipment.pro_number):
+                # (Before a PRO exists Daylight answers with the pickup number, e.g. P0176589.)
+                # Picked up, but Daylight kept its own PRO: the driver did not scan our label.
+                info.update(pro_number=bill, replace_pro=True, note=_(
+                    'Daylight picked this up under its own PRO %(theirs)s, not our pre-assigned '
+                    '%(ours)s (the driver did not scan our label). The shipment now uses %(theirs)s '
+                    'for tracking and the carrier bill.', theirs=bill, ours=shipment.pro_number))
         status = (data.get('currentStatus') or '').strip()
         expected = self._dylt_date(data.get('expectedDeliveryDate'))
         if expected and not delivered:

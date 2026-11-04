@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta LTL Freight',
-    'version': '18.0.1.8.0',
+    'version': '18.0.1.9.0',
     'category': 'Inventory/Delivery',
     'summary': 'Book LTL freight from delivery orders, print the BOL, and check every carrier bill against its quote',
     'description': """
@@ -43,6 +43,14 @@ Foundation for booking LTL freight directly with each carrier, replacing Freight
   coming to us (we are the consignee, a vendor ships it) is Collect, billed to us, unless a
   broker bills it.
 * Straight bill of lading (US Letter) printed from the shipment, with a large PRO barcode.
+* Pre-assigned PROs: a carrier that reserves PRO numbers for us (Daylight's electronic
+  PROs) gets its blocks on the shipping method (LTL freight tab, or Inventory >
+  Configuration > Pre-assigned PROs), entered as the carrier sends them: first and last
+  number without the check digit (Daylight: Luhn mod 10). Booking, Confirm booking or the
+  Assign PRO button takes the next unused PRO before the BOL is drawn, so the BOL and
+  labels carry a PRO barcode the driver scans. Numbers already on a shipment are skipped;
+  a reminder is posted when fewer than 200 are left; a typed PRO that fails the check digit
+  gets a warning; changing the carrier drops the PRO.
 * 4x6 shipping labels: two per pallet (one for each side) and one per box, numbered
   1 of N over the shipment, with consignee, carrier, PRO barcode (BOL number until there
   is a PRO), order references and, on shared drops, whose orders are on that pallet.
@@ -86,6 +94,7 @@ carrier's website and the PRO is typed in.
         'wizard/ltl_drop_wizard_views.xml',
         'views/ltl_shipment_views.xml',
         'views/ltl_config_views.xml',
+        'views/ltl_pro_block_views.xml',
         'views/stock_package_type_views.xml',
         'views/delivery_carrier_views.xml',
         'views/stock_picking_views.xml',

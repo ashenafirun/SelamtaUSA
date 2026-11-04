@@ -12,6 +12,7 @@ from .ltl_common import (
     DEFAULT_CLOSE_TIME, DEFAULT_DESCRIPTION, DEFAULT_READY_TIME, FREIGHT_CLASSES, FREIGHT_TERMS,
     UNIT_TYPES, class_number, digits_only,
 )
+from .ltl_pro_block import pro_passes_check_digit
 
 _logger = logging.getLogger(__name__)
 
@@ -111,6 +112,11 @@ class LtlShipment(models.Model):
 
     pro_number = fields.Char('PRO', tracking=True, copy=False, index=True)
     pro_digits = fields.Char(compute='_compute_digits', store=True, index=True)
+    pro_preassigned = fields.Boolean(
+        'PRO from our block', copy=False, readonly=True,
+        help='The PRO was handed out from a block the carrier reserved for us. It is printed '
+             'on our BOL and labels and the driver scans it at pickup.')
+    can_assign_pro = fields.Boolean(compute='_compute_can_assign_pro')
     bol_number = fields.Char(
         'Carrier BOL number', copy=False, tracking=True,
         help='Only when the carrier or broker gives the load its own BOL number.')
@@ -309,6 +315,25 @@ class LtlShipment(models.Model):
             shipment.pro_digits = digits_only(shipment.pro_number) or False
             shipment.bol_digits = digits_only(shipment.bol_number or shipment.name) or False
 
+    @api.depends('pro_number', 'state', 'carrier_id.ltl_pro_block_ids')
+    def _compute_can_assign_pro(self):
+        for shipment in self:
+            shipment.can_assign_pro = bool(
+                not shipment.pro_number and shipment.state in ('draft', 'booked')
+                and shipment.carrier_id.ltl_pro_block_ids)
+
+    @api.onchange('pro_number')
+    def _onchange_pro_number_check_digit(self):
+        """A carrier whose PROs carry a Luhn check digit (Daylight): warn on a typo."""
+        blocks = self.carrier_id.ltl_pro_block_ids.filtered(lambda b: b.check_digit == 'luhn')
+        if self.pro_number and blocks and not pro_passes_check_digit(self.pro_number):
+            return {'warning': {
+                'title': _('Check the PRO'),
+                'message': _('%(pro)s is not a valid %(carrier)s PRO: its check digit (the last '
+                             'digit) does not match. Look for a typo.',
+                             pro=self.pro_number, carrier=self.carrier_id.name),
+            }}
+
     @api.depends('carrier_id.name', 'carrier_id.ltl_scac')
     def _compute_print_carrier(self):
         for shipment in self:
@@ -409,7 +434,23 @@ class LtlShipment(models.Model):
         return shipments
 
     def write(self, vals):
+        # A PRO from one carrier's block means nothing to another carrier: re-shopping to a
+        # different carrier drops it (it is not handed out again; it may be on a label).
+        released = self.browse()
+        if vals.get('carrier_id') and 'pro_number' not in vals:
+            released = self.filtered(lambda s: s.pro_preassigned and s.carrier_id.id != vals['carrier_id'])
+        dropped = {shipment.id: (shipment.pro_number, shipment.carrier_id.name) for shipment in released}
         res = super().write(vals)
+        if released:
+            super(LtlShipment, released).write({'pro_number': False, 'pro_preassigned': False})
+            for shipment in released:
+                pro, carrier = dropped[shipment.id]
+                shipment.picking_ids.filtered(lambda p: p.carrier_tracking_ref == pro).write(
+                    {'carrier_tracking_ref': False})
+                shipment.message_post(body=_(
+                    '%(carrier)s PRO %(pro)s removed: the shipment now goes with %(new)s. Throw '
+                    'away any BOL or labels printed with it.',
+                    carrier=carrier, pro=pro, new=shipment.carrier_id.name))
         if {'pro_number', 'carrier_id'} & set(vals):
             self._sync_pickings()
         return res
@@ -748,6 +789,48 @@ class LtlShipment(models.Model):
             shipment._check_pickup()
             shipment._check_units_complete()
             shipment.state = 'booked'
+            shipment._assign_preassigned_pro()
+
+    def action_assign_pro(self):
+        """Give the shipment the next unused PRO from its carrier's block now, e.g. to print
+        the BOL and labels before booking."""
+        for shipment in self:
+            if shipment.pro_number:
+                continue
+            if not shipment.carrier_id.ltl_pro_block_ids:
+                raise UserError(_('%s has no pre-assigned PRO block (shipping method, LTL freight tab).',
+                                  shipment.carrier_id.name or shipment.name))
+            if not shipment._assign_preassigned_pro():
+                raise UserError(_('No pre-assigned %s PROs are left. Ask the carrier for a new block '
+                                  'and add it on the shipping method (LTL freight tab).',
+                                  shipment.carrier_id.name))
+
+    def _assign_preassigned_pro(self):
+        """Give each shipment that has no PRO yet the next unused PRO from its carrier's
+        pre-assigned block, so our BOL and labels print it and the driver scans it. Returns
+        the shipments that got one; does nothing for carriers without a block."""
+        assigned = self.browse()
+        Block = self.env['selamta.ltl.pro.block']
+        for shipment in self:
+            carrier = shipment.carrier_id
+            if shipment.pro_number or not carrier or carrier.ltl_parcel or not carrier.sudo().ltl_pro_block_ids:
+                continue
+            pro = Block._take_pro(carrier)
+            if not pro:
+                shipment.message_post(body=_(
+                    'No pre-assigned %(carrier)s PROs left, so this BOL has no PRO and the driver '
+                    'puts his own on it. Ask %(carrier)s for a new block and add it on the shipping '
+                    'method (LTL freight tab).', carrier=carrier.name))
+                continue
+            shipment.write({'pro_number': pro, 'pro_preassigned': True})
+            assigned |= shipment
+            left, warn_below = Block._left_for(carrier)
+            if left < warn_below:
+                shipment.message_post(body=_(
+                    'Only %(left)s pre-assigned %(carrier)s PROs left. Ask %(carrier)s for a new '
+                    'block and add it on the shipping method (LTL freight tab).',
+                    left=left, carrier=carrier.name))
+        return assigned
 
     def action_mark_picked_up(self):
         self.filtered(lambda s: s.state in ('draft', 'booked')).write({'state': 'in_transit'})
@@ -924,6 +1007,8 @@ class LtlShipment(models.Model):
             if result.get(key):
                 vals[key] = result[key]
         self.write(vals)
+        # Before our BOL is drawn, so it and the labels carry the PRO barcode.
+        self._assign_preassigned_pro()
         self._attach_documents(result.get('documents') or [], _('Booked with %s', self.carrier_id.name))
         self._attach_own_bol()
 
@@ -989,6 +1074,13 @@ class LtlShipment(models.Model):
                     vals['tracking_status'] = info['status']
                 if info.get('pro_number') and not shipment.pro_number:
                     vals['pro_number'] = info['pro_number']
+                elif info.get('replace_pro') and info.get('pro_number') \
+                        and digits_only(info['pro_number']) != shipment.pro_digits:
+                    # The carrier moved the freight under its own PRO (our pre-assigned one
+                    # was not scanned); follow the carrier so tracking and bills match.
+                    vals.update(pro_number=info['pro_number'], pro_preassigned=False)
+                if info.get('note'):
+                    shipment.message_post(body=info['note'])
                 if info.get('state') in ('in_transit', 'delivered') and shipment.state != 'delivered':
                     vals['state'] = info['state']
                 if info.get('delivered_date'):

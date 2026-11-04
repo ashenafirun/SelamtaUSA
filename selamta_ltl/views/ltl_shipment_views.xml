@@ -14,6 +14,9 @@
                     <button name="action_confirm_booking" type="object" string="Confirm booking"
                             invisible="state != 'draft' or not carrier_id or ltl_parcel"
                             help="Use after booking on the carrier's website or by phone; enter the PRO first."/>
+                    <button name="action_assign_pro" type="object" string="Assign PRO"
+                            invisible="not can_assign_pro or ltl_parcel"
+                            help="Take the next unused PRO from the carrier's pre-assigned block now, to print the BOL and labels before booking. Booking does this by itself."/>
                     <button name="action_print_bol" type="object" string="Print BOL"
                             invisible="state == 'cancel' or ltl_parcel"/>
                     <button name="action_print_labels" type="object" string="Print labels"
@@ -98,6 +101,8 @@
                             <field name="parcel_tracking_ref" invisible="not ltl_parcel and not parcel_tracking_ref"/>
                             <field name="parcel_shipment_number" invisible="not parcel_shipment_number"/>
                             <field name="pro_number" invisible="ltl_parcel"/>
+                            <field name="pro_preassigned" invisible="not pro_preassigned"/>
+                            <field name="can_assign_pro" invisible="1"/>
                             <field name="bol_reference" invisible="ltl_parcel"/>
                             <field name="bol_number" invisible="not bol_number or ltl_parcel"/>
                             <field name="pickup_number" invisible="ltl_parcel"/>

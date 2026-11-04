@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_ltl_pro_block_list" model="ir.ui.view">
+        <field name="name">selamta.ltl.pro.block.list</field>
+        <field name="model">selamta.ltl.pro.block</field>
+        <field name="arch" type="xml">
+            <list editable="bottom" decoration-muted="remaining == 0" decoration-warning="remaining &gt; 0 and remaining &lt; warn_below">
+                <field name="carrier_id" column_invisible="context.get('default_carrier_id')"/>
+                <field name="first_base" placeholder="FIRST_PRO"/>
+                <field name="last_base" placeholder="LAST_PRO"/>
+                <field name="next_base"/>
+                <field name="check_digit" optional="hide"/>
+                <field name="first_pro" optional="show"/>
+                <field name="last_pro" optional="show"/>
+                <field name="next_pro"/>
+                <field name="quantity" sum="Total"/>
+                <field name="remaining" sum="Total"/>
+                <field name="warn_below" optional="hide"/>
+                <field name="note" optional="show"/>
+                <field name="active" widget="boolean_toggle" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ltl_pro_block_search" model="ir.ui.view">
+        <field name="name">selamta.ltl.pro.block.search</field>
+        <field name="model">selamta.ltl.pro.block</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="carrier_id"/>
+                <filter name="with_left" string="PROs left" domain="[('remaining', '&gt;', 0)]"/>
+                <filter name="archived" string="Archived" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_carrier" string="Carrier" context="{'group_by': 'carrier_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ltl_pro_block" model="ir.actions.act_window">
+        <field name="name">Pre-assigned PROs</field>
+        <field name="res_model">selamta.ltl.pro.block</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'search_default_group_carrier': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Add a block of PROs a carrier reserved for you</p>
+            <p>Type the first and last number as the carrier sends them (without the check digit).
+               Each booking with that carrier then takes the next unused PRO, and the BOL and
+               labels print it as a barcode for the driver to scan.</p>
+        </field>
+    </record>
+</odoo>
