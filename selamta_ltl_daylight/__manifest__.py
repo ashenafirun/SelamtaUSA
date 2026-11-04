@@ -17,7 +17,7 @@ Connects Daylight Transport to Selamta LTL shipments through Daylight's ship-day
   no test system, so a booking is a real pickup. While booking is off, choosing Daylight in
   the rate shop saves the quote and staff book the pickup on MyDaylight.
 * Daylight returns a booking number, not a PRO. Tracking (every two hours) looks the
-  shipment up by booking number until Daylight assigns the PRO at pickup, then by PRO;
+  shipment up by booking number until Daylight assigns the PRO (when it assigns a driver), then by PRO;
   on delivery it attaches the delivery receipt and weight & inspection certificate.
 * Accessorial codes: our standard services get Daylight's codes from the Accessorial Matrix
   on Daylight's API portal ("Lift Gate Delivery", "Residential Delivery"...); see and change
