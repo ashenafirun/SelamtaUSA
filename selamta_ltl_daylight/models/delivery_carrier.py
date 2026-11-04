@@ -43,8 +43,9 @@ MAX_NOTE = 100             # pickup note line
 RATE_DATE_BUSINESS_DAYS = 4
 DOCUMENT_TYPES = [('dr', 'Delivery receipt'), ('wic', 'Weight and inspection')]
 NO_DAYLIGHT_CODE = '-'     # Daylight code meaning "Daylight has no such charge"
-# Daylight gives the PRO (billNumber) when it assigns a driver, before pickup, so the PRO
-# alone does not mean picked up. The status words decide; an unknown status changes nothing.
+# Daylight answers with a placeholder billNumber (e.g. P0176589) once it assigns a driver,
+# before pickup, so a number alone does not mean picked up. The status words decide; an
+# unknown status changes nothing.
 BEFORE_PICKUP_WORDS = ('NOT PICKED', 'ASSIGN', 'SCHEDULE', 'DISPATCH', 'PENDING', 'BOOKED',
                        'ACCEPT', 'RESERV', 'OPEN', 'CREATED', 'CANCEL', 'ATTEMPT')
 MOVING_WORDS = ('PICKED', 'TRANSIT', 'ARRIV', 'DEPART', 'OUT FOR DEL', 'LOADED', 'UNLOAD',
@@ -572,8 +573,8 @@ class DeliveryCarrier(models.Model):
                               answer.get('reason') or self._dylt_error(data)))
         reservation = _('Accepted') if status == 'A' else _('Adjusted: %s', answer.get('reason') or '-')
         shipment.dylt_reservation = reservation
-        notes = [_('Daylight booking number %(booking)s (%(status)s). Daylight assigns the PRO when '
-                   'it assigns a driver; tracking fills it in.', booking=booking, status=reservation)]
+        notes = [_('Daylight booking number %(booking)s (%(status)s). The driver puts the Daylight '
+                   'PRO label on at pickup; type that PRO in from the signed BOL.', booking=booking, status=reservation)]
         if rate.get('quote_number'):
             notes.append(_('Quote %s: give it to Daylight if the bill differs.', rate['quote_number']))
         shipment.message_post(body=Markup('<br/>').join(notes))
@@ -614,7 +615,10 @@ class DeliveryCarrier(models.Model):
     def _dylt_tracking_info(self, shipment, data):
         info = {}
         bill = str(data.get('billNumber') or '').strip()
-        if bill and bill != '0' and not shipment.pro_number:
+        # Before pickup Daylight answers with a placeholder such as 'P0176589'; the real PRO is
+        # the all-digit number on the label the driver puts on the freight.
+        real_pro = bill.isdigit() and bool(bill.strip('0'))
+        if real_pro and not shipment.pro_number:
             info['pro_number'] = bill
         delivered = self._dylt_date(data.get('actualDeliveryDate'))
         if delivered:
@@ -622,6 +626,11 @@ class DeliveryCarrier(models.Model):
             info['delivered_date'] = fields.Date.to_string(delivered)
         elif self._dylt_picked_up(data):
             info['state'] = 'in_transit'
+            if shipment.state == 'booked' and not shipment.pro_number and not real_pro:
+                # Daylight's lookup by booking number does not return the driver's PRO.
+                shipment.message_post(body=_(
+                    'Daylight picked this up. Type the PRO from the Daylight label on the signed '
+                    'BOL into the PRO field so tracking, documents and bill matching use it.'))
         status = (data.get('currentStatus') or '').strip()
         expected = self._dylt_date(data.get('expectedDeliveryDate'))
         if expected and not delivered:
