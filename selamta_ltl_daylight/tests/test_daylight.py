@@ -270,6 +270,32 @@ class TestDaylight(TransactionCase):
         with self.assertRaisesRegex(UserError, 'No service to destination'):
             self.carrier.ltl_book(self.shipment, {'total': 1})
 
+    def test_assigned_driver_is_not_picked_up(self):
+        """Live answer on the day of booking: the PRO is given with status ASSIGNED."""
+        self.shipment.write({'pickup_number': '5896084', 'state': 'booked'})
+        self.answers['/externalTrace/booking/5896084'] = FakeResponse(200, {
+            'billNumber': 'P0176589', 'currentStatus': 'ASSIGNED', 'actualDeliveryDate': None,
+            'expectedDeliveryDate': '2026-11-06T00:00:00', 'statHistArr': []})
+        self.shipment.action_update_tracking()
+        self.assertEqual(self.shipment.pro_number, 'P0176589')  # PRO still learned
+        self.assertEqual(self.shipment.state, 'booked')
+        self.assertEqual(self.shipment.tracking_status, 'ASSIGNED, expected 11/06/2026')
+
+        self.answers['/externalTrace/0176589'] = FakeResponse(200, {
+            'billNumber': 'P0176589', 'currentStatus': 'Picked Up', 'actualDeliveryDate': None})
+        self.shipment.action_update_tracking()
+        self.assertEqual(self.shipment.state, 'in_transit')
+
+    def test_picked_up_words(self):
+        Carrier = self.env['delivery.carrier']
+        for status, expected in [('ASSIGNED', False), ('Dispatched', False), ('Not picked up', False),
+                                 ('', False), ('Something new', False), ('Picked Up', True),
+                                 ('In Transit', True), ('Arrived at terminal', True),
+                                 ('Out for Delivery', True)]:
+            self.assertEqual(Carrier._dylt_picked_up({'currentStatus': status}), expected, status)
+        self.assertTrue(Carrier._dylt_picked_up({'currentStatus': 'ASSIGNED',
+                                                 'actualPickupDate': '2026-11-04T15:10:00'}))
+
     def test_track_by_booking_then_pro_and_documents(self):
         self.shipment.write({'pickup_number': '4796689', 'state': 'booked'})
         self.answers['/externalTrace/booking/4796689'] = FakeResponse(200, {

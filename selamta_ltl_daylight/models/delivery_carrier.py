@@ -43,6 +43,12 @@ MAX_NOTE = 100             # pickup note line
 RATE_DATE_BUSINESS_DAYS = 4
 DOCUMENT_TYPES = [('dr', 'Delivery receipt'), ('wic', 'Weight and inspection')]
 NO_DAYLIGHT_CODE = '-'     # Daylight code meaning "Daylight has no such charge"
+# Daylight gives the PRO (billNumber) when it assigns a driver, before pickup, so the PRO
+# alone does not mean picked up. The status words decide; an unknown status changes nothing.
+BEFORE_PICKUP_WORDS = ('NOT PICKED', 'ASSIGN', 'SCHEDULE', 'DISPATCH', 'PENDING', 'BOOKED',
+                       'ACCEPT', 'RESERV', 'OPEN', 'CREATED', 'CANCEL', 'ATTEMPT')
+MOVING_WORDS = ('PICKED', 'TRANSIT', 'ARRIV', 'DEPART', 'OUT FOR DEL', 'LOADED', 'UNLOAD',
+                'ON DOCK', 'EN ROUTE', 'TERMINAL', 'LINEHAUL')
 
 
 class DeliveryCarrier(models.Model):
@@ -566,8 +572,8 @@ class DeliveryCarrier(models.Model):
                               answer.get('reason') or self._dylt_error(data)))
         reservation = _('Accepted') if status == 'A' else _('Adjusted: %s', answer.get('reason') or '-')
         shipment.dylt_reservation = reservation
-        notes = [_('Daylight booking number %(booking)s (%(status)s). Daylight assigns the PRO at '
-                   'pickup; tracking fills it in.', booking=booking, status=reservation)]
+        notes = [_('Daylight booking number %(booking)s (%(status)s). Daylight assigns the PRO when '
+                   'it assigns a driver; tracking fills it in.', booking=booking, status=reservation)]
         if rate.get('quote_number'):
             notes.append(_('Quote %s: give it to Daylight if the bill differs.', rate['quote_number']))
         shipment.message_post(body=Markup('<br/>').join(notes))
@@ -614,7 +620,7 @@ class DeliveryCarrier(models.Model):
         if delivered:
             info['state'] = 'delivered'
             info['delivered_date'] = fields.Date.to_string(delivered)
-        elif bill and bill != '0':
+        elif self._dylt_picked_up(data):
             info['state'] = 'in_transit'
         status = (data.get('currentStatus') or '').strip()
         expected = self._dylt_date(data.get('expectedDeliveryDate'))
@@ -624,6 +630,15 @@ class DeliveryCarrier(models.Model):
         if status:
             info['status'] = status
         return info
+
+    @api.model
+    def _dylt_picked_up(self, data):
+        if self._dylt_date(data.get('actualPickupDate')):
+            return True
+        status = (data.get('currentStatus') or '').strip().upper()
+        if not status or any(word in status for word in BEFORE_PICKUP_WORDS):
+            return False
+        return any(word in status for word in MOVING_WORDS)
 
     def daylight_ltl_documents(self, shipment):
         self.ensure_one()
