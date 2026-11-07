@@ -150,6 +150,9 @@ publicWidget.registry.SelamtaRegistrationForm = publicWidget.Widget.extend({
         if (this.zipHintEl) {
             this.zipHintEl.remove();
         }
+        if (this.hoursForm && this._onHoursFormReset) {
+            this.hoursForm.removeEventListener("reset", this._onHoursFormReset);
+        }
         if (this.hoursPickerEl) {
             this.hoursPickerEl.remove();
             this.hoursInput.classList.remove("d-none");
@@ -173,27 +176,94 @@ publicWidget.registry.SelamtaRegistrationForm = publicWidget.Widget.extend({
         const picker = document.createElement("div");
         picker.className = "sel-reg-hours-picker";
 
-        const daysEl = document.createElement("div");
-        daysEl.className = "sel-reg-days";
-        daysEl.setAttribute("role", "group");
-        daysEl.setAttribute("aria-label", "Delivery days");
-        this.dayButtons = DAY_NAMES.map((name, index) => {
-            const button = document.createElement("button");
-            button.type = "button";
-            button.className = "sel-reg-day";
-            button.dataset.day = index;
-            button.setAttribute("aria-pressed", "false");
-            button.textContent = name;
-            button.addEventListener("click", () => {
-                const pressed = button.getAttribute("aria-pressed") === "true";
-                button.setAttribute("aria-pressed", pressed ? "false" : "true");
-                this._composeHours();
-            });
-            daysEl.appendChild(button);
-            return button;
-        });
-        picker.appendChild(daysEl);
+        // Days: "Any weekday" (already chosen) or "Only some weekdays", which opens
+        // tick boxes with every weekday ticked. These controls belong to no form
+        // (form attribute), so the website form never sends them; they only fill the
+        // hidden text field.
+        const NO_FORM = "sel_reg_no_form";
+        const sectionLabel = (text) => {
+            const el = document.createElement("div");
+            el.className = "sel-reg-hours-q";
+            el.textContent = text;
+            return el;
+        };
+        picker.appendChild(sectionLabel("Which days?"));
+        const modesEl = document.createElement("div");
+        modesEl.className = "sel-reg-day-modes";
+        modesEl.setAttribute("role", "radiogroup");
+        modesEl.setAttribute("aria-label", "Which days?");
+        const makeMode = (id, title, sub, checked) => {
+            const label = document.createElement("label");
+            label.className = "sel-reg-choice";
+            label.htmlFor = id;
+            const radio = document.createElement("input");
+            radio.type = "radio";
+            radio.className = "form-check-input";
+            radio.name = "sel_reg_day_mode";
+            radio.id = id;
+            radio.checked = checked;
+            radio.setAttribute("form", NO_FORM);
+            radio.addEventListener("change", () => this._onDayModeChange());
+            const text = document.createElement("span");
+            text.className = "sel-reg-choice-text";
+            const strong = document.createElement("strong");
+            strong.textContent = title;
+            text.appendChild(strong);
+            if (sub) {
+                const small = document.createElement("span");
+                small.className = "sel-reg-choice-sub";
+                small.textContent = sub;
+                text.appendChild(small);
+            }
+            label.append(radio, text);
+            modesEl.appendChild(label);
+            return radio;
+        };
+        this.anyDayRadio = makeMode("sel_reg_days_any", "Any weekday", "Monday to Friday", true);
+        this.someDaysRadio = makeMode("sel_reg_days_some", "Only some weekdays", "", false);
+        picker.appendChild(modesEl);
 
+        const someEl = document.createElement("div");
+        someEl.className = "sel-reg-some-days d-none";
+        const someHint = document.createElement("div");
+        someHint.className = "small sel-reg-some-hint";
+        someHint.textContent = "Tap a day to mark it closed.";
+        const boxesEl = document.createElement("div");
+        boxesEl.className = "sel-reg-days";
+        boxesEl.setAttribute("role", "group");
+        boxesEl.setAttribute("aria-label", "Delivery days");
+        this.dayBoxes = DAY_NAMES.map((name, index) => {
+            const label = document.createElement("label");
+            label.className = "sel-reg-daybox";
+            const box = document.createElement("input");
+            box.type = "checkbox";
+            box.className = "form-check-input";
+            box.checked = true;
+            box.dataset.day = index;
+            box.setAttribute("form", NO_FORM);
+            box.addEventListener("change", () => this._composeHours());
+            const text = document.createElement("span");
+            text.className = "sel-reg-daybox-text";
+            const dayName = document.createElement("span");
+            dayName.textContent = name;
+            const state = document.createElement("span");
+            state.className = "sel-reg-daybox-state";
+            text.append(dayName, state);
+            label.append(box, text);
+            boxesEl.appendChild(label);
+            box.addEventListener("change", () => this._showDayState(box));
+            this._showDayState(box);
+            return box;
+        });
+        this.daysWarningEl = document.createElement("div");
+        this.daysWarningEl.className = "small sel-reg-hours-warning d-none";
+        this.daysWarningEl.setAttribute("aria-live", "polite");
+        this.daysWarningEl.textContent = "Every day is marked closed. Tap the days you are open.";
+        someEl.append(someHint, boxesEl, this.daysWarningEl);
+        picker.appendChild(someEl);
+        this.someDaysEl = someEl;
+
+        picker.appendChild(sectionLabel("What time?"));
         const timesEl = document.createElement("div");
         timesEl.className = "sel-reg-times";
         const makeSelect = (id, labelText, emptyText) => {
@@ -232,22 +302,54 @@ publicWidget.registry.SelamtaRegistrationForm = publicWidget.Widget.extend({
         picker.appendChild(this.hoursWarningEl);
 
         input.classList.add("d-none");
-        // after the "Tap the days..." hint, so the instructions come first
+        // after the "We deliver Monday to Friday..." hint, so the instructions come first
         const hint = input.parentElement.querySelector(".s_website_form_field_description");
         (hint || input).insertAdjacentElement("afterend", picker);
         this.hoursPickerEl = picker;
-        // The field label pointed at the text box; point it at the first day button.
+        // The field label pointed at the (now hidden) text box.
         this.hoursLabelEl = this.el.querySelector(`label[for='${input.id}']`);
         if (this.hoursLabelEl) {
             this.hoursLabelFor = input.id;
             this.hoursLabelEl.removeAttribute("for");
         }
+        // "Any weekday" starts chosen, so the field already says "Mon–Fri". Odoo's
+        // form clears its fields when it starts (and after sending), so fill it
+        // again after every reset.
+        this._composeHours();
+        this.hoursForm = input.form;
+        if (this.hoursForm) {
+            this._onHoursFormReset = () => setTimeout(() => {
+                if (this.hoursPickerEl && this.hoursPickerEl.isConnected) {
+                    this._composeHours();
+                }
+            }, 0);
+            this.hoursForm.addEventListener("reset", this._onHoursFormReset);
+        }
+    },
+
+    _showDayState(box) {
+        const label = box.closest(".sel-reg-daybox");
+        label.classList.toggle("sel-reg-closed", !box.checked);
+        label.querySelector(".sel-reg-daybox-state").textContent = box.checked ? "Open" : "Closed";
+    },
+
+    _onDayModeChange() {
+        const some = this.someDaysRadio.checked;
+        this.someDaysEl.classList.toggle("d-none", !some);
+        if (some && !this.dayBoxes.some((b) => b.checked)) {
+            this.dayBoxes.forEach((b) => {
+                b.checked = true;
+                this._showDayState(b);
+            });
+        }
+        this._composeHours();
     },
 
     _composeHours() {
-        const days = this.dayButtons
-            .filter((b) => b.getAttribute("aria-pressed") === "true")
-            .map((b) => parseInt(b.dataset.day, 10));
+        const days = this.anyDayRadio.checked
+            ? DAY_NAMES.map((name, index) => index)
+            : this.dayBoxes.filter((b) => b.checked).map((b) => parseInt(b.dataset.day, 10));
+        this.daysWarningEl.classList.toggle("d-none", days.length > 0);
         const from = this.fromEl.value ? parseInt(this.fromEl.value, 10) : null;
         const to = this.toEl.value ? parseInt(this.toEl.value, 10) : null;
         let timeText = "";
