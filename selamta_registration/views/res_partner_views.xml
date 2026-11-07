@@ -60,7 +60,10 @@
                            readonly="parent_id and not is_company"
                            options="{'color_field': 'color'}"
                            placeholder="e.g. Liftgate Service, Residential Delivery"/>
-                    <field name="selamta_delivery_address" readonly="parent_id and not is_company"/>
+                    <!-- No longer asked on the website (1.12.0); shown only where an older answer exists.
+                         Different delivery addresses go in Odoo's own "Delivery Address" contacts. -->
+                    <field name="selamta_delivery_address" readonly="parent_id and not is_company"
+                           invisible="not selamta_delivery_address"/>
                     <div name="selamta_parent_deliveries" colspan="2" invisible="is_company or not parent_id">
                         <p>Delivery details are managed on <button name="open_commercial_entity" type="object" string="the parent company" class="oe_link"/></p>
                     </div>
