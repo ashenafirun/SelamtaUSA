@@ -315,17 +315,20 @@ class ResPartner(models.Model):
     # ------------------------------------------------------------------
 
     def action_selamta_application_approve(self):
-        """Approve in one click: set the pricelist, make it a customer, email the
-        applicant a link to set their password (Odoo's portal invitation), and mark
-        the application approved. Uses the approver's own access rights, the same
-        ones Odoo's "Grant portal access" needs."""
+        """Approve in one click: set the pricelist, make it a customer, email a link
+        to set a password (Odoo's portal invitation), and mark the application
+        approved. The login goes on the business (company), like Selamta's other
+        customer logins, not on the person. Uses the approver's own access rights,
+        the same ones Odoo's "Grant portal access" needs."""
         messages = []
         for partner in self:
             contact = partner.selamta_application_contact_id or partner
             commercial = partner.commercial_partner_id
-            if not (contact.email or '').strip():
-                raise UserError(_('%s has no email address. Add one on the contact first, '
-                                  'then approve again.', contact.display_name))
+            if not (commercial.email or '').strip():
+                if not (contact.email or '').strip():
+                    raise UserError(_('%s has no email address. Add one on the business first, '
+                                      'then approve again.', commercial.display_name))
+                commercial.email = contact.email.strip()
 
             pricelist = partner._selamta_approval_pricelist()
             if pricelist and commercial.property_product_pricelist != pricelist:
@@ -333,14 +336,15 @@ class ResPartner(models.Model):
             if hasattr(commercial, '_increase_rank') and not commercial.customer_rank:
                 commercial._increase_rank('customer_rank')
 
-            invited = partner._selamta_grant_portal_access(contact)
+            invited, login_partner = partner._selamta_grant_portal_access(commercial)
             partner.selamta_application_state = 'approved'
 
             lines = [_('Wholesale application approved by %s.', self.env.user.name)]
             if invited:
-                lines.append(_('Login invitation emailed to %s.', contact.email))
+                lines.append(_('Login invitation emailed to %s.', commercial.email))
             else:
-                lines.append(_('%s already had a login, so no invitation was sent.', contact.name))
+                lines.append(_('%s already had a login, so no invitation was sent.',
+                               login_partner.display_name))
             lines.append(_('Pricelist: %s.', commercial.property_product_pricelist.display_name or _('none')))
             partner.message_post(
                 body=Markup('<br/>').join(lines),
@@ -376,15 +380,29 @@ class ResPartner(models.Model):
         pricelist = self.env['product.pricelist'].browse(pricelist_id).exists() if pricelist_id else False
         return pricelist or self.env['product.pricelist']
 
-    def _selamta_grant_portal_access(self, contact):
-        """Give the contact a website login and send Odoo's invitation email.
-        Returns False when the contact already has a login."""
-        wizard = self.env['portal.wizard'].with_context(default_partner_ids=contact.ids).create({})
-        line = wizard.user_ids.filtered(lambda l: l.partner_id == contact)[:1]
-        if not line or line.is_portal or line.is_internal:
-            return False
+    def _selamta_grant_portal_access(self, business):
+        """Give the business (company) a website login and send Odoo's invitation
+        email. Returns (invited, partner that has the login). Not invited when the
+        business, or one of its own contacts, already has a login with that email."""
+        wizard = self.env['portal.wizard'].with_context(default_partner_ids=business.ids).create({})
+        line = wizard.user_ids.filtered(lambda l: l.partner_id == business)[:1]
+        if not line:
+            return False, business
+        if line.is_portal or line.is_internal:
+            return False, business
+        if line.email_state == 'exist':
+            # One email = one login. If a contact of this business already has it
+            # (approved with an older version), keep that login.
+            existing = self.env['res.users'].sudo().with_context(active_test=False).search(
+                [('login', '=ilike', (line.email or '').strip())], limit=1)
+            if existing and existing.partner_id.commercial_partner_id == business:
+                return False, existing.partner_id
+            raise UserError(_('%(email)s is already the login of %(other)s. Give %(business)s '
+                              'another email, then approve again.',
+                              email=line.email, other=existing.partner_id.display_name or existing.login,
+                              business=business.display_name))
         line.action_grant_access()
-        return True
+        return True, business
 
     @api.model
     def _selamta_default_approval_pricelists(self):
