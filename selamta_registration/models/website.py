@@ -33,6 +33,7 @@ PAGE_PATCHES = [
          ('selamta_delivery_address', 'selamta_delivery_address')]),
     (6, [('industry_id', 'industry_id')]),  # Grocery store / market first, then Restaurant
     (7, [('industry_id', 'industry_id')]),  # + Online store / e-commerce
+    (8, [('selamta_receiving_hours', 'selamta_receiving_hours')]),  # shorter hint for the day choices
 ]
 PATCH_LEVEL = PAGE_PATCHES[-1][0]
 # States offered in the form: the 50 states and DC (no territories / military).
