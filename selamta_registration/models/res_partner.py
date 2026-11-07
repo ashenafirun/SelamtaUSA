@@ -18,6 +18,7 @@ WEBSITE_INDUSTRY_XMLIDS = [
     'selamta_registration.industry_cafe',
     'selamta_registration.industry_caterer',
     'selamta_registration.industry_distributor',
+    'selamta_registration.industry_online',
     'selamta_registration.industry_other',
 ]
 
