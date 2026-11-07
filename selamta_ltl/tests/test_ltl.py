@@ -640,6 +640,7 @@ class TestLtl(AccountTestInvoicingCommon):
                          'total': 399.0, 'quote_number': 'WEB-9'})
             wizard.line_ids.filtered(lambda l: l.carrier_id == self.c_tforce).action_choose()
 
+        shipment.invalidate_recordset(['rate_ids'])  # read back in the order the Quote tab shows
         rates = shipment.rate_ids
         self.assertEqual(len(rates), 5)  # TForce, AAA, Priority1, AAA by website, GlobalTranz with no rate
         chosen = rates.filtered('chosen')

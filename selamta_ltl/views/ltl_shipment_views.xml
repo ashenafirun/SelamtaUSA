@@ -183,30 +183,29 @@
                                 Every quote from the rate shop is kept here when a rate is chosen,
                                 with the chosen one marked, so the choice can be reviewed later.
                             </p>
-                            <div invisible="not rate_ids">
-                                <p>
-                                    <field name="rate_choice_summary" class="d-inline fw-bold"/>
-                                </p>
-                                <p class="text-muted">
-                                    Chosen on <field name="rates_shopped_on" class="d-inline" readonly="1"/>
-                                    by <field name="rates_shopped_by" class="d-inline" readonly="1"
-                                              options="{'no_open': True}"/>.
-                                </p>
+                            <div class="fw-bold mb-2" invisible="not rate_ids">
+                                <field name="rate_choice_summary"/>
                             </div>
                             <group invisible="not rate_ids">
-                                <field name="rate_choice_note"
-                                       placeholder="e.g. customer asked for this carrier; the cheaper one has no liftgate"/>
+                                <group>
+                                    <field name="rate_choice_note"
+                                           placeholder="e.g. customer needs it by Friday; the cheaper one has no liftgate"/>
+                                </group>
+                                <group>
+                                    <field name="rates_shopped_on" readonly="1"/>
+                                    <field name="rates_shopped_by" readonly="1" options="{'no_open': True}"/>
+                                </group>
                             </group>
                             <field name="rate_ids" readonly="1" invisible="not rate_ids">
                                 <list decoration-success="chosen" decoration-bf="chosen"
                                       decoration-muted="error" decoration-info="parcel and not error and not chosen">
-                                    <field name="chosen" widget="boolean_icon" string=" "
+                                    <field name="chosen" widget="boolean_icon" string=" " invisible="not chosen"
                                            options="{'icon': 'fa-check'}" width="30px"/>
                                     <field name="carrier_id"/>
                                     <field name="service"/>
                                     <field name="total" invisible="error"/>
                                     <field name="difference" invisible="error or chosen"/>
-                                    <field name="transit_days" invisible="error"/>
+                                    <field name="transit_days" invisible="error" width="110px"/>
                                     <field name="quote_number" optional="show"/>
                                     <field name="expires" optional="hide"/>
                                     <field name="source" optional="hide"/>
