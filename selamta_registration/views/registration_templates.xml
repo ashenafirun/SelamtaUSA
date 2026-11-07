@@ -208,14 +208,14 @@
 
                         <div class="col-12 sel-reg-group"><h2 class="h5">Deliveries</h2></div>
 
-                        <!-- The day buttons and time lists are added by registration.js and fill
+                        <!-- The day choices and time lists are added by registration.js and fill
                              this text field; without JS it stays a text box. -->
                         <div data-name="Field" class="s_website_form_field mb-3 col-12 sel-reg-hours" data-type="char">
                             <label class="s_website_form_label" for="sel_reg_hours">
                                 <span class="s_website_form_label_content">When can we deliver?</span>
                             </label>
                             <input class="form-control s_website_form_input" type="text" name="selamta_receiving_hours" placeholder="e.g. Mon to Fri, 9am to 3pm" maxlength="120" id="sel_reg_hours"/>
-                            <div class="s_website_form_field_description small form-text text-muted">We deliver Monday to Friday, 8 AM to 6 PM. Tap the days you can receive, then pick the hours.</div>
+                            <div class="s_website_form_field_description small form-text text-muted">We deliver Monday to Friday, 8 AM to 6 PM.</div>
                         </div>
                         <div data-name="Field" class="s_website_form_field mb-3 col-12" data-type="text">
                             <label class="s_website_form_label" for="sel_reg_delivery">
