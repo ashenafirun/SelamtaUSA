@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta Wholesale Registration',
-    'version': '18.0.1.9.0',
+    'version': '18.0.1.10.0',
     'category': 'Website/Website',
     'summary': 'Wholesale account application page for selamtausa.com',
     'description': """
@@ -10,8 +10,8 @@ Redesigned "Open a Wholesale Account" page (/new-customer-registration):
 * Clear intro (what you get, what you need, what happens next) and a grouped form
   built from ordinary website-builder blocks, so text and fields stay editable.
 * Each application is saved like other customers: a company (business name, EIN,
-  address, type of business in the standard Industry field) with the person as its
-  contact. Extra answers kept on the company: store name (DBA), delivery days and
+  address, type of business in the standard Industry field, including Online store /
+  e-commerce) with the person as its contact. Extra answers kept on the company: store name (DBA), delivery days and
   hours (Monday to Friday buttons and time lists, 8 AM to 6 PM), delivery address,
   resale certificate number and documents, how they heard about us (dropdown), terms
   acceptance.
@@ -31,6 +31,7 @@ Redesigned "Open a Wholesale Account" page (/new-customer-registration):
 * "Approve and send login" on the application: sets the pricelist (Georgia / other
   states, chosen in Website > Settings > Wholesale registration), makes the business
   a customer, and sends Odoo's portal invitation so the applicant can set a password.
+  The login goes on the business (company), like Selamta's other customer logins.
 
 Install backs up the current page content; uninstalling restores it.
     """,
