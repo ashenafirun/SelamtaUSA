@@ -24,6 +24,10 @@
             <field name="name">Wholesaler / distributor</field>
             <field name="full_name">Wholesaler / distributor (wholesale customer)</field>
         </record>
+        <record id="industry_online" model="res.partner.industry">
+            <field name="name">Online store / e-commerce</field>
+            <field name="full_name">Online store / e-commerce (wholesale customer)</field>
+        </record>
         <record id="industry_other" model="res.partner.industry">
             <field name="name">Other</field>
             <field name="full_name">Other business type (wholesale customer)</field>
