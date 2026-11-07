@@ -47,12 +47,15 @@ class DeliveryCarrier(models.Model):
         [
             ('pro', 'PRO number'),
             ('bol', 'Our BOL number'),
+            ('invoice', 'PRO or BOL printed on the invoice PDF'),
             ('manual', 'Nothing in common - link bills by hand'),
         ],
         string='Match bills on', default='pro',
         help='Which number on our shipment appears as the bill reference on this vendor\'s '
-             'bills. GlobalTranz bills on the BOL number; Priority1 and R+L bills carry '
-             'their own invoice number, so those are linked by hand.')
+             'bills. GlobalTranz bills on the BOL number; R+L on I + the PRO. Priority1 bills '
+             'carry its own invoice number, with the PRO and BOL printed on the invoice: '
+             'choose "PRO or BOL printed on the invoice PDF". With PRO or BOL, a bill whose '
+             'reference finds nothing is also checked against the PRO and BOL on its PDF.')
     ltl_scac = fields.Char('SCAC', help='Carrier code printed on the BOL, e.g. XPOL, UPGF.')
     ltl_freight_terms = fields.Selection(
         FREIGHT_TERMS, 'Freight terms', default='prepaid', required=True,

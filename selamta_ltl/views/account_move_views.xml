@@ -20,6 +20,7 @@
                         </group>
                         <group>
                             <field name="ltl_match_note" invisible="not ltl_match_note"/>
+                            <field name="ltl_invoice_refs" invisible="not ltl_invoice_refs or ltl_invoice_refs == '-'"/>
                         </group>
                     </group>
                     <field name="ltl_shipment_ids" options="{'no_create': True}">

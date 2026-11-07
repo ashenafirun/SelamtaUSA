@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta LTL Freight',
-    'version': '18.0.1.11.0',
+    'version': '18.0.1.12.0',
     'category': 'Inventory/Delivery',
     'summary': 'Book LTL freight from delivery orders, print the BOL, and check every carrier bill against its quote',
     'description': """
@@ -62,6 +62,10 @@ Foundation for booking LTL freight directly with each carrier, replacing Freight
   audit: digits only, exact first, then a check digit on either side, then a leading 1.
   Never by amount. Shows quoted vs billed and the variance on the bill and the shipment.
   Matching runs when a bill is confirmed, from the "Match LTL shipment" button, and daily.
+  A vendor that bills on its own invoice number (Priority1) is matched on the PRO or BOL
+  printed on the bill's PDF ("PRO or BOL printed on the invoice PDF" on the shipping
+  method); for the others the PDF is checked when the bill reference finds nothing. The
+  numbers read are shown on the bill's LTL freight tab.
 
 * "Request pickup" on each shipment (on by default). Off, we drop off: no pickup request
   is sent, the BOL says the shipper drops off at the terminal and the pickup window is

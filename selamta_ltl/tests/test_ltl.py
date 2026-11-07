@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
+import io
 from unittest.mock import patch
+
+from reportlab.pdfgen import canvas
 
 from odoo import fields
 from odoo.tools import format_amount
@@ -7,6 +10,7 @@ from odoo.exceptions import UserError
 from odoo.tests import tagged
 
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
+from odoo.addons.selamta_ltl.models.account_move import invoice_pdf_numbers
 
 
 @tagged('post_install', '-at_install')
@@ -201,6 +205,84 @@ class TestLtl(AccountTestInvoicingCommon):
         self.assertEqual(credit.ltl_shipment_ids, first)
         self.assertAlmostEqual(first.billed_amount, 100)
         self.assertEqual(first.bill_status, 'ok')
+
+    def _invoice_pdf(self, *lines):
+        """A one-page PDF with a text layer, like a carrier's emailed invoice."""
+        buffer = io.BytesIO()
+        pdf = canvas.Canvas(buffer)
+        for row, line in enumerate(lines):
+            pdf.drawString(40, 800 - 16 * row, line)
+        pdf.save()
+        return buffer.getvalue()
+
+    def _attach_pdf(self, bill, pdf):
+        attachment = self.env['ir.attachment'].create({
+            'name': 'Invoice.pdf', 'raw': pdf, 'mimetype': 'application/pdf',
+            'res_model': bill._name, 'res_id': bill.id})
+        bill.message_main_attachment_id = attachment
+        return attachment
+
+    def _priority1_invoice(self, invoice_number, pro=None, bol=None):
+        lines = ['Invoice %s' % invoice_number, 'References', 'Carrier Roadrunner Transportation Systems']
+        if bol:
+            lines.append('BOL %s' % bol)
+        lines += ['Carrier Pickup 55429378', 'Customer Pickup 106244176']
+        if pro:
+            lines.append('PRO %sCharges' % pro)  # Priority1's PDF runs the next box into the PRO
+        lines += ['Freight Charge USD$56.82', 'Pickup Date: 9/9/2026']
+        return self._invoice_pdf(*lines)
+
+    def test_numbers_read_from_invoice_pdf(self):
+        pdf = self._priority1_invoice('18561595', pro='624464699', bol='60115773611')
+        self.assertEqual(invoice_pdf_numbers(pdf), [('PRO', '624464699'), ('BOL', '60115773611')])
+        other = self._invoice_pdf('Pro Number: 476-594871', 'BOL#: SEL2600123', 'Pro forma 9/9/2026', 'PROBILL 12345678')
+        self.assertEqual(invoice_pdf_numbers(other), [('PRO', '476594871'), ('BOL', '2600123')])
+
+    def test_priority1_bill_matched_on_pro_printed_on_invoice(self):
+        self.c_p1.ltl_match_on = 'invoice'
+        shipment = self._shipment(self.c_p1, pro='624464699', quoted=50)
+        shipment.bol_number = '60115773611'
+        bill = self._bill(self.p1, '18561595', 56.82, post=False)
+        self._attach_pdf(bill, self._priority1_invoice('18561595', pro='624464699', bol='60115773611'))
+        bill.action_post()
+        self.assertEqual(bill.ltl_shipment_ids, shipment)
+        self.assertEqual(bill.ltl_match_note, 'Matched on PRO printed on the invoice (exact).')
+        self.assertEqual(bill.ltl_invoice_refs, 'PRO 624464699, BOL 60115773611')
+        self.assertAlmostEqual(shipment.billed_amount, 56.82)
+
+    def test_priority1_bill_matched_on_bol_when_no_pro(self):
+        self.c_p1.ltl_match_on = 'invoice'
+        shipment = self._shipment(self.c_p1, pro='599243691', quoted=180)
+        shipment.bol_number = '60116512409'
+        bill = self._bill(self.p1, '18600001', 180, post=False)
+        self._attach_pdf(bill, self._priority1_invoice('18600001', bol='60116512409'))
+        bill.action_post()
+        self.assertEqual(bill.ltl_shipment_ids, shipment)
+        self.assertIn('BOL number printed on the invoice', bill.ltl_match_note)
+
+    def test_priority1_invoice_number_alone_never_matches(self):
+        self.c_p1.ltl_match_on = 'invoice'
+        self._shipment(self.c_p1, pro='18561595', quoted=50)  # same digits as the invoice number
+        bill = self._bill(self.p1, '18561595', 50, post=False)
+        self._attach_pdf(bill, self._priority1_invoice('18561595', pro='624464699'))
+        bill.action_post()
+        self.assertFalse(bill.ltl_shipment_ids)
+        self.assertEqual(bill.ltl_match_note,
+                         'No shipment from this vendor with the PRO 624464699 printed on the invoice.')
+        no_pdf = self._bill(self.p1, '18561596', 50)
+        self.assertEqual(no_pdf.ltl_match_note, 'No PRO or BOL number found on the invoice PDF.')
+
+    def test_pdf_checked_when_reference_finds_nothing(self):
+        shipment = self._shipment(self.c_tforce, pro='900000123', quoted=75)
+        bill = self._bill(self.tforce, 'ACC-77', 75, post=False)  # an accessorial invoice
+        self._attach_pdf(bill, self._invoice_pdf('Accessorial invoice ACC-77', 'PRO: 900000123'))
+        bill.action_post()
+        self.assertEqual(bill.ltl_shipment_ids, shipment)
+        unreadable = self._bill(self.tforce, 'ACC-78', 75, post=False)
+        self._attach_pdf(unreadable, b'not a pdf')
+        unreadable.action_post()  # posting still works
+        self.assertFalse(unreadable.ltl_shipment_ids)
+        self.assertEqual(unreadable.ltl_invoice_refs, '-')
 
     def test_cron_matches_draft_bills(self):
         shipment = self._shipment(self.c_tforce, pro='909090909', quoted=200)
