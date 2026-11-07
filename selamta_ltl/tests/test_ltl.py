@@ -2,6 +2,7 @@
 from unittest.mock import patch
 
 from odoo import fields
+from odoo.tools import format_amount
 from odoo.exceptions import UserError
 from odoo.tests import tagged
 
@@ -614,6 +615,57 @@ class TestLtl(AccountTestInvoicingCommon):
         self.assertIn('BOL.pdf', attachments.mapped('name'))
         self.assertIn('BOL 900000001.pdf', attachments.mapped('name'))
         self.assertEqual(shipment.message_main_attachment_id.name, 'BOL 900000001.pdf')
+
+    def test_rate_shop_is_kept_on_the_shipment(self):
+        shipment = self._shipment(self.c_tforce)
+        Carrier = type(self.env['delivery.carrier'])
+        Line = self.env['selamta.ltl.rate.wizard.line']
+
+        def fake_rate(carrier, shipment):
+            if carrier == self.c_gtz:
+                raise UserError('No service to this ZIP')
+            return {
+                self.c_tforce: [{'total': 412.5, 'transit_days': 2, 'quote_number': 'Q1'}],
+                self.c_aaa: [{'total': 380.0, 'transit_days': 4, 'service': 'AAA Standard'}],
+                self.c_p1: [{'total': 455.0, 'transit_days': 1, 'service': 'Saia via Priority1'}],
+            }[carrier]
+
+        def money(amount):
+            return format_amount(self.env, amount, shipment.currency_id)
+
+        with patch.object(Carrier, 'fixed_ltl_rate', fake_rate, create=True):
+            wizard = self.env['selamta.ltl.rate.wizard'].browse(shipment.action_open_rate_shop()['res_id'])
+            Line.create({'wizard_id': wizard.id, 'carrier_id': self.c_aaa.id, 'source': 'phone'})  # no price: left out
+            Line.create({'wizard_id': wizard.id, 'carrier_id': self.c_aaa.id, 'source': 'website',
+                         'total': 399.0, 'quote_number': 'WEB-9'})
+            wizard.line_ids.filtered(lambda l: l.carrier_id == self.c_tforce).action_choose()
+
+        rates = shipment.rate_ids
+        self.assertEqual(len(rates), 5)  # TForce, AAA, Priority1, AAA by website, GlobalTranz with no rate
+        chosen = rates.filtered('chosen')
+        self.assertEqual((chosen.carrier_id, chosen.total, chosen.quote_number), (self.c_tforce, 412.5, 'Q1'))
+        self.assertEqual(rates.filtered(lambda r: r.service == 'AAA Standard').difference, -32.5)
+        self.assertEqual(rates.filtered(lambda r: r.quote_number == 'WEB-9').source, 'website')
+        failed = rates.filtered('error')
+        self.assertEqual(failed.carrier_id, self.c_gtz)
+        self.assertIn('No service', failed.error)
+        self.assertEqual(rates[0], rates.filtered(lambda r: r.service == 'AAA Standard'))  # cheapest first
+        self.assertEqual(rates[-1], failed)  # no rate at the bottom
+        self.assertEqual(shipment.rates_shopped_by, self.env.user)
+        self.assertTrue(shipment.rates_shopped_on)
+        self.assertEqual(shipment.rate_choice_summary, '%s more than the cheapest (AAA Standard, %s), 2 days faster. '
+                         '1 carrier gave no rate.' % (money(32.5), money(380.0)))
+
+        # Shopping again and choosing replaces the saved list
+        with patch.object(Carrier, 'fixed_ltl_rate', fake_rate, create=True):
+            wizard = self.env['selamta.ltl.rate.wizard'].browse(shipment.action_open_rate_shop()['res_id'])
+            wizard.line_ids.filtered(lambda l: l.carrier_id == self.c_aaa).action_choose()
+        self.assertEqual(len(shipment.rate_ids), 4)
+        self.assertEqual(shipment.rate_ids.filtered('chosen').carrier_id, self.c_aaa)
+        self.assertEqual(shipment.quoted_amount, 380.0)
+        self.assertEqual(shipment.rate_choice_summary, 'Cheapest of 3 quotes. Saia via Priority1 was 3 days faster '
+                         'for %s more. 1 carrier gave no rate.' % money(75.0))
+        self.assertTrue(rates.exists() == self.env['selamta.ltl.shipment.rate'])  # old list removed
 
     def test_rate_shop_without_connections(self):
         shipment = self._shipment(self.c_tforce)

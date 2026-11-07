@@ -78,6 +78,7 @@ class TestParcel(TransactionCase):
         self.assertEqual(shipment.state, 'cancel')
         self.assertEqual(result['res_id'], picking.id)
         self.assertIn('Going by parcel with UPS US', ' '.join(shipment.message_ids.mapped('body')))
+        self.assertTrue(shipment.rate_ids.filtered('chosen').parcel)  # kept for review
 
     def test_heavy_loads_get_no_parcel_quote(self):
         _order, _picking, shipment = self._delivery(qty=20)  # about 500 lb

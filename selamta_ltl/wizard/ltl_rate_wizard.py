@@ -102,6 +102,17 @@ class LtlRateWizard(models.TransientModel):
             lines.append(vals)
         return lines
 
+    def _save_rate_shop(self, chosen):
+        """Keep every quote of this rate shop on the shipment, the chosen one marked, so the
+        choice can be reviewed later. Lines added by hand with no price yet are left out."""
+        self.ensure_one()
+        lines = self.line_ids.filtered(lambda l: l == chosen or l.error or l.total > 0)
+        self.shipment_id.write({
+            'rate_ids': [(5, 0, 0)] + [(0, 0, line._saved_rate_vals(chosen)) for line in lines],
+            'rates_shopped_on': fields.Datetime.now(),
+            'rates_shopped_by': self.env.uid,
+        })
+
     def action_refresh(self):
         self._fetch_rates()
         return {
@@ -146,6 +157,22 @@ class LtlRateWizardLine(models.TransientModel):
         })
         return rate
 
+    def _saved_rate_vals(self, chosen):
+        self.ensure_one()
+        return {
+            'chosen': self == chosen,
+            'carrier_id': self.carrier_id.id,
+            'source': self.source,
+            'service': self.service or False,
+            'total': 0.0 if self.error else self.total,
+            'difference': 0.0 if self.error else self.total - chosen.total,
+            'transit_days': self.transit_days,
+            'quote_number': self.quote_number or False,
+            'expires': self.expires or False,
+            'parcel': self.parcel,
+            'error': self.error or False,
+        }
+
     def action_choose(self):
         """Save this rate as the shipment's quote; book it when the carrier is connected."""
         self.ensure_one()
@@ -158,6 +185,7 @@ class LtlRateWizardLine(models.TransientModel):
             raise UserError(_(
                 '%s already has UPS labels. Cancel it first (that voids the labels with UPS), then '
                 'reset it to not booked and choose again.', shipment.name))
+        self.wizard_id._save_rate_shop(self)
         if self.parcel:
             return self._choose_parcel(shipment)
         rate = self._rate()
