@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Selamta Wholesale Registration',
-    'version': '18.0.1.10.0',
+    'version': '18.0.1.11.0',
     'category': 'Website/Website',
     'summary': 'Wholesale account application page for selamtausa.com',
     'description': """
@@ -12,7 +12,8 @@ Redesigned "Open a Wholesale Account" page (/new-customer-registration):
 * Each application is saved like other customers: a company (business name, EIN,
   address, type of business in the standard Industry field, including Online store /
   e-commerce) with the person as its contact. Extra answers kept on the company: store name (DBA), delivery days and
-  hours (Monday to Friday buttons and time lists, 8 AM to 6 PM), delivery address,
+  hours ("Any weekday" or "Only some weekdays" with tick boxes, plus From / Until
+  time lists, 8 AM to 6 PM), delivery address,
   resale certificate number and documents, how they heard about us (dropdown), terms
   acceptance.
 * ZIP code fills in city and state (built-in U.S. ZIP list, no outside service).
