@@ -6,6 +6,8 @@ access_ltl_unit_stock_user,ltl.unit stock user,model_selamta_ltl_shipment_unit,s
 access_ltl_unit_account,ltl.unit billing,model_selamta_ltl_shipment_unit,account.group_account_invoice,1,0,0,0
 access_ltl_charge_stock_user,ltl.charge stock user,model_selamta_ltl_shipment_charge,stock.group_stock_user,1,1,1,1
 access_ltl_charge_account,ltl.charge billing,model_selamta_ltl_shipment_charge,account.group_account_invoice,1,0,0,0
+access_ltl_rate_stock_user,ltl.rate stock user,model_selamta_ltl_shipment_rate,stock.group_stock_user,1,1,1,1
+access_ltl_rate_account,ltl.rate billing,model_selamta_ltl_shipment_rate,account.group_account_invoice,1,0,0,0
 access_ltl_accessorial_user,ltl.accessorial user,model_selamta_ltl_accessorial,base.group_user,1,0,0,0
 access_ltl_accessorial_manager,ltl.accessorial manager,model_selamta_ltl_accessorial,stock.group_stock_manager,1,1,1,1
 access_ltl_density_user,ltl.density user,model_selamta_ltl_density_scale,base.group_user,1,0,0,0

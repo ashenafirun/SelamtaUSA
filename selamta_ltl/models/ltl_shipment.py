@@ -6,7 +6,7 @@ from collections import defaultdict
 
 from odoo import _, api, fields, models
 from odoo.exceptions import RedirectWarning, UserError
-from odoo.tools import float_round
+from odoo.tools import float_round, format_amount
 
 from .ltl_common import (
     DEFAULT_CLOSE_TIME, DEFAULT_DESCRIPTION, DEFAULT_READY_TIME, FREIGHT_CLASSES, FREIGHT_TERMS,
@@ -116,6 +116,17 @@ class LtlShipment(models.Model):
     quoted_amount = fields.Monetary('Quoted', tracking=True, copy=False)
     charge_ids = fields.One2many(
         'selamta.ltl.shipment.charge', 'shipment_id', 'Quoted charges', copy=False)
+    rate_ids = fields.One2many(
+        'selamta.ltl.shipment.rate', 'shipment_id', 'Rate shop', copy=False,
+        help='Every quote in the rate shop the chosen rate was picked from, kept to review the '
+             'choice later. Replaced when rates are shopped and chosen again.')
+    rates_shopped_on = fields.Datetime('Rate chosen on', copy=False, readonly=True)
+    rates_shopped_by = fields.Many2one('res.users', 'Rate chosen by', copy=False, readonly=True)
+    rate_choice_summary = fields.Char('How it compares', compute='_compute_rate_choice_summary')
+    rate_choice_note = fields.Char(
+        'Why this one', copy=False, tracking=True,
+        help='Anything the prices do not show, e.g. the customer asked for this carrier, or the '
+             'cheaper one has no liftgate.')
 
     pro_number = fields.Char('PRO', tracking=True, copy=False, index=True)
     pro_digits = fields.Char(compute='_compute_digits', store=True, index=True)
@@ -346,6 +357,53 @@ class LtlShipment(models.Model):
         for shipment in self:
             shipment.print_carrier_name = shipment.carrier_id.name or False
             shipment.print_carrier_scac = shipment.carrier_id.ltl_scac or False
+
+    @api.depends('rate_ids.chosen', 'rate_ids.total', 'rate_ids.transit_days', 'rate_ids.error')
+    def _compute_rate_choice_summary(self):
+        """One line on how the chosen rate compares with the rest of the rate shop."""
+        def days(count):
+            return _('1 day') if count == 1 else _('%s days', count)
+
+        for shipment in self:
+            currency = shipment.currency_id
+            quotes = shipment.rate_ids.filtered(lambda r: not r.error and r.total > 0)
+            chosen = quotes.filtered('chosen')[:1]
+            if not chosen:
+                shipment.rate_choice_summary = False
+                continue
+            others = quotes - chosen
+            cheapest = quotes.sorted(lambda r: (r.total, r.transit_days or 999, not r.chosen))[:1]
+            if not others:
+                text = _('The only quote.')
+            elif currency.compare_amounts(chosen.total, cheapest.total) <= 0:
+                text = _('Cheapest of %s quotes.', len(quotes))
+                faster = others.filtered(
+                    lambda r: r.transit_days and chosen.transit_days and r.transit_days < chosen.transit_days)
+                if faster:
+                    fastest = faster.sorted(lambda r: (r.transit_days, r.total))[:1]
+                    text += ' ' + _('%(name)s was %(days)s faster for %(more)s more.',
+                                    name=fastest._label(),
+                                    days=days(chosen.transit_days - fastest.transit_days),
+                                    more=format_amount(self.env, fastest.total - chosen.total, currency))
+            else:
+                text = _('%(more)s more than the cheapest (%(name)s, %(total)s)',
+                         more=format_amount(self.env, chosen.total - cheapest.total, currency),
+                         name=cheapest._label(),
+                         total=format_amount(self.env, cheapest.total, currency))
+                if chosen.transit_days and cheapest.transit_days:
+                    gain = cheapest.transit_days - chosen.transit_days
+                    if gain > 0:
+                        text += ', ' + _('%s faster', days(gain))
+                    elif gain < 0:
+                        text += ', ' + _('%s slower', days(-gain))
+                    else:
+                        text += ', ' + _('same transit time')
+                text += '.'
+            no_rate = len(shipment.rate_ids.filtered('error'))
+            if no_rate:
+                text += ' ' + (_('1 carrier gave no rate.') if no_rate == 1
+                               else _('%s carriers gave no rate.', no_rate))
+            shipment.rate_choice_summary = text
 
     @api.depends('bol_number', 'name')
     def _compute_bol_reference(self):
@@ -1248,3 +1306,35 @@ class LtlShipmentCharge(models.Model):
     name = fields.Char('Charge', required=True)
     currency_id = fields.Many2one(related='shipment_id.currency_id')
     amount = fields.Monetary()
+
+
+class LtlShipmentRate(models.Model):
+    """One quote from the rate shop, kept on the shipment when a rate is chosen, so the
+    choice can be reviewed later: what else was offered, at what price and transit time,
+    and which carriers gave no rate."""
+    _name = 'selamta.ltl.shipment.rate'
+    _description = 'LTL rate shop quote'
+    _order = 'error desc, total, transit_days, id'
+
+    shipment_id = fields.Many2one(
+        'selamta.ltl.shipment', required=True, ondelete='cascade', index=True)
+    currency_id = fields.Many2one(related='shipment_id.currency_id')
+    chosen = fields.Boolean(readonly=True)
+    carrier_id = fields.Many2one('delivery.carrier', 'Carrier', ondelete='set null', readonly=True)
+    source = fields.Selection(
+        [('api', 'Carrier connection'), ('website', 'Carrier website'), ('phone', 'Phone / email')],
+        'From', readonly=True)
+    service = fields.Char(readonly=True)
+    total = fields.Monetary(readonly=True)
+    difference = fields.Monetary(
+        'vs chosen', readonly=True,
+        help='This quote minus the chosen one. Negative: cheaper than what we chose.')
+    transit_days = fields.Integer('Transit days', readonly=True)
+    quote_number = fields.Char('Quote number', readonly=True)
+    expires = fields.Date('Quote expires', readonly=True)
+    parcel = fields.Boolean(readonly=True, help='Parcel quote (UPS...) instead of LTL.')
+    error = fields.Char('No rate because', readonly=True)
+
+    def _label(self):
+        self.ensure_one()
+        return self.service or self.carrier_id.name or _('Unknown carrier')
