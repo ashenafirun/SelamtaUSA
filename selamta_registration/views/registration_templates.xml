@@ -217,12 +217,6 @@
                             <input class="form-control s_website_form_input" type="text" name="selamta_receiving_hours" placeholder="e.g. Mon to Fri, 9am to 3pm" maxlength="120" id="sel_reg_hours"/>
                             <div class="s_website_form_field_description small form-text text-muted">We deliver Monday to Friday, 8 AM to 6 PM.</div>
                         </div>
-                        <div data-name="Field" class="s_website_form_field mb-3 col-12" data-type="text">
-                            <label class="s_website_form_label" for="sel_reg_delivery">
-                                <span class="s_website_form_label_content">Delivery address, if different</span>
-                            </label>
-                            <textarea class="form-control s_website_form_input" name="selamta_delivery_address" rows="2" id="sel_reg_delivery"></textarea>
-                        </div>
 
                         <div class="col-12 sel-reg-group"><h2 class="h5">Documents</h2></div>
 
