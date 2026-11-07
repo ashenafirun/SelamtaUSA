@@ -227,7 +227,7 @@ publicWidget.registry.SelamtaRegistrationForm = publicWidget.Widget.extend({
         someEl.className = "sel-reg-some-days d-none";
         const someHint = document.createElement("div");
         someHint.className = "small sel-reg-some-hint";
-        someHint.textContent = "Untick the days you are closed.";
+        someHint.textContent = "Tap a day to mark it closed.";
         const boxesEl = document.createElement("div");
         boxesEl.className = "sel-reg-days";
         boxesEl.setAttribute("role", "group");
@@ -243,15 +243,22 @@ publicWidget.registry.SelamtaRegistrationForm = publicWidget.Widget.extend({
             box.setAttribute("form", NO_FORM);
             box.addEventListener("change", () => this._composeHours());
             const text = document.createElement("span");
-            text.textContent = name;
+            text.className = "sel-reg-daybox-text";
+            const dayName = document.createElement("span");
+            dayName.textContent = name;
+            const state = document.createElement("span");
+            state.className = "sel-reg-daybox-state";
+            text.append(dayName, state);
             label.append(box, text);
             boxesEl.appendChild(label);
+            box.addEventListener("change", () => this._showDayState(box));
+            this._showDayState(box);
             return box;
         });
         this.daysWarningEl = document.createElement("div");
         this.daysWarningEl.className = "small sel-reg-hours-warning d-none";
         this.daysWarningEl.setAttribute("aria-live", "polite");
-        this.daysWarningEl.textContent = "Tick at least one day.";
+        this.daysWarningEl.textContent = "Every day is marked closed. Tap the days you are open.";
         someEl.append(someHint, boxesEl, this.daysWarningEl);
         picker.appendChild(someEl);
         this.someDaysEl = someEl;
@@ -320,11 +327,20 @@ publicWidget.registry.SelamtaRegistrationForm = publicWidget.Widget.extend({
         }
     },
 
+    _showDayState(box) {
+        const label = box.closest(".sel-reg-daybox");
+        label.classList.toggle("sel-reg-closed", !box.checked);
+        label.querySelector(".sel-reg-daybox-state").textContent = box.checked ? "Open" : "Closed";
+    },
+
     _onDayModeChange() {
         const some = this.someDaysRadio.checked;
         this.someDaysEl.classList.toggle("d-none", !some);
         if (some && !this.dayBoxes.some((b) => b.checked)) {
-            this.dayBoxes.forEach((b) => (b.checked = true));
+            this.dayBoxes.forEach((b) => {
+                b.checked = true;
+                this._showDayState(b);
+            });
         }
         this._composeHours();
     },
