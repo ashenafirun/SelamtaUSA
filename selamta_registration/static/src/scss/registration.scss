@@ -402,6 +402,38 @@ $sel-reg-tint: #EAF4EC;
             border-color: $sel-reg-green;
             background-color: $sel-reg-green;
         }
+
+        // closed day: red box with an X and the word "Closed"
+        &.sel-reg-closed {
+            border-color: #C62828;
+            background: #FDECEA;
+            color: #8E1B1B;
+
+            .form-check-input {
+                border-color: #C62828;
+                background-color: #fff;
+                background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath stroke='%23C62828' stroke-width='2.4' stroke-linecap='round' d='M4.5 4.5l7 7M11.5 4.5l-7 7'/%3e%3c/svg%3e");
+                background-size: 80%;
+                background-position: center;
+                background-repeat: no-repeat;
+            }
+        }
+    }
+
+    .sel-reg-daybox-text {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.15;
+    }
+
+    .sel-reg-daybox-state {
+        font-size: .78em;
+        font-weight: 600;
+        color: $sel-reg-green;
+
+        .sel-reg-closed & {
+            color: #C62828;
+        }
     }
 
     .sel-reg-choice .form-check-input:checked {
